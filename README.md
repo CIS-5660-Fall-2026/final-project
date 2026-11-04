@@ -60,9 +60,6 @@ I already have a WebGPU implementation of a Forward+ renderer, so I plan to buil
 - Add GUI sliders for controlling the volumetric properties
 - Stretch goal: Volumetric shadow maps (per-light), to allow objects to cast shadows through the volume
 
-
-Submit your Design doc as usual via pull request against this repository.
-
 ## Milestone 1: Implementation part 1 (due 11/11)
 Begin implementing your engine! Don't worry too much about polish or parameter tuning -- this week is about getting together the bulk of your generator implemented. By the end of the week, even if your visuals are crude, the majority of your generator's functionality should be done.
 
