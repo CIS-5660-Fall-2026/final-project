@@ -8,42 +8,61 @@ Before submitting your first milestone, _you must get your project idea and scop
 ### Design Doc
 
 #### Introduction & Goal
-- What motivates your project?
-- What do you intend to achieve with this project?
-
-- I would like to blend physically based rendering techniques with procedurally generated volumetric data.
+- I would like to blend physically based rendering techniques with procedurally generated volumetric data (participating media properties).
 - I plan to use animated 3D noise to procedurally generate volumetric material properties. This data will then be stored as froxels (frustum-aligned voxels) so it can be efficiently rendered in real-time using scattering, absorption, and emission PBR models for volumes.
 - I want to model smoke, clouds, and fog using a single rendering architecture (i.e. the only change needed to visualize different types of volumes is tweaking of the animated noise).
 
 #### Inspiration/reference:
-- You must have some form of reference material for your final project. Your reference may be a research paper, a blog post, some artwork, a video, another class at Penn, etc.  
-- Include in your design doc links to and images of your reference material.
 
-TODO: Drop in my BF6 capture
+**Froxel-based Smoke Rendering in Battlefield 6:**
 
-**Raymarching Volumetric Effects (not necessarily PBR):**
+https://github.com/user-attachments/assets/671911ed-a612-42ec-a1ee-6a1fcdc4ebc5
+
+**Raymarching Volumetric Effects (mainly interested in the use of noise for defining volumes):**
+
 https://www.shadertoy.com/view/XslGRr
 https://blog.maximeheckel.com/posts/real-time-cloudscapes-with-volumetric-raymarching/
 https://blog.maximeheckel.com/posts/shaping-light-volumetric-lighting-with-post-processing-and-raymarching/
 
-
 **PBR and Froxel-based Volumetric Fog:**
+
 https://www.mattiasstrand.com/posts/volumetric-fog/
 https://www.slideshare.net/slideshow/physically-based-and-unified-volumetric-rendering-in-frostbite/51840934
 
-#### Specification:
-- Outline the main features of your project.
+#### Specification & Techniques:
 
-#### Techniques:
-- What are the main technical/algorithmic tools you’ll be using? Give an overview, citing specific papers/articles.
+I plan to follow Mattias Strand's blog post, as well as the Frostbite slides it is based on. This includes the following techniques:
+- Forward+ (clustered) rendering
+- Approximation of the volumetric rendering equation
+- Compute passes for 1) populating each froxel with participating media data, 2) calculating how much light is scattered toward the camera at each froxel, and 3) raymarching through the cluster Z-slices to accumulate scattered light and transmittance
+- Animated 3D noise (likely FBM) for querying participating media data at a given world-space location
+- Temporal integration: jitter sample positions and combine the current frame's data with the previous frame to hide slicing artifacts
+- Stretch goal: Volumetric shadow maps (per-light), to allow objects to cast shadows through the volume
+
+I already have a WebGPU implementation of a Forward+ renderer, so I plan to build the volumetric rendering/shadows on top of that base code.
 
 #### Design:
-- How will your program fit together? Make a simple free-body diagram illustrating the pieces.
+
+![](froxel_fog_pass_graph_forward_plus.png)
 
 #### Timeline:
-- Create a week-by-week set of milestones for each person in your group. Make sure you explicitly outline what each group member's duties will be.
+
+**Milestone 1:**
+- Static participating media properties via simple 3D FBM
+- Render the volume end-to-end with transmittance but no light scattering
+
+**Milestone 2:**
+- Iterate over point lights and compute light scattering throughout the froxel grid
+- Implement temporal integration and sample jittering
+
+**Final Submission:**
+- Animate the 3D noise to mimic different types of participating media (e.g. billowing smoke, slow-moving clouds, fog, etc.)
+- Add GUI sliders for controlling the volumetric properties
+- Stretch goal: Volumetric shadow maps (per-light), to allow objects to cast shadows through the volume
+
 
 Submit your Design doc as usual via pull request against this repository.
+
 ## Milestone 1: Implementation part 1 (due 11/11)
 Begin implementing your engine! Don't worry too much about polish or parameter tuning -- this week is about getting together the bulk of your generator implemented. By the end of the week, even if your visuals are crude, the majority of your generator's functionality should be done.
 
