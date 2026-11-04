@@ -6,17 +6,30 @@ This is it! The culmination of your procedural graphics experience this semester
 Before submitting your first milestone, _you must get your project idea and scope approved by Rachel, Adam or a TA._
 
 ### Design Doc
-Start off by forking this repository. In your README, write a design doc to outline your project goals and implementation plan. It must include the following sections:
 
-#### Introduction
+#### Introduction & Goal
 - What motivates your project?
-
-#### Goal
 - What do you intend to achieve with this project?
+
+- I would like to blend physically based rendering techniques with procedurally generated volumetric data.
+- I plan to use animated 3D noise to procedurally generate volumetric material properties. This data will then be stored as froxels (frustum-aligned voxels) so it can be efficiently rendered in real-time using scattering, absorption, and emission PBR models for volumes.
+- I want to model smoke, clouds, and fog using a single rendering architecture (i.e. the only change needed to visualize different types of volumes is tweaking of the animated noise).
 
 #### Inspiration/reference:
 - You must have some form of reference material for your final project. Your reference may be a research paper, a blog post, some artwork, a video, another class at Penn, etc.  
 - Include in your design doc links to and images of your reference material.
+
+TODO: Drop in my BF6 capture
+
+**Raymarching Volumetric Effects (not necessarily PBR):**
+https://www.shadertoy.com/view/XslGRr
+https://blog.maximeheckel.com/posts/real-time-cloudscapes-with-volumetric-raymarching/
+https://blog.maximeheckel.com/posts/shaping-light-volumetric-lighting-with-post-processing-and-raymarching/
+
+
+**PBR and Froxel-based Volumetric Fog:**
+https://www.mattiasstrand.com/posts/volumetric-fog/
+https://www.slideshare.net/slideshow/physically-based-and-unified-volumetric-rendering-in-frostbite/51840934
 
 #### Specification:
 - Outline the main features of your project.
