@@ -1,3 +1,215 @@
+
+
+# Design Doc
+
+### Project Blurb
+
+I'm creating a Houdini procedural generator inspired by *Howl's Moving Castle* that assembles whimsical, chaotic-looking castles-house-creatures by attaching houses, towers, pipes, vegetation, and other wacky parts to a central mechanical body. The goal is to make these structures adapt to their surroundings through collision-aware placement, artist-controlled parameters, and automatically generated supports that connect them to nearby surfaces.
+
+## Introduction
+
+I was inspired by the whimsical, chaotic architecture of Studio Ghibli's *Howl's Moving Castle*, and always thought that the castle itself was the coolest part of the film. A while ago I also re-watched a video by Studson Studio on YouTube (he makes miniatures out of junk and other parts), which reignited my love for the crazy slap-together-but-somehow-still-cohesive chaos and charm of the castle.
+
+So for this project, I'm interested in how irregular architectural structures can be assembled procedurally while maintaining a cohesive and visually appealing design. Key words are **wonk, charm, and complexity** that comes from the layering of assets and systems.
+
+Art direction is important in this project – art direction in terms of how things will be placed and scattered.
+
+## Goal
+
+I want to develop a system that procedurally populates a central mechanical castle body with houses, towers, pipes, vegetation, and miscellaneous decorations. In the end, it should generate visually distinct castles using artist-controlled parameters and random seeds.
+
+Something I want to do is to ensure components intelligently adapt to their surroundings (and have unique constraints) rather than being placed through purely random scattering. Large pieces should also self-support, which means they will automatically generate supporting structures connecting to nearby valid surfaces (for example, a house piece attaching to the side of the castle-creature with support structures below generating automatically).
+
+The ultimate goal is to produce whimsical, abundant/full-looking, and asymmetrical silhouettes while maintaining believable architectural connections, all on this house-creature-thing.
+
+## Inspiration / References
+
+### Howl's Moving Castle — Studio Ghibli
+
+Irregular architecture, mechanical structures, protruding houses, trees, towers, pipes, random objects, and whimsical silhouettes.
+
+![Moving Castle Reference 1](1.jpeg)
+
+![Moving Castle Reference 2](2.jpeg)
+
+![Moving Castle Reference 3](3.jpeg)
+
+![Moving Castle Reference 4](4.jpg)
+
+### Townscaper — Oskar Stålberg
+
+Context-aware procedural architecture and geometry that adapts and responds to neighboring structures.
+
+![Townscaper Reference](5.png)
+
+[Watch Townscaper Trailer](https://www.youtube.com/watch?v=hqq25n6cQqo)
+
+### Inspiration Videos / Projects
+
+- [Studson Studio — Making Howl's Moving Castle Out of Junk](https://www.youtube.com/watch?v=FDQ-sDDqWvk)
+- [SideFX — Project Skylark Building Generator](https://www.sidefx.com/tutorials/project-skylark-building-generator/)
+
+## Specification
+
+### 1. Procedural House Population
+
+- House-creature base (body).
+- Artist-controlled number of attached houses (minimum of approximately 5), which serves as the base and "main" anchor for the rest of the assets that will form around them.
+- Random selection from several premodeled house variants.
+- Houses attach to eligible surfaces on the castle body, towers, and structural pipes. The definition of eligible will be art-directed.
+- Adjustable placement distribution (like verticality, clustering, etc. that dictate where and how the houses are placed), orientation variation, scale variation, and random seed.
+- Collision-aware placement to avoid bad intersections.
+- Some constraint that makes sure each "side" of the creature-castle gets at least one house in most cases (just for art-direction purposes).
+
+### 2. Adaptive Support Generation
+
+- Each house contains predefined support attachment points (think about it like preset points on the house that attachments may shoot out from).
+- Automatically find nearby valid support surfaces, without intersecting itself.
+- Generate beams or braces connecting houses to the castle, and these supports adapt their length, orientation, and geometry as houses move or rotate. They will also adapt if there is another "better" structure to attach itself to that appears later.
+- Evaluate support candidates based on distance, angle, and clearance.
+
+### 3. Composition Controls
+
+- **Verticality:** Controls whether attachments cluster toward the upper castle or spread across the body.
+- **Clustering:** Controls how closely houses and other structures group together.
+- **Rotation variation:** Controls the amount of irregularity in house orientations.
+- **Random seed:** Generates different castle configurations with the same params.
+- Adjusting parameters updates the generated arrangement and dependent geometry.
+
+### 4. Secondary Procedural Population
+
+- **Towers, pipes, ledges:** Independent population parameters and variations.
+- **Vegetation:** Typically populates areas near houses, ledges, and other suitable surfaces.
+- **Thingamajigs:** Artist-controlled density of thingamajig objects such as ladders, birdcages, signs, gears, house-attached railings, and lanterns, etc.
+- Different object categories follow different placement and attachment rules.
+- Premodeled decorative assets are instanced procedurally. Some assets are procedural (it'll depend on their need).
+- Close assets (like houses close to each other, between a certain distance) may even be attached to each other, like with very simple pipes.
+
+### 5. Possible Stretch Goals
+
+- Actual textures.
+- Slight animation.
+- Castle age/personality presets:
+  - **Baby:** Smaller, compact, upright components.
+  - **Teenager:** Exaggerated proportions and jaunty angles.
+  - **Adult:** Balanced default proportions.
+  - **Elderly:** Slightly sagging or drooping structures.
+- Composition scoring using some sort of heuristic to select visually appealing layouts.
+- More advanced pipe routing and procedural connections.
+- Additional house and decoration variations may be added.
+
+## Techniques
+
+- **Weighted random placement:** Distribute houses based on height, surface orientation, clustering, and artist-controlled parameters. Use weighted random sampling to select from eligible candidate points.
+
+- **Collision detection and constraint checking:** Reject placements that intersect existing geo or violate attachment rules. Use bounding box intersection tests and rejection sampling, placing houses one at a time and retrying invalid placements.
+
+- **Adaptive rotation and orientation:** Allow houses to tilt and rotate within specified angle limits to accommodate surrounding structures. Use surface normals for initial orientation, then test different rotations and score them based on collision clearance and attachment constraints.
+
+- **Adaptive support generation:** Find suitable nearby anchor points and procedurally generate beams connecting houses to the castle, or "nearest valid structure" (like a thick tower). Use nearest-neighbor searches and heuristic scoring based on distance, angle, and intersection checks to select valid connections.
+
+- **Context-aware asset placement:** Populate vegetation and decorations based on nearby geometry, available surfaces, and attachment rules. Use proximity-based scattering and surface normal checks, with different placement constraints for different asset types.
+
+- **Procedural instancing:** Use Houdini VEX, Python, and SOPs to assemble premodeled assets with randomized variations. Use Copy to Points and point attributes to control asset selection, scale, and orientation.
+
+### Time Savers
+
+Most assets are pre-modeled (not procedural), but are rotate and slight-scale friendly. The base of the creature will only have maybe 1–2 variants of base-shapes, as the focus is on what's happening on top of it. Later on when the base shape is changed, the assets on top have to shuffle too, so it'll test the system.
+
+### Technical References
+
+- [SideFX — xyzdist()](https://www.sidefx.com/docs/houdini/vex/functions/xyzdist.html)
+- [SideFX — intersect()](https://www.sidefx.com/docs/houdini/vex/functions/intersect.html)
+- [Merrell et al. (2011) — Interactive Furniture Layout Using Interior Design Guidelines](https://graphics.eecs.berkeley.edu/papers/Merrell-IFL-2011-08/Merrell-IFL-2011-08.pdf)
+
+## Design
+
+### System Overview
+
+The generator will consist of the following stages:
+
+**1. Input Geometry**
+- Central castle-house creature body and eligible structural surfaces.
+- Premodeled house, tower, and decoration asset libraries.
+
+**2. Candidate Surface Generation**
+- Generate attachment points.
+- Calculate surface normals, heights, and placement weights.
+
+**3. House Placement Solver**
+- Select house variants and candidate locations.
+- Calculate transforms.
+- Check collisions and attachment validity.
+- Output accepted house placements. Repeat for each house.
+
+**4. Adaptive Support Generator**
+- Read house support preset locations.
+- Search for valid support anchors (from preset to the anchor mesh).
+- Generate connecting beams and brackets.
+
+**5. Secondary Population Systems**
+- Place towers and pipes with their own constraints and rules.
+- Scatter vegetation near suitable architectural regions.
+- Place miscellaneous decorations using attachment rules.
+
+**6. Final Assembly**
+- Merge generated geometry.
+- Apply materials.
+- Output the completed procedural castle.
+
+### System Diagram
+
+![Procedural Castle Generator Diagram](6.png)
+
+## Timeline
+
+### Week 1: Nov 4 – Nov 11 (Milestone 1 Due Nov 11)
+
+- Create the central castle body (actual model) and placeholder house/tower geometry.
+- Implement candidate attachment point generation on the castle body and eligible structural surfaces.
+- Implement weighted random placement using house count, verticality, rotation variation, and random seed.
+- Implement collision-aware placement and retries.
+- Implement an initial (can be crude) adaptive support system that connects houses to nearby valid surfaces.
+- Set up basic HDA parameters and demonstrate procedural regeneration.
+- Document progress and include screenshots of generated castle variations in the README.
+
+### Week 2: Nov 11 – Nov 18
+
+- House variants and pipes/towers model.
+- Refine collision detection, attachment rules, and adaptive support generation.
+- Integrate multiple house variants and structural tower/pipe assets.
+- Implement secondary population systems for towers, pipes, vegetation, and miscellaneous decorations.
+
+### Week 3: Nov 18 – Nov 25 (Milestone 2 Due Nov 23)
+
+- Add context-aware placement rules, such as vegetation appearing near houses and decorations attaching to suitable surfaces.
+- Finalize artist-facing parameters and test different combinations of house count, verticality, clustering, and random seeds.
+- Fix bugs and ensure the generator works reliably across supported configurations.
+- Document completed features, limitations, and any cuts in the README.
+
+### Week 4-ish: Nov 25 – Nov 30 (Final Due Nov 30)
+
+- Refine castle geometry, house variants, and decorative assets.
+- Apply stylized materials, textures, and lighting, maybe.
+- Tune procedural parameters to generate visually appealing castle variations.
+- Improve the overall silhouette, composition, and whimsical aesthetic.
+- Produce final renders, screenshots, and a demonstration of the HDA's procedural controls.
+- Complete the final results and post-mortem sections of the README.
+- Prepare the final class presentation.
+
+### Stretch Goals
+
+- Castle age/personality presets that influence proportions, angles, and structural posture.
+- More advanced pipe routing and procedural connections.
+- Heuristic composition scoring to select particularly appealing layouts.
+- Additional architectural and decorative variations.
+
+
+
+
+
+
+
 # Final Project!
 
 This is it! The culmination of your procedural graphics experience this semester. For your final project, we'd like to give you the time and space to explore a topic of your choosing. You may choose any topic you please, so long as you vet the topic and scope with an instructor or TA. We've provided some suggestions below. The scope of your project should be roughly 1.5 homework assignments). To help structure your time, we're breaking down the project into 4 milestones:
