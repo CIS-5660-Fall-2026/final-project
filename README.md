@@ -11,27 +11,70 @@ Start off by forking this repository. In your README, write a design doc to outl
 #### Introduction
 - What motivates your project?
 
+I want to explore stylization and rendering in Houdini.
+
 #### Goal
 - What do you intend to achieve with this project?
+
+A cinematic render of an underwater environment inspired by Outer Wilds with procedural jellyfish, but stylized as brush strokes in Houdini. 
 
 #### Inspiration/reference:
 - You must have some form of reference material for your final project. Your reference may be a research paper, a blog post, some artwork, a video, another class at Penn, etc.  
 - Include in your design doc links to and images of your reference material.
 
+![alt text](image-1.png)
+
+![alt text](image.png)
+
+https://www.youtube.com/watch?v=qgpR6k11If4
+https://x.com/KoalaOK_/status/1668525179440599040
+https://x.com/KoalaOK_/status/1665706668783702016
+https://www.instagram.com/p/DFIiJH2Plcs/?utm_source=ig_web_copy_link&img_index=1
+https://www.artstation.com/artwork/KeL02r
+![alt text](wildrobot2.gif)
+
 #### Specification:
 - Outline the main features of your project.
+
+1. procedural jellyfish
+2. brush stroke / texture 2d stylization
+3. stylized lightning animation in the core
+4. underwater cinematics
+5. fully procedural and done in Houdini
 
 #### Techniques:
 - What are the main technical/algorithmic tools you’ll be using? Give an overview, citing specific papers/articles.
 
+I'll be developing a tool similar to this one in Blender that is open source: https://extensions.blender.org/add-ons/brushstroke-tools/
+
+Brush stroke stylized lens flare:
+https://www.youtube.com/watch?v=-fHuTSCq2eg
+https://www.youtube.com/watch?v=rkkt54UoQiI
+
+Blender dev talk:
+https://www.youtube.com/watch?v=ljjUoup2uTw
+
+Simple brush stoke example:
+https://www.youtube.com/watch?v=1jWNeLujtV8
+
+https://www.youtube.com/watch?v=mNlL77U0IL8
+https://www.youtube.com/watch?v=myvLr5Iii1Q&pp=ygUXYmxlbmRlciAzZCBvaWwgcGFpbnRpbmc%3D
+https://www.youtube.com/watch?v=pJ5_cGjrhuU
+
+Displacing glare: https://www.youtube.com/watch?v=abi3FUYLuDU
+![alt text](image-2.png)
+
+
 #### Design:
 - How will your program fit together? Make a simple free-body diagram illustrating the pieces.
+
+Create a houdini brush stroke tool -> procedural jellyfish (with brush strokes for its ribbons) -> create a final scene
 
 #### Timeline:
 - Create a week-by-week set of milestones for each person in your group. Make sure you explicitly outline what each group member's duties will be.
 
 Submit your Design doc as usual via pull request against this repository.
-## Milestone 1: Implementation part 1 (due 11/11)
+## Milestone 1: Create a houdini brush stroke tool (due 11/11)
 Begin implementing your engine! Don't worry too much about polish or parameter tuning -- this week is about getting together the bulk of your generator implemented. By the end of the week, even if your visuals are crude, the majority of your generator's functionality should be done.
 
 Put all your code in your forked repository.
@@ -40,7 +83,7 @@ Submission: Add a new section to your README titled: Milestone #1, which should 
 - written description of progress on your project goals. If you haven't hit all your goals, what's giving you trouble?
 - Examples of your generators output so far
 We'll check your repository for updates. No need to create a new pull request.
-## Milestone 2: Implementation part 2 (due 11/23)
+## Milestone 2: Apply brush strokes to procedural jellyfish (due 11/23)
 We're over halfway there! This week should be about fixing bugs and extending the core of your generator. Make sure by the end of this week _your generator works and is feature complete._ Any core engine features that don't make it in this week should be cut! Don't worry if you haven't managed to exactly hit your goals. We're more interested in seeing proof of your development effort than knowing your planned everything perfectly. 
 
 Put all your code in your forked repository.
@@ -52,7 +95,7 @@ We'll check your repository for updates. No need to create a new pull request.
 
 Come to class on the due date with a WORKING COPY of your project. We'll be spending time in class critiquing and reviewing your work so far.
 
-## Final submission (due 11/30)
+## Final submission: final composited underwater scene with multiple jellyfish (due 11/30)
 Time to polish! Spen this last week of your project using your generator to produce beautiful output. Add textures, tune parameters, play with colors, play with camera animation. Take the feedback from class critques and use it to take your project to the next level.
 
 Submission:
