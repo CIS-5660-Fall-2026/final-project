@@ -15,7 +15,7 @@ Build an interactive 3D paper world with faceted terrain and origami flowers tha
 
 **Bloom patterns by Zhongyuan Wang, Robert J. Lang, and Larry L. Howell.** A family of origami patterns that open like blooming flowers. This is kind of the look and motion I want for the flowers. [BYU article](https://news.byu.edu/intellect/the-next-chapter-in-byus-origami-engineering-student-discovered-patterns-unfold-like-blooming-flowers-have-major-applications)
 
-<img src="https://brightspotcdn.byu.edu/dims4/default/1b94e56/2147483647/strip/true/crop/4096x2160+0+0/resize/800x422!/quality/90/?url=https%3A%2F%2Fbrigham-young-brightspot-us-east-2.s3.us-east-2.amazonaws.com%2F25%2Fb0%2Fb8c4893a4a3cb101c9e152d02d84%2Fbloom-patterns-tabletop.png" alt="A table of white folded paper bloom patterns" width="560">
+<img src="assets/ref_bloom_patterns.jpg" alt="A table of white folded paper bloom patterns" width="560">
 
 *Image: BYU Photo.*
 
