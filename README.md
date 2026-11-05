@@ -1,117 +1,137 @@
-# Final Project!
+# Procedural Hand-Drawn Dungeon Map Generator
 
-This is it! The culmination of your procedural graphics experience this semester. For your final project, we'd like to give you the time and space to explore a topic of your choosing. You may choose any topic you please, so long as you vet the topic and scope with an instructor or TA. We've provided some suggestions below. The scope of your project should be roughly 1.5 homework assignments). To help structure your time, we're breaking down the project into 4 milestones:
+**CIS 5660 Final Project — Design Doc**
 
-## Project planning: Design Doc (due 11/4)
-Before submitting your first milestone, _you must get your project idea and scope approved by Rachel, Adam or a TA._
+**Proposal due:** November 4, 2026
 
-### Design Doc
-Start off by forking this repository. In your README, write a design doc to outline your project goals and implementation plan. It must include the following sections:
+**Project format:** Individual
 
-#### Introduction
-- What motivates your project?
+**Status:** Proposed topic and scope for instructor/TA review.
 
-#### Goal
-- What do you intend to achieve with this project?
+## Introduction
 
-#### Inspiration/reference:
-- You must have some form of reference material for your final project. Your reference may be a research paper, a blog post, some artwork, a video, another class at Penn, etc.  
-- Include in your design doc links to and images of your reference material.
+Hand-drawn dungeon maps combine readable spatial structure with expressive visual detail. I am interested in how a procedural system can produce maps that feel intentionally designed: rooms form recognizable groups, corridors connect them coherently, and imperfect ink strokes give the result a consistent visual identity.
 
-#### Specification:
-- Outline the main features of your project.
+Inspired by Watabou's One Page Dungeon, I will build a browser-based generator that combines partially symmetric layouts with procedural pen-and-paper rendering. The project fits the course's **A RE-IMPLEMENTATION** and **A FORGERY** directions. My implementation will focus on the generation and drawing algorithms.
 
-#### Techniques:
-- What are the main technical/algorithmic tools you’ll be using? Give an overview, citing specific papers/articles.
+## Goal
 
-#### Design:
-- How will your program fit together? Make a simple free-body diagram illustrating the pieces.
+Create a controllable generator for connected, single-floor dungeon maps with a hand-drawn appearance. Different seeds should produce visibly different layouts; reusing a seed and the same parameters should reproduce the same result.
 
-#### Timeline:
-- Create a week-by-week set of milestones for each person in your group. Make sure you explicitly outline what each group member's duties will be.
+The main technical goals are:
 
-Submit your Design doc as usual via pull request against this repository.
-## Milestone 1: Implementation part 1 (due 11/11)
-Begin implementing your engine! Don't worry too much about polish or parameter tuning -- this week is about getting together the bulk of your generator implemented. By the end of the week, even if your visuals are crude, the majority of your generator's functionality should be done.
+- Generate varied room-and-corridor layouts with adjustable symmetry and additional loops.
+- Convert the layout into clean walls, door openings, and floor boundaries.
+- Render those boundaries with procedural ink variation and exterior hatching.
+- Expose the generation stages so the relationship between parameters, structure, and final appearance is easy to demonstrate.
 
-Put all your code in your forked repository.
+The intended scale is approximately 1.5 homework assignments. The final deliverable will be an interactive map-generation tool, an example gallery, and documented results.
 
-Submission: Add a new section to your README titled: Milestone #1, which should include
-- written description of progress on your project goals. If you haven't hit all your goals, what's giving you trouble?
-- Examples of your generators output so far
-We'll check your repository for updates. No need to create a new pull request.
-## Milestone 2: Implementation part 2 (due 11/23)
-We're over halfway there! This week should be about fixing bugs and extending the core of your generator. Make sure by the end of this week _your generator works and is feature complete._ Any core engine features that don't make it in this week should be cut! Don't worry if you haven't managed to exactly hit your goals. We're more interested in seeing proof of your development effort than knowing your planned everything perfectly. 
+## Inspiration/reference
 
-Put all your code in your forked repository.
+### Watabou — One Page Dungeon
 
-Submission: Add a new section to your README titled: Milestone #3, which should include
-- written description of progress on your project goals. If you haven't hit all your goals, what did you have to cut and why? 
-- Detailed output from your generator, images, video, etc.
-We'll check your repository for updates. No need to create a new pull request.
+- [Live generator](https://watabou.github.io/one-page-dungeon/)
+- [Project page and author's explanation of the layout algorithm](https://watabou.itch.io/one-page-dungeon)
+- [Video that introduced the reference](https://www.bilibili.com/video/BV1Z6Jf6UEVs/)
+- [Reference map with seed 1467063380](https://watabou.github.io/one-page-dungeon/?seed=1467063380)
 
-Come to class on the due date with a WORKING COPY of your project. We'll be spending time in class critiquing and reviewing your work so far.
+![Reference output from Watabou's One Page Dungeon: connected rooms, corridors, and hand-drawn wall hatching](docs/references/watabou-seed-1467063380.png)
 
-## Final submission (due 11/30)
-Time to polish! Spen this last week of your project using your generator to produce beautiful output. Add textures, tune parameters, play with colors, play with camera animation. Take the feedback from class critques and use it to take your project to the next level.
+*Figure 1. Reference output generated with One Page Dungeon by Oleg Dolya / Watabou, seed 1467063380, exported on November 4, 2026. This is reference material, not output from my implementation. The [author's FAQ](https://watabou.github.io/faq.html) permits use of generated map images.*
 
-Submission:
-- Push all your code / files to your repository
-- Come to class ready to present your finished project
-- Update your README with two sections 
-  - final results with images and a live demo if possible
-  - post mortem: how did your project go overall? Did you accomplish your goals? Did you have to pivot?
+I will study its room groupings, door placement, wall treatment, and visual hierarchy. A small number of exported maps may serve as reference fixtures while developing the renderer. The final maps will come from my own generator.
 
-## Topic Suggestions
+### Technical references
 
-### Create a generator in Houdini
+1. **Oleg Dolya, One Page Dungeon — author discussion of layout generation.** On the [project page](https://watabou.itch.io/one-page-dungeon), the author describes growing a partly symmetric room tree and then adding connections to create loops. This is the starting point for my layout approach.
+2. **Oleg Dolya, [Hatching in 1PDG](https://www.patreon.com/watawatabou/posts/hatching-in-1pdg-31716880), 2019.** Explains how spaced clusters of short strokes approximate hand-drawn dungeon shading.
+3. **Robert Bridson, [Fast Poisson Disk Sampling in Arbitrary Dimensions](https://www.cs.ubc.ca/~rbridson/docs/bridson-siggraph07-poissondisk.pdf), SIGGRAPH Sketches, 2007.** Provides the sampling method I will adapt for distributing hatch clusters.
 
-### A CLASSIC 4K DEMO
-- In the spirit of the demo scene, create an animation that fits into a 4k executable that runs in real-time. Feel free to take inspiration from the many existing demos. Focus on efficiency and elegance in your implementation.
-- Example: 
-  - [cdak by Quite & orange](https://www.youtube.com/watch?v=RCh3Q08HMfs&list=PLA5E2FF8E143DA58C)
+These sources inform an independent implementation. The reference application's compiled JavaScript will not be used as the project's generation engine.
 
-### A RE-IMPLEMENTATION
-- Take an academic paper or other pre-existing project and implement it, or a portion of it.
-- Examples:
-  - [2D Wavefunction Collapse Pokémon Town](https://gurtd.github.io/566-final-project/)
-  - [3D Wavefunction Collapse Dungeon Generator](https://github.com/whaoran0718/3dDungeonGeneration)
-  - [Reaction Diffusion](https://github.com/charlesliwang/Reaction-Diffusion)
-  - [WebGL Erosion](https://github.com/LanLou123/Webgl-Erosion)
-  - [Particle Waterfall](https://github.com/chloele33/particle-waterfall)
-  - [Voxelized Bread](https://github.com/ChiantiYZY/566-final)
+## Specification
 
-### A FORGERY
-Taking inspiration from a particular natural phenomenon or distinctive set of visuals, implement a detailed, procedural recreation of that aesthetic. This includes modeling, texturing and object placement within your scene. Does not need to be real-time. Focus on detail and visual accuracy in your implementation.
-- Examples:
-  - [The Shrines](https://github.com/byumjin/The-Shrines)
-  - [Watercolor Shader](https://github.com/gracelgilbert/watercolor-stylization)
-  - [Sunset Beach](https://github.com/HanmingZhang/homework-final)
-  - [Sky Whales](https://github.com/WanruZhao/CIS566FinalProject)
-  - [Snail](https://www.shadertoy.com/view/ld3Gz2)
-  - [Journey](https://www.shadertoy.com/view/ldlcRf)
-  - [Big Hero 6 Wormhole](https://2.bp.blogspot.com/-R-6AN2cWjwg/VTyIzIQSQfI/AAAAAAAABLA/GC0yzzz4wHw/s1600/big-hero-6-disneyscreencaps.com-10092.jpg)
+### Core features
 
-### A GAME LEVEL
-- Like generations of game makers before us, create a game which generates an navigable environment (eg. a roguelike dungeon, platforms) and some sort of goal or conflict (eg. enemy agents to avoid or items to collect). Aim to create an experience that will challenge players and vary noticeably in different playthroughs, whether that means procedural dungeon generation, careful resource management or an interesting AI model. Focus on designing a system that is capable of generating complex challenges and goals.
-- Examples:
-  - [Rhythm-based Mario Platformer](https://github.com/sgalban/platformer-gen-2D)
-  - [Pokémon Ice Puzzle Generator](https://github.com/jwang5675/Ice-Puzzle-Generator)
-  - [Abstract Exploratory Game](https://github.com/MauKMu/procedural-final-project)
-  - [Tiny Wings](https://github.com/irovira/TinyWings)
-  - Spore
-  - Dwarf Fortress
-  - Minecraft
-  - Rogue
+| Feature | Planned behavior |
+| --- | --- |
+| Reproducible generation | A seed controls layout and visual variation through separate random streams. Changing drawing settings preserves the layout. |
+| Connected layouts | Generate approximately 8–24 rectangular rooms, corridors, and door openings on a bounded grid. |
+| Layout controls | Adjust target room count, probability of symmetric growth, and the proportion of eligible extra connections. |
+| Hand-drawn rendering | Slightly irregular wall strokes, a floor grid, paper-and-ink colors, and exterior hatch clusters with adjustable density. |
+| Structural visualization | Switch between the room graph, plain geometry, and final drawing; highlight an entrance-to-exit route. |
+| Export | Save the final drawing as SVG and the generated layout and parameters as JSON. |
 
-### AN ANIMATED ENVIRONMENT / MUSIC VISUALIZER
-- Create an environment full of interactive procedural animation. The goal of this project is to create an environment that feels responsive and alive. Whether or not animations are musically-driven, sound should be an important component. Focus on user interactions, motion design and experimental interfaces.
-- Examples:
-  - [The Darkside](https://github.com/morganherrmann/thedarkside)
-  - [Music Visualizer](https://yuruwang.github.io/MusicVisualizer/)
-  - [Abstract Mesh Animation](https://github.com/mgriley/cis566_finalproj)
-  - [Panoramical](https://www.youtube.com/watch?v=gBTTMNFXHTk)
-  - [Bound](https://www.youtube.com/watch?v=aE37l6RvF-c)
+The entrance will be associated with the root room; an exit will be selected from a room far from it in graph distance. The route overlay demonstrates connectivity without requiring a gameplay system.
 
-### YOUR OWN PROPOSAL
-- You are of course welcome to propose your own topic . Regardless of what you choose, you and your team must research your topic and relevant techniques and come up with a detailed plan of execution. You will meet with some subset of the procedural staff before starting implementation for approval.
+### Scope and success criteria
+
+The core project covers one floor, rectangular room geometry, and one coherent drawing style. Combat, platforming physics, full narrative generation, multi-floor buildings, and world-map generation are outside this scope. If the core is complete early, I may add circular rooms or a second visual preset.
+
+I will evaluate the generator using a fixed set of 100 seeds across supported parameter presets. Checks will cover room-interior overlap, floor connectivity, entrance-to-exit reachability, deterministic output, and bounded termination. If a layout cannot reach the requested room count within its placement budget, the interface will report the actual count.
+
+A small visual gallery will compare seeds and parameter settings, especially low/high symmetry and sparse/dense hatching. I will also record generation and drawing times, aiming for roughly one second or less for a typical 24-room map on my development laptop.
+
+## Techniques
+
+### 1. Seeded, partially symmetric room growth
+
+Following the idea described in reference 1, begin with a root room and grow children relative to each parent's entrance direction. Symmetric proposals place children on opposing sides; asymmetric proposals vary their size or keep only one child. A grid occupancy check rejects room overlaps and invalid corridor placements.
+
+Use a finite placement budget to prevent stalled growth from running indefinitely. Each accepted child is connected to its parent, establishing a connected base layout.
+
+### 2. Loop creation and structural validation
+
+After tree growth, consider spatially nearby room pairs for additional connections. Add a door or a short orthogonal corridor only when the geometry permits it. The loop parameter controls how many eligible connections are attempted.
+
+Maintain both a room adjacency graph and a walkable-cell grid. Breadth-first search checks graph reachability and selects the exit; flood fill checks the actual floor geometry. Keeping both representations helps detect a graph edge whose corridor was drawn incorrectly.
+
+### 3. Boundary extraction and ink rendering
+
+Extract the exterior edges of occupied floor cells, merge collinear edges, and preserve gaps for door openings. This avoids drawing internal walls between adjacent floor cells.
+
+Draw the resulting geometry as SVG paths. Small seeded perturbations of curve control points and stroke widths create an ink effect while preserving the underlying collision-free layout. Geometry and drawing randomness remain independent.
+
+### 4. Procedural hatching
+
+Following references 2 and 3, distribute hatch-cluster centers with a two-dimensional Poisson disk sampler. Draw several short, slightly curved strokes around each center with controlled orientation and size variation.
+
+Restrict the strokes to a narrow exterior band around the floor footprint using an SVG mask. This keeps hatching out of rooms and passages. Minimum sample spacing and a cap on cluster count will control drawing cost.
+
+## Design
+
+**Tools:** TypeScript for the algorithms and data model, SVG for rendering and vector export, HTML/CSS for controls, and Vite for local development and the browser build. The implementation does not require a game engine or external generation service.
+
+![System diagram showing parameters, layout generation, validation, geometry extraction, rendering, and export](docs/system-design.svg)
+
+*Figure 2. Planned system structure. The same validated layout feeds the renderer, structural views, and JSON export.*
+
+The main modules will be:
+
+- **Parameters and RNG:** store the seed and settings; provide separate layout and drawing random streams.
+- **Layout generator:** create rooms, corridors, doors, and the adjacency graph.
+- **Validator:** check occupancy and reachability; return validation results and the highlighted route.
+- **Geometry builder:** extract floor boundaries, door gaps, and the hatch mask.
+- **SVG renderer:** draw walls, floor grid, hatching, symbols, and the optional debug overlay.
+- **Controls and export:** regenerate, switch views, and save SVG/JSON.
+
+The shared data model will contain rooms, connections, door positions, a walkable grid, generation parameters, and the seed. Validation failures will be surfaced in the debug view rather than hidden by the final drawing.
+
+The main risks are crowded layouts and excessive SVG path counts. Bounded placement attempts, a modest room limit, merged wall segments, and capped hatch density address those risks. Circular rooms and extra styles will be cut first if time is limited.
+
+## Timeline
+
+This is an individual project. I am responsible for all research, algorithms, rendering, interface work, evaluation, and documentation.
+
+| Dates | My responsibilities | Deliverable |
+| --- | --- | --- |
+| **Nov. 4 — Proposal** | Finalize references, scope, architecture, and schedule; obtain instructor/TA approval of the topic and scope before submission. | Design doc in README, reference image, and system diagram; submit through a PR to the course repository after approval. |
+| **Nov. 5–11 — Milestone 1** | Implement seeded room growth, collision checks, corridors, loop insertion, basic connectivity checks, and plain SVG output. Build an initial hatching prototype. | A working core generator with sample outputs and a README progress report by **Nov. 11**. |
+| **Nov. 12–18 — Rendering and interaction** | Finish boundary extraction, door drawing, hand-drawn strokes, exterior hatching, parameter controls, structural views, and export. | Integrated generator and renderer; initial comparisons of seeds and visual settings. |
+| **Nov. 19–23 — Milestone 2** | Run the fixed-seed checks, fix geometric failures, measure generation time, tune defaults, and finish all core features. Cut unfinished extensions. | A feature-complete working copy for the **Nov. 23** critique, with documented results. |
+| **Nov. 24–30 — Final** | Apply critique feedback, polish line quality and composition, curate the gallery, record a short demonstration, and write the post mortem. | Final code, images, demonstration, and README results by **Nov. 30**; a live browser demo if feasible. |
+
+---
+
+The original course brief is preserved in [docs/assignment.md](docs/assignment.md).
