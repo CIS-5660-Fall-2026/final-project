@@ -1,117 +1,137 @@
-# Final Project!
+# Procedural Zhuozhengyuan
 
-This is it! The culmination of your procedural graphics experience this semester. For your final project, we'd like to give you the time and space to explore a topic of your choosing. You may choose any topic you please, so long as you vet the topic and scope with an instructor or TA. We've provided some suggestions below. The scope of your project should be roughly 1.5 homework assignments). To help structure your time, we're breaking down the project into 4 milestones:
+Zhuoyang Pan
 
-## Project planning: Design Doc (due 11/4)
-Before submitting your first milestone, _you must get your project idea and scope approved by Rachel, Adam or a TA._
+![West view from Wuzhu Youju](img/ref/west_view.jpg)
 
-### Design Doc
-Start off by forking this repository. In your README, write a design doc to outline your project goals and implementation plan. It must include the following sections:
+*The target: looking west from Wuzhu Youju across the central pond of Zhuozhengyuan (Humble Administrator's Garden), with the Beisi Pagoda behind the garden wall. Photo: Zhangzhugang, [Commons](https://commons.wikimedia.org/wiki/File:Suzhou_Zhuozheng_Yuan_2015.04.23_08-13-49.jpg), CC BY-SA 4.0*
 
-#### Introduction
-- What motivates your project?
+# Design Doc
 
-#### Goal
-- What do you intend to achieve with this project?
+## Introduction
 
-#### Inspiration/reference:
-- You must have some form of reference material for your final project. Your reference may be a research paper, a blog post, some artwork, a video, another class at Penn, etc.  
-- Include in your design doc links to and images of your reference material.
+Zhuozhengyuan is the most famous of the Suzhou gardens, and this is one of its best-known views. Standing at Wuzhu Youju at the east end of the pond, you look across water, lotus, rocks and pavilions, and the Beisi Pagoda (outside the garden, 9 storeys) shows up in the middle of the frame like it belongs there. Garden designers call this a "borrowed view".
 
-#### Specification:
-- Outline the main features of your project.
+A lot of what makes the view work is rule based, which is why I want to build it procedurally:
+- lattice windows follow a few construction conventions (Stiny wrote a shape grammar for the "ice-ray" ones)
+- garden rocks are judged on four named qualities: thin, wrinkled, perforated, see-through
+- roof curves come from a 12th-century building manual (the *Yingzao Fashi*)
 
-#### Techniques:
-- What are the main technical/algorithmic tools you’ll be using? Give an overview, citing specific papers/articles.
+A procedural Chinese garden was done last year ([Yuanlin](https://github.com/SirEnri2001/Houdini-Yuanlin)), as a whole-garden layout seen from above. Mine is the opposite: one real view, from eye level, with the detail going into the pieces (lattice, rocks, roofs) instead of the overall layout.
 
-#### Design:
-- How will your program fit together? Make a simple free-body diagram illustrating the pieces.
+## Goal
 
-#### Timeline:
-- Create a week-by-week set of milestones for each person in your group. Make sure you explicitly outline what each group member's duties will be.
+Recreate the west view from Wuzhu Youju in Houdini with procedural tools, and render it in Karma next to the reference photo.
+- each element is its own HDA: lattice window, Taihu rock, pavilion, pagoda
+- the scene around them (pond, shore, lotus, bridges, willows) is driven by curves and a seed
+- final output: the hero shot matched to the photo, a "framed view" shot through one of Wuzhu Youju's round openings, and a short camera move
 
-Submit your Design doc as usual via pull request against this repository.
-## Milestone 1: Implementation part 1 (due 11/11)
-Begin implementing your engine! Don't worry too much about polish or parameter tuning -- this week is about getting together the bulk of your generator implemented. By the end of the week, even if your visuals are crude, the majority of your generator's functionality should be done.
+## Inspiration/reference
 
-Put all your code in your forked repository.
+| Same view in autumn | Wuzhu Youju (camera position) |
+|:--:|:--:|
+| <img src="img/ref/west_view_autumn.jpg" height="300"> | <img src="img/ref/wuzhu_youju.jpg" height="300"> |
+| Photo: King of Hearts, [Commons](https://commons.wikimedia.org/wiki/File:Humble_Administrator%27s_Garden_Suzhou_November_2017_006.jpg), CC BY-SA 4.0 | Photo: Soramimi, [Commons](https://commons.wikimedia.org/wiki/File:Wuzhuyouju_of_Zhuozhengyuan_Garden.JPG), CC BY-SA 4.0 |
 
-Submission: Add a new section to your README titled: Milestone #1, which should include
-- written description of progress on your project goals. If you haven't hit all your goals, what's giving you trouble?
-- Examples of your generators output so far
-We'll check your repository for updates. No need to create a new pull request.
-## Milestone 2: Implementation part 2 (due 11/23)
-We're over halfway there! This week should be about fixing bugs and extending the core of your generator. Make sure by the end of this week _your generator works and is feature complete._ Any core engine features that don't make it in this week should be cut! Don't worry if you haven't managed to exactly hit your goals. We're more interested in seeing proof of your development effort than knowing your planned everything perfectly. 
+| Lotus pond | Moon gate | Pavilion roof |
+|:--:|:--:|:--:|
+| <img src="img/ref/lotus_pond.jpg" height="240"> | <img src="img/ref/moon_gate.jpg" height="240"> | <img src="img/ref/pavilion_roof.jpg" height="240"> |
+| Photo: Soramimi, [Commons](https://commons.wikimedia.org/wiki/File:Wuzhuyouju_and_Lotus_of_Zhuozhengyuan_Garden.JPG), CC BY-SA 4.0 | Photo: Jakub Hałun, [Commons](https://commons.wikimedia.org/wiki/File:20090905_Suzhou_Humble_Administrator%27s_Garden_4605.jpg), CC BY-SA 3.0 | Photo: Lamassu Design Gurdjieff, [Commons](https://commons.wikimedia.org/wiki/File:Humble_garden_pavilion_in_lotus_breeze.jpg), CC BY-SA 3.0 |
 
-Put all your code in your forked repository.
+| Taihu rock (Guanyun Peak, Lingering Garden) | Lattice window |
+|:--:|:--:|
+| <img src="img/ref/guanyun_peak.jpg" height="300"> | <img src="img/ref/round_lattice_window.jpg" height="300"> |
+| Photo: 颐园居, [Commons](https://commons.wikimedia.org/wiki/File:Lingering_Garden_-_%E6%B9%96%E7%9F%B3%E5%86%A0%E4%BA%91%E5%B3%B0_20220904.jpg), CC BY-SA 4.0 | Photo: kevinmcgill, [Commons](https://commons.wikimedia.org/wiki/File:Round_Window_(6399130989).jpg), CC BY-SA 2.0 |
 
-Submission: Add a new section to your README titled: Milestone #3, which should include
-- written description of progress on your project goals. If you haven't hit all your goals, what did you have to cut and why? 
-- Detailed output from your generator, images, video, etc.
-We'll check your repository for updates. No need to create a new pull request.
+Reading:
+- G. Stiny, [Ice-Ray: A Note on the Generation of Chinese Lattice Designs](https://doi.org/10.1068/b040089), *Environment and Planning B* 4(1), 1977
+- D. S. Dye, *A Grammar of Chinese Lattice* (Dover reprint: *Chinese Lattice Designs*), where Stiny's examples come from
+- Y. Shen, E. Zhang, Y. Feng, S. Liu, J. Wang, [Parameterizing the Curvilinear Roofs of Traditional Chinese Architecture](https://doi.org/10.1007/s00004-020-00512-1), *Nexus Network Journal* 23(2), 2021
+- [Scholar's rocks](https://pages.stolaf.edu/chinese-scholars-studio/scholar-rocks/) (St. Olaf), on the four qualities: *shou* (thin), *zhou* (wrinkled), *lou* (perforated), *tou* (see-through)
+- [Humble Administrator's Garden](https://en.wikipedia.org/wiki/Humble_Administrator%27s_Garden) (Wikipedia) and [The Garden of the Inept Administrator](https://hiddenarchitecture.net/the-garden-of-the-inept-administrator/) (Hidden Architecture) for the layout and the borrowed view
 
-Come to class on the due date with a WORKING COPY of your project. We'll be spending time in class critiquing and reviewing your work so far.
+## Specification
 
-## Final submission (due 11/30)
-Time to polish! Spen this last week of your project using your generator to produce beautiful output. Add textures, tune parameters, play with colors, play with camera animation. Take the feedback from class critques and use it to take your project to the next level.
+Everything in Houdini 22 (Apprentice), one hip file, Karma for the renders.
 
-Submission:
-- Push all your code / files to your repository
-- Come to class ready to present your finished project
-- Update your README with two sections 
-  - final results with images and a live demo if possible
-  - post mortem: how did your project go overall? Did you accomplish your goals? Did you have to pivot?
+Core:
+1. **`lattice_window` HDA**: ice-ray pattern from a shape grammar plus one regular pattern; frame shape (rectangle, circle, octagon); bar width/depth; seed
+2. **`taihu_rock` HDA**: sliders for the four qualities (thin, wrinkled, perforated, see-through), size and seed
+3. **`pavilion` HDA**: 4/6/8-sided plan, columns, bench rail, walls with round openings (for Wuzhu Youju), curved roof with upturned corners and a finial
+4. **`pagoda` HDA**: octagonal storeys stacked and tapered, each one reusing the pavilion's eave and roof code, spire on top
+5. **Scene**: pond from a curve, rocks along the shore, lotus on the water, flat stone bridges, willows, garden wall with lattice windows, pagoda placed far behind the wall
+6. **Look**: whitewash, grey tile, dark wood, limestone and water materials; hazy daylight so the pagoda fades with distance; camera matched to the reference photo
 
-## Topic Suggestions
+Stretch (only if core is done by Milestone 2):
+- willow branches moving in wind (vellum hair, same setup as my hw03 tentacles)
+- season switch: each side of Wuzhu Youju is said to look out on a different season, so a spring/autumn preset for foliage colour and lotus
+- ripples on the water, a few koi
 
-### Create a generator in Houdini
+## Techniques
 
-### A CLASSIC 4K DEMO
-- In the spirit of the demo scene, create an animation that fits into a 4k executable that runs in real-time. Feel free to take inspiration from the many existing demos. Focus on efficiency and elegance in your implementation.
-- Example: 
-  - [cdak by Quite & orange](https://www.youtube.com/watch?v=RCh3Q08HMfs&list=PLA5E2FF8E143DA58C)
+**Ice-ray lattice** (Stiny 1977)
+- start with the window rectangle as one polygon
+- each step picks the biggest piece and splits it with one straight bar between two of its edges; the rules only let a triangle, quad or pentagon split into two smaller ones of those kinds, which is what gives the cracked-ice look
+- stop when every piece is under a minimum area
+- for-each loop with feedback (same setup as hw04), the split itself in a wrangle
+- edges -> bars (`polyexpand2d` + extrude), then clip by the frame shape
 
-### A RE-IMPLEMENTATION
-- Take an academic paper or other pre-existing project and implement it, or a portion of it.
-- Examples:
-  - [2D Wavefunction Collapse Pokémon Town](https://gurtd.github.io/566-final-project/)
-  - [3D Wavefunction Collapse Dungeon Generator](https://github.com/whaoran0718/3dDungeonGeneration)
-  - [Reaction Diffusion](https://github.com/charlesliwang/Reaction-Diffusion)
-  - [WebGL Erosion](https://github.com/LanLou123/Webgl-Erosion)
-  - [Particle Waterfall](https://github.com/chloele33/particle-waterfall)
-  - [Voxelized Bread](https://github.com/ChiantiYZY/566-final)
+**Taihu rock** (VDB)
+- *thin*: 3-5 noisy spheres along a bent vertical spine, smooth union; height/width ratio slider
+- *see-through*: a few tunnel curves between random points on opposite sides, bent with curl noise, turned into VDB tubes and subtracted
+- *perforated*: Worley noise pits ([Worley 1996](https://doi.org/10.1145/237170.237267)) subtracted from the SDF
+- *wrinkled*: ridged FBM with domain warping ([Quilez](https://iquilezles.org/articles/warp/)), stretched along the spine so grooves run mostly vertical
+- convert to polygons, reduce, occlusion/curvature attribute to darken the holes
 
-### A FORGERY
-Taking inspiration from a particular natural phenomenon or distinctive set of visuals, implement a detailed, procedural recreation of that aesthetic. This includes modeling, texturing and object placement within your scene. Does not need to be real-time. Focus on detail and visual accuracy in your implementation.
-- Examples:
-  - [The Shrines](https://github.com/byumjin/The-Shrines)
-  - [Watercolor Shader](https://github.com/gracelgilbert/watercolor-stylization)
-  - [Sunset Beach](https://github.com/HanmingZhang/homework-final)
-  - [Sky Whales](https://github.com/WanruZhao/CIS566FinalProject)
-  - [Snail](https://www.shadertoy.com/view/ld3Gz2)
-  - [Journey](https://www.shadertoy.com/view/ldlcRf)
-  - [Big Hero 6 Wormhole](https://2.bp.blogspot.com/-R-6AN2cWjwg/VTyIzIQSQfI/AAAAAAAABLA/GC0yzzz4wHw/s1600/big-hero-6-disneyscreencaps.com-10092.jpg)
+**Roofs** (Shen et al. 2021, *juzhe* from the *Yingzao Fashi*)
+- roof section: draw a straight line from ridge to eave, drop the first purlin under the ridge by 1/10 of the rise, redraw the line from there to the eave and drop the next one by 1/20, then 1/40, halving each time; that gives the concave curve
+- corners lift and push outward (*qiqiao*), blended along the eave
+- roof surface lofted from those section curves, tiles copied along its rows, same "kit shapes on points" trick as hw04 for columns and rails
 
-### A GAME LEVEL
-- Like generations of game makers before us, create a game which generates an navigable environment (eg. a roguelike dungeon, platforms) and some sort of goal or conflict (eg. enemy agents to avoid or items to collect). Aim to create an experience that will challenge players and vary noticeably in different playthroughs, whether that means procedural dungeon generation, careful resource management or an interesting AI model. Focus on designing a system that is capable of generating complex challenges and goals.
-- Examples:
-  - [Rhythm-based Mario Platformer](https://github.com/sgalban/platformer-gen-2D)
-  - [Pokémon Ice Puzzle Generator](https://github.com/jwang5675/Ice-Puzzle-Generator)
-  - [Abstract Exploratory Game](https://github.com/MauKMu/procedural-final-project)
-  - [Tiny Wings](https://github.com/irovira/TinyWings)
-  - Spore
-  - Dwarf Fortress
-  - Minecraft
-  - Rogue
+**Pagoda**
+- one storey = octagonal pavilion body + eave, from the pavilion HDA
+- storey radius and height shrink with a taper curve, 9 storeys, spire on top
+- it's far away in the shot, so silhouette and proportions matter more than detail
 
-### AN ANIMATED ENVIRONMENT / MUSIC VISUALIZER
-- Create an environment full of interactive procedural animation. The goal of this project is to create an environment that feels responsive and alive. Whether or not animations are musically-driven, sound should be an important component. Focus on user interactions, motion design and experimental interfaces.
-- Examples:
-  - [The Darkside](https://github.com/morganherrmann/thedarkside)
-  - [Music Visualizer](https://yuruwang.github.io/MusicVisualizer/)
-  - [Abstract Mesh Animation](https://github.com/mgriley/cis566_finalproj)
-  - [Panoramical](https://www.youtube.com/watch?v=gBTTMNFXHTk)
-  - [Bound](https://www.youtube.com/watch?v=aE37l6RvF-c)
+**Scene**
+- pond: closed curve + noise, water surface and a sunken bed
+- shore: rocks scattered in a band around the pond, relaxed so they don't overlap, bigger near the water
+- lotus: scatter on the water with a noise mask so they clump
+- willows: trunk and branches from an L-system (lab05), hanging strands as curves with gravity droop, leaves copied on
+- camera: match the reference photo's focal length and horizon ([fSpy](https://fspy.io/)), then place the big pieces to line up with it
 
-### YOUR OWN PROPOSAL
-- You are of course welcome to propose your own topic . Regardless of what you choose, you and your team must research your topic and relevant techniques and come up with a detailed plan of execution. You will meet with some subset of the procedural staff before starting implementation for approval.
+## Design
+
+```mermaid
+flowchart LR
+    LW[lattice_window HDA] --> WALL[Garden wall]
+    PV[pavilion HDA] --> PG[pagoda HDA]
+    PV --> BLD[Wuzhu Youju + island pavilion]
+    TR[taihu_rock HDA] --> SH[Shore rocks]
+    C[Layout curves + seed] --> POND[Pond, lotus, bridges]
+    C --> SH
+    C --> WALL
+    C --> WIL[Willows]
+    BLD --> SC[Scene]
+    PG --> SC
+    WALL --> SC
+    POND --> SC
+    SH --> SC
+    WIL --> SC
+    CAM[Camera matched to photo] --> K
+    SC --> M[Materials] --> K[Karma render]
+```
+
+## Timeline
+
+| Week | Work | Due |
+|:--|:--|:--|
+| **11/4 - 11/11** (Milestone 1) | - camera matched to the reference photo, blockout with boxes<br>- `lattice_window`: ice-ray grammar working, frame shapes<br>- `taihu_rock` v1: base shape + tunnels + noise<br>- `pavilion` v1: plan, columns, rails, straight roof | 11/11 |
+| **11/12 - 11/18** | - *juzhe* roof curve + corner lift<br>- `pagoda` from stacked storeys<br>- Wuzhu Youju with round openings<br>- rock sliders for the four qualities | |
+| **11/19 - 11/23** (Milestone 2) | - pond, shore rocks, lotus, bridges, willows, wall with lattice windows<br>- first materials and Karma renders of the hero shot<br>- feature complete, cut what's left | 11/23 |
+| **11/24 - 11/30** (Final) | - lighting, haze, side by side with the photo<br>- framed-view shot through a round opening, camera move<br>- stretch goals if there's time<br>- README results + post mortem | 11/30 |
+
+Backup plans:
+- if the *juzhe* roof eats too much time, fall back to a straight hip roof with just the corner lift
+- if VDB booleans get slow, cache each rock variant once and copy them around as packed prims
+- willows can be simple static curves if the L-system + droop doesn't look right in time
