@@ -9,8 +9,7 @@ To get more experience working with procedural systems in Houdini, I plan to mak
 ### References
 | <img width="200" src="https://inbloombakery.com/wp-content/uploads/2021/05/Chocolate-Berry-Cake-2-1.jpg"> | <img width="200" src="https://i.pinimg.com/1200x/49/5a/13/495a13e95814e4185866b07ee5b43a6f.jpg">| <img width="200" src="https://i.pinimg.com/1200x/93/14/81/931481e6ec65d8d68b0cd0efae3f4ab8.jpg"> |
 |:---:|:---:|:---:|
-| *A drip cake* | *A multi-tier cake with various piping frills and borders* |
-| *A cake with pearls and candles* | 
+| *A drip cake* | *A multi-tier cake with various piping frills and borders* | *A cake with pearls and candles* | 
 - While there is no comprehensive compilation of cake decorations, there are [**common piping techniques**](https://iscreamforbuttercream.com/12-simple-and-easy-buttercream-cake-borders)
 - The anatomy of layered cakes (which is what my tool will be focused on) is described [**here**](https://iscreamforbuttercream.com/anatomy-of-a-decorated-cake/)
 - Some existing tools that I will be using as reference are: 
