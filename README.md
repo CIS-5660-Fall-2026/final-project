@@ -1,3 +1,42 @@
+Charlie Wang Final Project 
+
+
+#### Introduction
+I want to create cool procedural stylized rocks to be used in various unity projects.
+
+#### Goal
+- A procedural rock generator in Houdini
+- A flexible stylized rock shader and/or texture generator in unity.
+
+#### Inspiration/reference:
+<img src="terrainref1.png" width="400">
+<img src="terrainref2.jpg" width="400">
+<img src="terrainref3.png" width="400">
+
+#### Specification:
+- The houdini rock generator should be able to generate rocks with good variation based on given bounding boxes or user controlled shapes.
+- The generated rocks should have parameters so that they can be tuned to be similar to the inspiration.
+- The Unity Shader/texture generator should provide stylized coloring of the rocks.
+
+#### Techniques:
+https://capuana.ifi.uzh.ch/publications/PDFs/20896_MasterThesis-FarukAcibal-14933642-HQ.pdf
+
+http://julian.togelius.com/Dart2011SpeedRock.pdf
+
+I included some papers I will reference. The proc-rock paper seems to detail some promsing techniques on how one can potentially create interesting looking rocks using boolean mesh operations.
+
+#### Design:
+- Houdini -> Geometry -> Unity -> Texture Generation (maybe) -> Shading.
+
+#### Timeline:
+- Week 1: Basic Houdini set up
+- Week 2: Houdini portion complete
+- Week 3: Begin Unity shader/texture generator
+- Week 4: Complete Unity portion.
+
+
+
+
 # Final Project!
 
 This is it! The culmination of your procedural graphics experience this semester. For your final project, we'd like to give you the time and space to explore a topic of your choosing. You may choose any topic you please, so long as you vet the topic and scope with an instructor or TA. We've provided some suggestions below. The scope of your project should be roughly 1.5 homework assignments). To help structure your time, we're breaking down the project into 4 milestones:
