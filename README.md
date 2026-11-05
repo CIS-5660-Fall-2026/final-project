@@ -1,3 +1,57 @@
+
+# Image Guided Flow Field Painting
+
+## Design Doc  
+
+### Introduction
+I'm interested in procedural and stylized art, especially how photographs can be transformed into different artistic styles, such as oil paintings and ink paintings. While exploring generative art, I came across flow-field line art and was fascinated by how simple particle movements could create intricate, organic patterns. This inspired me to explore combining flow-field techniques with image-guided painting, using flowing lines to create stylized interpretations of photographs.
+
+### Goal
+My goal is to build an interactive painting generator using JavaScript, WebGL, and GLSL. Users will be able to generate abstract paintings or upload an image to guide the direction and color of the strokes.
+
+### Inspiration/reference:
+
+- [Flow Fields](https://evoluteur.github.io/flow-fields/) — particle trajectories and accumulated line art.
+- [Fluid & Particles](https://pscactux.github.io/fluid-particles/?mode=flow) — visual style and mouse interaction. My implementation will initially update particles in JavaScript rather than simulate hundreds of thousands on the GPU.
+- [Curl-Noise for Procedural Fluid Flow](https://www.cs.ubc.ca/~rbridson/docs/bridson-siggraph2007-curlnoise.pdf) — Bridson et al., 2007.
+- [Coherent Line Drawing](https://cg.postech.ac.kr/papers/kang_npar07_hi.pdf) — Kang et al., 2007.
+
+| Flow-field line art | GPU flow-field visual reference |
+| --- | --- |
+| ![Flow Fields demo](reference/Reference1.png) | ![Fluid and Particles demo](reference/Reference2.png) |
+
+*Screenshots are used as visual references.*  
+
+
+### Specification
+
+- **Procedural mode:** generate Perlin and Curl noise flow fields and trace them with particles.
+- **Image-guided mode:** use a photo's smoothed local orientations, colors, and brightness to guide strokes, blending with noise in low-detail regions.
+- **Rendering:** accumulate particle trails with WebGL and apply simple ink and paper texture effects.
+- **Interaction:** expose particle count, flow strength, seed, and basic mouse disturbance controls.
+
+### Techniques
+
+- **Noise-based fields:** Utilise Perlin noise and a 2D curl field (Bridson et al., 2007).
+- **Image analysis:** Compute Sobel gradients on the blurred image and use a structure tensor to obtain a smoothed local orientation field.
+- **Particle advection:** update positions in JavaScript, sampling the selected vector field at each step.
+- **WebGL / GLSL rendering:** draw and accumulate line segments, with procedural color variation, ink intensity, and paper texture.
+
+### Design:
+![Design](reference/diagram.png)
+
+### Timeline:
+| Date | My tasks (solo project) |
+| --- | --- |
+| **Nov 11 — Milestone 1** | Implement the noise fields, CPU particle simulation, and basic WebGL trail rendering. Make a preliminary image-guided mode work, even if visuals are rough. |
+| **Nov 23 — Milestone 2** | Improve photo-derived orientations, color/density guidance, ink/paper shading, GUI controls, and mouse interaction. Complete core features. |
+| **Nov 30 — Final** | Polish the visuals and performance; prepare sample outputs, a live demo, and post-mortem notes. |
+
+---  
+&nbsp;
+
+
+
 # Final Project!
 
 This is it! The culmination of your procedural graphics experience this semester. For your final project, we'd like to give you the time and space to explore a topic of your choosing. You may choose any topic you please, so long as you vet the topic and scope with an instructor or TA. We've provided some suggestions below. The scope of your project should be roughly 1.5 homework assignments). To help structure your time, we're breaking down the project into 4 milestones:
