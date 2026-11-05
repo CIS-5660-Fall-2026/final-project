@@ -1,3 +1,186 @@
+# Skyward — A Procedural Sky, Cloud & Weather System for Unity URP
+
+> CIS 5660 Final Project — Design Doc
+> Author: Yikai Li
+
+---
+
+## Introduction
+
+In open-world games the sky is not just a backdrop. It drives the lighting of the whole scene: the sun's color at dusk, the bluish haze that tells you a mountain is far away, cloud shadows sweeping across a field, and the way the mood shifts from a clear morning to a storm. Modern open-world titles (and especially stylized, live-service open-world games) treat the sky as a **time-of-day + weather subsystem** that must be physically plausible, art-directable, and cheap enough to run in real time across a wide range of hardware.
+
+I want to build that subsystem myself, as an engine-level feature inside Unity's Universal Render Pipeline (URP), so that I deeply understand the techniques that production engines (Unreal, Frostbite, Decima) use, and the trade-offs between physical accuracy, artistic control, and performance.
+
+## Goal
+
+Build a real-time, procedural **sky + volumetric cloud system** in Unity URP, consisting of:
+
+1. **Physically based atmospheric scattering** (Rayleigh, Mie, ozone) using the LUT-based method of Hillaire 2020.
+2. A **time-of-day controller** that moves the sun and drives the sky and the scene's sun light.
+3. A **procedurally generated, evolving weather map**: noise-based cloud coverage and type fields that drift and change over time.
+4. **Raymarched volumetric clouds** shaped by the weather map and procedural 3D noise, lit with a physically motivated model, and rendered at a real-time budget.
+
+Beyond this core, the stretch goals add temporal reprojection, aerial perspective, weather presets, and a stylized (anime-style) cloud lighting mode.
+
+The final deliverable is an interactive Unity demo scene (simple terrain plus a few props) where the user can scrub the time of day, tweak weather parameters, and see per-pass GPU timings.
+
+## Inspiration / Reference
+
+| Reference | What I take from it |
+|---|---|
+| **Hillaire, S. 2020.** *A Scalable and Production Ready Sky and Atmosphere Rendering Technique.* EGSR 2020 / Computer Graphics Forum 39(4). [Paper](https://sebh.github.io/publications/egsr2020.pdf) · [Code](https://github.com/sebh/UnrealEngineSkyAtmosphere) | The core atmosphere model: transmittance, multi-scattering, sky-view, and aerial-perspective LUTs. This is the technique behind Unreal Engine's SkyAtmosphere component. |
+| **Bruneton, E. & Neyret, F. 2008.** *Precomputed Atmospheric Scattering.* EGSR 2008. [Project page](https://ebruneton.github.io/precomputed_atmospheric_scattering/) | Background on precomputed scattering and LUT parameterization. |
+| **Schneider, A. & Vos, N. 2015.** *The Real-time Volumetric Cloudscapes of Horizon Zero Dawn.* SIGGRAPH 2015, Advances in Real-Time Rendering. [Course page](https://advances.realtimerendering.com/s2015/index.html) | Cloud modeling (weather map, Perlin-Worley base + Worley detail noise, height gradients), the lighting model (Beer's law, powder effect, HG phase), and temporal reprojection. |
+| **Schneider, A. 2017.** *Nubis: Authoring Real-Time Volumetric Cloudscapes with the Decima Engine.* SIGGRAPH 2017, Advances in Real-Time Rendering. [Course page](https://advances.realtimerendering.com/s2017/index.html) | How cloud systems are made art-directable in a shipped open-world engine. |
+| **Hillaire, S. 2016.** *Physically Based Sky, Atmosphere and Cloud Rendering in Frostbite.* SIGGRAPH 2016, Physically Based Shading course. [Course page](https://blog.selfshadow.com/publications/s2016-shading-course/) | Energy-conserving scattering integration and how sky and clouds feed scene lighting. |
+| **Wrenninge, M., Kulla, C. & Lundqvist, V. 2013.** *Oz: The Great and Volumetric.* SIGGRAPH 2013 Talks. | Multiple-scattering approximation using attenuated "octaves". |
+| **Högfeldt, R. 2016.** *Convincing Cloud Rendering.* Master's thesis, Chalmers University of Technology. | A detailed, implementation-level walkthrough of a Frostbite-style cloud renderer. |
+| **Bridson, R., Hourihan, J. & Nordenstam, M. 2007.** *Curl-Noise for Procedural Fluid Flow.* SIGGRAPH 2007. | Divergence-free noise used to advect and distort the weather map so it evolves naturally. |
+
+**Physically based atmosphere — Hillaire 2020**
+
+![Hillaire 2020 sky and atmosphere rendering](https://sebh.github.io/publications/egsr2020.png)
+
+*Image: S. Hillaire, [publications page](https://sebh.github.io/publications/).*
+
+**Volumetric cloudscapes — Horizon Zero Dawn (Schneider & Vos 2015)**
+
+![Horizon Zero Dawn real-time volumetric cloudscapes](https://www.guerrilla-games.com/media/News/realtime-2560w.webp?width=1280)
+
+*Image: Guerrilla Games, [The Real-time Volumetric Cloudscapes of Horizon Zero Dawn](https://www.guerrilla-games.com/read/the-real-time-volumetric-cloudscapes-of-horizon-zero-dawn).*
+
+## Specification
+
+### Core features (must ship)
+
+**Atmosphere**
+- Transmittance and multiple-scattering LUTs, recomputed only when the atmosphere parameters change.
+- A per-frame sky-view LUT, used to render the sky dome and sun disk.
+
+**Time of day**
+- The sun direction is computed from the time of day.
+- The sun light's color and intensity are derived from the transmittance LUT, so the scene is lit warm at sunset and the sky stays consistent with the lighting.
+
+**Procedural weather map**
+- A 2D weather map is generated on the GPU from layered noise:
+  - Coverage: fBm of Perlin-Worley noise.
+  - Cloud type: low-frequency noise.
+  - Density.
+- It scrolls with the wind and is distorted by curl noise, so cloud formations grow, drift, and dissolve over time.
+- Global sliders (coverage, cloud type bias, wind) let the user steer the generated weather.
+
+**Volumetric clouds**
+- A cloud layer between two altitudes on a spherical planet shell.
+- Tileable 3D noise (128³ Perlin-Worley base, 32³ Worley detail), baked by an editor tool.
+- Raymarched lighting: Beer–Lambert extinction, dual-lobe Henyey–Greenstein phase, powder term, multiple-scattering octaves, and a short light march toward the sun.
+- Performance: clouds are rendered at 1/4 resolution with blue-noise ray offsets, then composited with a depth-aware upsample so terrain occludes them correctly.
+
+**Tooling**
+- Runtime debug UI: time slider, weather sliders, and LUT and weather-map visualizers.
+- Per-pass GPU timings.
+
+### Stretch goals (in priority order)
+Given the four-week schedule, I expect to reach one or two of these at most.
+
+1. **Temporal reprojection:** re-march only 1/16 of the pixels each frame for a large speed-up, with history rejection to avoid ghosting.
+2. **Aerial perspective:** a froxel volume that applies atmospheric haze to distant scene geometry.
+3. **Weather presets:** Clear / Cloudy / Overcast / Storm, with smooth transitions between them.
+4. **Cloud shadows** on the terrain, and **sky-driven ambient lighting** (SH computed from the sky-view LUT).
+5. **Stylized mode:** the same cloud density field shaded with a toon ramp, hard light/shadow edges, and rim light.
+6. **Night sky:** moon and procedural stars.
+
+## Techniques
+
+### 1. LUT-based atmosphere (Hillaire 2020)
+The atmosphere is a participating medium with three constituents. Each one has its own altitude density profile, and the profiles are summed:
+- **Rayleigh** (air molecules): wavelength-dependent scattering that makes the sky blue and sunsets red.
+- **Mie** (aerosols): forward scattering that produces haze and the sun halo.
+- **Ozone**: absorption only, which adds the twilight tint.
+
+The cost is split across lookup tables, each built by a compute shader:
+
+| LUT | Size | Content | Update |
+|---|---|---|---|
+| Transmittance | 256×64 | Optical depth from (altitude, sun zenith) to the top of the atmosphere | On parameter change |
+| Multi-scattering | 32×32 | Isotropic infinite-order scattering, using the paper's closed-form geometric series | On parameter change |
+| Sky-View | 192×108 | Sky radiance around the camera, with a non-linear latitude mapping that keeps the horizon detailed | Every frame |
+
+I will port the reference implementation from Hillaire's open-source code (HLSL) to Unity compute shaders.
+
+### 2. Procedural weather map
+A compute shader writes an RGBA weather texture each frame (or every few frames):
+- **R — coverage:** fBm of Perlin-Worley noise, remapped by the global coverage slider.
+- **G — cloud type:** low-frequency value noise, ranging from stratus (0) to cumulonimbus (1).
+- **B — density:** a secondary noise layer.
+
+The sample position is `p + wind * t + curl(p, t) * strength`. The curl-noise term (Bridson 2007) makes the formations swirl and evolve instead of just sliding across the sky.
+
+### 3. Cloud density model (Schneider 2015)
+```
+base     = remap(PerlinWorley(p), WorleyFBM(p) - 1, 1, 0, 1)
+shape    = remap(base * heightGradient(h, cloudType), 1 - coverage, 1, 0, 1) * coverage
+density  = remap(shape, detailErosion(p, h), 1, 0, 1)
+```
+- `heightGradient` defines the vertical profile of each cloud type.
+- Detail noise erodes the edges more strongly near the cloud base, producing wispy bottoms and billowy tops.
+
+### 4. Cloud lighting
+For each primary sample, the integrator accumulates energy-conserving in-scattered light (Hillaire 2016):
+- **Sun term:** `L_sun · T_light · phase_HG2(θ) · powder`, where `T_light` comes from a short march toward the sun and `L_sun` comes from the transmittance LUT.
+- **Multiple scattering:** a sum over a few octaves with attenuated extinction, eccentricity, and contribution (Wrenninge 2013).
+- **Ambient:** a height-based gradient tinted by the sky color.
+- **Optimizations:** adaptive step size and early exit when transmittance is low.
+
+### 5. Unity URP integration
+- Target **Unity 6 (6000.0 LTS)** with URP. The sky and clouds are implemented as `ScriptableRendererFeature`s.
+- I will start with the Render Graph API. If it becomes a blocker, URP's *Compatibility Mode* allows the older `Execute`-based passes, which have more learning resources.
+- `AsyncGPUReadback` reads back the sun's transmittance so the directional light's color can be set without stalling the GPU.
+
+## Design
+
+<!-- Optional: replace the Mermaid block below with a hand-drawn diagram, e.g. ![Design diagram](img/design_diagram.png) -->
+```mermaid
+flowchart LR
+    C["Sky Controller<br/>time of day, weather sliders"] --> A["Atmosphere<br/>scattering LUTs"]
+    C --> W["Procedural<br/>Weather Map"]
+    A --> S["Sky + Sun Light"]
+    A --> V["Volumetric<br/>Clouds"]
+    W --> V
+    N["Baked 3D Noise"] --> V
+    S --> F["Final Image"]
+    V --> F
+    G["Scene Geometry"] --> F
+```
+
+- **Sky Controller:** holds the time and weather state and sends parameters to the rendering passes.
+- **Atmosphere:** builds the LUTs, renders the sky, and provides the sun light color to both the scene and the clouds.
+- **Procedural Weather Map:** generates where clouds are and what type they are, and evolves that over time.
+- **Volumetric Clouds:** raymarch the 3D noise inside the weather map's footprint, lit by the atmosphere's sun color.
+- **Final Image:** composites the sky, clouds, and scene, with depth-aware occlusion.
+
+## Timeline
+
+Solo project: all tasks are done by Yikai Li.
+
+| Week | Dates | Tasks | Milestone |
+|---|---|---|---|
+| 1 | 11/5 – 11/11 | Set up the Unity URP project and renderer feature skeleton; port the transmittance, multi-scattering, and sky-view LUTs and render the sky; time-of-day controller with sun direction and sun light color; noise baker tool; procedural weather map; first raymarched clouds with Beer–Lambert lighting only. Visuals may be crude. | **Milestone 1 (11/11):** the bulk of the generator works end to end |
+| 2 | 11/12 – 11/18 | Full cloud lighting (HG phase, powder, multi-scattering, light march); curl-noise evolution of the weather map; 1/4-resolution rendering, blue noise, and depth-aware upsample. | |
+| 3 | 11/19 – 11/23 | Debug UI and GPU timing measurements; bug fixing; any core feature not done by now is cut. If ahead of schedule: temporal reprojection. | **Milestone 2 (11/23):** feature complete, working copy for in-class critique |
+| 4 | 11/24 – 11/30 | Polish based on the critique: tune parameters and colors, add camera animation, build the demo scene; record the demo video; write the final results and post-mortem sections. If time allows: aerial perspective or weather presets. | **Final (11/30)** |
+
+**Performance target:** the full sky and clouds run at ≤ 3 ms of GPU time at 1080p on my development GPU.
+
+**Risks & mitigations**
+- *URP plumbing (render graph, render textures, compute dispatch) takes longer than expected:* build the feature skeleton in week 1 before any heavy shader work, and fall back to Compatibility Mode if needed.
+- *Clouds look flat or dark:* compare against the HZD and Frostbite reference images early, and keep the multi-scattering approximation in the core.
+- *Schedule slip:* all stretch goals are independent and optional; the core features alone form a complete, demonstrable system.
+
+---
+
+<details>
+<summary>Original assignment instructions</summary>
+
 # Final Project!
 
 This is it! The culmination of your procedural graphics experience this semester. For your final project, we'd like to give you the time and space to explore a topic of your choosing. You may choose any topic you please, so long as you vet the topic and scope with an instructor or TA. We've provided some suggestions below. The scope of your project should be roughly 1.5 homework assignments). To help structure your time, we're breaking down the project into 4 milestones:
@@ -115,3 +298,6 @@ Taking inspiration from a particular natural phenomenon or distinctive set of vi
 
 ### YOUR OWN PROPOSAL
 - You are of course welcome to propose your own topic . Regardless of what you choose, you and your team must research your topic and relevant techniques and come up with a detailed plan of execution. You will meet with some subset of the procedural staff before starting implementation for approval.
+
+
+</details>
