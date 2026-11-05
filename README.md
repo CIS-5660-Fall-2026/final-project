@@ -1,5 +1,5 @@
 
-# Image Guided Flow Field Painting
+# Image-Guided Flow Field Painting
 
 ## Design Doc  
 
