@@ -1,117 +1,59 @@
-# Final Project!
-
-This is it! The culmination of your procedural graphics experience this semester. For your final project, we'd like to give you the time and space to explore a topic of your choosing. You may choose any topic you please, so long as you vet the topic and scope with an instructor or TA. We've provided some suggestions below. The scope of your project should be roughly 1.5 homework assignments). To help structure your time, we're breaking down the project into 4 milestones:
-
-## Project planning: Design Doc (due 11/4)
-Before submitting your first milestone, _you must get your project idea and scope approved by Rachel, Adam or a TA._
+# Final Project - Ziqiu Wang
 
 ### Design Doc
-Start off by forking this repository. In your README, write a design doc to outline your project goals and implementation plan. It must include the following sections:
 
-#### Introduction
-- What motivates your project?
+#### Introduction & Goal
 
-#### Goal
-- What do you intend to achieve with this project?
+When I was young, I was obsessed with the puzzle game *Tower of the Sorcerer* (魔塔). In this game, players have to carefully plan their movement inside each level and manage limited resources like keys, HP, and gold to reach the topmost level of the tower, beat the final boss, and save the alleged "hostage princess".
 
-#### Inspiration/reference:
-- You must have some form of reference material for your final project. Your reference may be a research paper, a blog post, some artwork, a video, another class at Penn, etc.  
-- Include in your design doc links to and images of your reference material.
+Although the levels of 魔塔 are carefully designed to make the game challenging and intriguing, I've always wondered if a procedural level generator could produce floors compelling enough to serve as prototypes or inspiration for level designers. This project aims to make a browser game that procedurally generates playable dungeon floors. The player starts at the entrance and tries to reach the stairs alive by deciding which monsters to fight, which doors to open, and when to collect upgrades. Every generated floor should have at least one winning route and one decision that affects the outcome (e.g. whether I should drink an HP potion before or after fighting an enemy). For the final demo, I want to show at least three seeds with different routes or resource decisions as well as their possible solutions.
 
-#### Specification:
-- Outline the main features of your project.
+#### Inspiration & References
 
-#### Techniques:
-- What are the main technical/algorithmic tools you’ll be using? Give an overview, citing specific papers/articles.
+As mentioned above, *Tower of the Sorcerer* will be my gameplay reference. The monsters, doors, and resources are visible to the player so that they can think through a route before taking any action. *DungeonUp* is a related example that uses procedural levels; the player gets to solve random levels each time they respawn. See [original *Tower of the Sorcerer* project page](https://wwajp.com/mtower/), and [*DungeonUp*](https://store.steampowered.com/app/388620/DungeonUp/).
 
-#### Design:
-- How will your program fit together? Make a simple free-body diagram illustrating the pieces.
+Below are some screenshots of *Tower of the Sorcerer* from [Thinky Games](https://thinkygames.com/games/tower-of-the-sorcerer/).
 
-#### Timeline:
-- Create a week-by-week set of milestones for each person in your group. Make sure you explicitly outline what each group member's duties will be.
+![Tower of the Sorcerer dungeon layout](https://static.prod.thinkygames.com/uploads/screenshots/60c19019-4a38-4486-a4d8-d0b6f67d6a9c/a4bce242-6dbd-41b7-86ca-5e1e6a18090e-384x216.png)
+![Tower of the Sorcerer floor showing monsters, keys, and potions in a compact grid](https://static.prod.thinkygames.com/uploads/screenshots/60c19019-4a38-4486-a4d8-d0b6f67d6a9c/1ea411d7-b709-49ac-b5de-939e305005be-384x216.png)
 
-Submit your Design doc as usual via pull request against this repository.
-## Milestone 1: Implementation part 1 (due 11/11)
-Begin implementing your engine! Don't worry too much about polish or parameter tuning -- this week is about getting together the bulk of your generator implemented. By the end of the week, even if your visuals are crude, the majority of your generator's functionality should be done.
+For the art, I plan to use the texture atlases from ckcz123's HTML5 魔塔 template. See [mota-js on GitHub](https://github.com/ckcz123/mota-js), and [texture atlases](https://github.com/ckcz123/mota-js/tree/master/project/materials).
 
-Put all your code in your forked repository.
+#### Specification
 
-Submission: Add a new section to your README titled: Milestone #1, which should include
-- written description of progress on your project goals. If you haven't hit all your goals, what's giving you trouble?
-- Examples of your generators output so far
-We'll check your repository for updates. No need to create a new pull request.
-## Milestone 2: Implementation part 2 (due 11/23)
-We're over halfway there! This week should be about fixing bugs and extending the core of your generator. Make sure by the end of this week _your generator works and is feature complete._ Any core engine features that don't make it in this week should be cut! Don't worry if you haven't managed to exactly hit your goals. We're more interested in seeing proof of your development effort than knowing your planned everything perfectly. 
+- **Floors:** Each floor is a 11×11 grid containing walls, corridors, an entrance (where the player spawns), and exit stairs. The player can play a certain floor by entering a seed. They may also restart the current floor.
+- **Movement and resources:** The player can use the arrow keys to move one tile at a time. Doors consume a key of the corresponding color. Potions restore HP, and a sword or shield pickup increases attack or defense respectively.
+- **Deterministic combat:** At least two types of stationary monsters act as obstacles. Stepping into a monster resolves the fight based on the current stats. Ideally, the UI should show the predicted HP cost before the player fights an enemy. The player cannot step into an enemy if the HP cost is higher than their current HP (so a softlock means defeat).
+- **Solution replay:** A winning action sequence should be stored for each accepted floor so that it can be replayed to verify that the floor is beatable and check the floor's difficulty.
 
-Put all your code in your forked repository.
+#### Techniques & Methods
 
-Submission: Add a new section to your README titled: Milestone #3, which should include
-- written description of progress on your project goals. If you haven't hit all your goals, what did you have to cut and why? 
-- Detailed output from your generator, images, video, etc.
-We'll check your repository for updates. No need to create a new pull request.
+1. **Generate each floor around an intended decision.** Start with a small pattern, like two doors that compete for one key, or a detour that lets the player upgrade before a fight. Pick the room connections and resource values, then lay out the rooms, walls, and corridors on the grid. Vary the pattern, placement, and stats with the seed. For example, a player with 12 HP might choose between a potion that adds 4 HP before a 14-HP fight and a sword that reduces the fight cost to 6 HP. Both routes work, but with different amounts of HP left over. Separating the puzzle structure from the physical layout is inspired by Dormans's discussion about separating missions and spaces ([Dormans, *Adventures in Level Design*](https://pcgworkshop.com/archive/dormans2010adventures.pdf)).
+2. **Check that the floor is beatable.** The solver uses flood fill to see where the player can walk and which doors, monsters, or items they can reach. It then tries one legal action, like spending a key to open a door. It repeats this step with the updated position, HP, stats, and keys. A bitmask keeps track of opened doors, defeated monsters, and collected items. When a choice leads to a dead end, the solver backs up and tries another one. This is basically depth-first search, and memoization lets the solver skip states it has already checked. A generated floor is kept only if the solver finds a way to reach the exit stairs alive. I may need to reference this paper, [Balyo and Froleyks, *AI Assisted Design of Sokoban Puzzles Using Automated Planning*](https://froleyks.de/assets/pdf/Balyo%20and%20Froleyks%20-%202021%20-%20AI%20assisted%20design%20of%20sokoban%20puzzles%20using%20automated%20planning.pdf), when implementing the solver.
+3. **Check whether the puzzle is at least somewhat challenging.** For example, for a floor with two doors, I'll check that the player has to open at least one of the doors to beat the level. Then I'll use the solver to compare the most HP the player can finish with on each route. Both routes should be beatable, with one leaving noticeably more HP. This can then be used to control the difficulty level of the floor.
+4. **Render the board with WebGPU.** Draw the tiles and sprites as instanced quads sampled from texture atlases with nearest-neighbor filtering. Floor generation, solution search, and gameplay will be done with TypeScript on the CPU.
 
-Come to class on the due date with a WORKING COPY of your project. We'll be spending time in class critiquing and reviewing your work so far.
+#### Design
 
-## Final submission (due 11/30)
-Time to polish! Spen this last week of your project using your generator to produce beautiful output. Add textures, tune parameters, play with colors, play with camera animation. Take the feedback from class critques and use it to take your project to the next level.
+The generator creates a candidate floor from a seed. The solver checks the floor against the game rules. The game then loads an accepted floor and passes its current state to the renderer.
 
-Submission:
-- Push all your code / files to your repository
-- Come to class ready to present your finished project
-- Update your README with two sections 
-  - final results with images and a live demo if possible
-  - post mortem: how did your project go overall? Did you accomplish your goals? Did you have to pivot?
+```mermaid
+flowchart TD
+    Seed[Seed] --> Generator[Floor generator]
+    Generator --> Candidate[Candidate floor]
+    Candidate --> Solver[Solver and difficulty checks]
+    Rules[Movement and combat rules] --> Solver
+    Solver -->|Try another candidate| Generator
+    Solver -->|Accept floor| Game[Game state and input]
+    Rules --> Game
+    Game --> Renderer[WebGPU renderer]
+```
 
-## Topic Suggestions
+#### Timeline
 
-### Create a generator in Houdini
-
-### A CLASSIC 4K DEMO
-- In the spirit of the demo scene, create an animation that fits into a 4k executable that runs in real-time. Feel free to take inspiration from the many existing demos. Focus on efficiency and elegance in your implementation.
-- Example: 
-  - [cdak by Quite & orange](https://www.youtube.com/watch?v=RCh3Q08HMfs&list=PLA5E2FF8E143DA58C)
-
-### A RE-IMPLEMENTATION
-- Take an academic paper or other pre-existing project and implement it, or a portion of it.
-- Examples:
-  - [2D Wavefunction Collapse Pokémon Town](https://gurtd.github.io/566-final-project/)
-  - [3D Wavefunction Collapse Dungeon Generator](https://github.com/whaoran0718/3dDungeonGeneration)
-  - [Reaction Diffusion](https://github.com/charlesliwang/Reaction-Diffusion)
-  - [WebGL Erosion](https://github.com/LanLou123/Webgl-Erosion)
-  - [Particle Waterfall](https://github.com/chloele33/particle-waterfall)
-  - [Voxelized Bread](https://github.com/ChiantiYZY/566-final)
-
-### A FORGERY
-Taking inspiration from a particular natural phenomenon or distinctive set of visuals, implement a detailed, procedural recreation of that aesthetic. This includes modeling, texturing and object placement within your scene. Does not need to be real-time. Focus on detail and visual accuracy in your implementation.
-- Examples:
-  - [The Shrines](https://github.com/byumjin/The-Shrines)
-  - [Watercolor Shader](https://github.com/gracelgilbert/watercolor-stylization)
-  - [Sunset Beach](https://github.com/HanmingZhang/homework-final)
-  - [Sky Whales](https://github.com/WanruZhao/CIS566FinalProject)
-  - [Snail](https://www.shadertoy.com/view/ld3Gz2)
-  - [Journey](https://www.shadertoy.com/view/ldlcRf)
-  - [Big Hero 6 Wormhole](https://2.bp.blogspot.com/-R-6AN2cWjwg/VTyIzIQSQfI/AAAAAAAABLA/GC0yzzz4wHw/s1600/big-hero-6-disneyscreencaps.com-10092.jpg)
-
-### A GAME LEVEL
-- Like generations of game makers before us, create a game which generates an navigable environment (eg. a roguelike dungeon, platforms) and some sort of goal or conflict (eg. enemy agents to avoid or items to collect). Aim to create an experience that will challenge players and vary noticeably in different playthroughs, whether that means procedural dungeon generation, careful resource management or an interesting AI model. Focus on designing a system that is capable of generating complex challenges and goals.
-- Examples:
-  - [Rhythm-based Mario Platformer](https://github.com/sgalban/platformer-gen-2D)
-  - [Pokémon Ice Puzzle Generator](https://github.com/jwang5675/Ice-Puzzle-Generator)
-  - [Abstract Exploratory Game](https://github.com/MauKMu/procedural-final-project)
-  - [Tiny Wings](https://github.com/irovira/TinyWings)
-  - Spore
-  - Dwarf Fortress
-  - Minecraft
-  - Rogue
-
-### AN ANIMATED ENVIRONMENT / MUSIC VISUALIZER
-- Create an environment full of interactive procedural animation. The goal of this project is to create an environment that feels responsive and alive. Whether or not animations are musically-driven, sound should be an important component. Focus on user interactions, motion design and experimental interfaces.
-- Examples:
-  - [The Darkside](https://github.com/morganherrmann/thedarkside)
-  - [Music Visualizer](https://yuruwang.github.io/MusicVisualizer/)
-  - [Abstract Mesh Animation](https://github.com/mgriley/cis566_finalproj)
-  - [Panoramical](https://www.youtube.com/watch?v=gBTTMNFXHTk)
-  - [Bound](https://www.youtube.com/watch?v=aE37l6RvF-c)
-
-### YOUR OWN PROPOSAL
-- You are of course welcome to propose your own topic . Regardless of what you choose, you and your team must research your topic and relevant techniques and come up with a detailed plan of execution. You will meet with some subset of the procedural staff before starting implementation for approval.
+| Days | Tasks |
+| --- | --- |
+| Nov 5–11 (Milestone 1) | Make one floor manually to test movement, combat, and pickups. Implement the solver and add the first puzzle pattern. Be able to show the basic generator output and a verified solution. |
+| Nov 12–18 | Add the second puzzle pattern and difficulty checks. Test a beatable and unbeatable floors, as well as floors with shortcuts so I can check that the solver and filters behave as expected. |
+| Nov 19–23 (Milestone 2) | Finish the WebGPU tile rendering, damage previews, seed controls, and solution playback. |
+| Nov 24–30 (Final Submission) | Finish up anything I didn't get to complete, prepare the browser demo and presentation, and finish the README. |
