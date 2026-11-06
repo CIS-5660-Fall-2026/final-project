@@ -1,0 +1,20 @@
+{
+  "name": "typhoon-master",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && rsync -a --delete dist/ /var/www/typhoon.tonyxtian.com/"
+  },
+  "devDependencies": {
+    "@webgpu/types": "^0.1.65",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.6"
+  },
+  "dependencies": {
+    "lil-gui": "^0.21.0"
+  }
+}

@@ -1,1 +1,4 @@
 doc/
+node_modules/
+dist/
+*.log
