@@ -25,15 +25,19 @@ Dragging `age` in the UE editor regenerates the whole result. The deliverable is
 
 - Ta Prohm, Angkor (Cambodia): where vegetation settles on a ruin, in crevices and on shaded, lower courses.
 
-  ![Vegetation on the ruins of Ta Prohm](media/img1.jpg)
+  ![Vegetation on the ruins of Ta Prohm](media/ta-prohm-angkor.jpg)
+
+  *Photo: Jerry Everard, [The Fog Watch](https://thefogwatch.com/cambodia-ta-prohm-angkor-treasure/).*
 
 - Uncharted 4 and Shadow of the Tomb Raider overgrown ruin environments.
 
-  ![Overgrown ruin environment](media/img2.jpg)
+  ![Overgrown ruin environment](media/overgrown-jungle-ruin.jpg)
+
+  *Image: [r/ACBFResynced on Reddit](https://www.reddit.com/r/ACBFResynced/comments/1x8rqly/shadow_of_the_tomb_raider_used_to_be_my_jungle/).*
 
 - Ghost of Tsushima shrines: moss distribution by shade and moisture.
 
-  ![Shrine reference for moss distribution](media/img3.jpg)
+  ![Shrine reference for moss distribution](media/shrine-moss.jpg)
 
 **Stone weathering and decay**
 
