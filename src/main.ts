@@ -10,5 +10,5 @@ if (!canvas) {
 
 const gpuContext = await WebGpuContext.create(canvas);
 
-const renderer = new Renderer(gpuContext);
+const renderer = new Renderer(gpuContext, canvas.width / canvas.height);
 renderer.start();

@@ -1,3 +1,4 @@
+import Camera from "./Camera";
 import type WebGpuContext from "./WebGpuContext";
 
 export default class Renderer {
@@ -5,8 +6,18 @@ export default class Renderer {
 
   private frameId: number | null = null;
 
-  constructor(gpuContext: WebGpuContext) {
+  private camera: Camera = new Camera();
+  private cameraBuffer: GPUBuffer;
+
+  constructor(gpuContext: WebGpuContext, aspect?: number) {
     this.gpuContext = gpuContext;
+    
+    this.camera.aspect = aspect ?? this.camera.aspect;
+
+    this.cameraBuffer = this.gpuContext.device.createBuffer({
+      size: this.camera.uniforms.buffer.byteLength,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
   }
 
   public start(): void {
