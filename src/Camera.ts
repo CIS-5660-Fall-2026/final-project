@@ -1,5 +1,5 @@
-import { type Mat4, mat4, type Vec3, vec3 } from "wgpu-matrix";
-import { degToRad } from "wgpu-matrix/dist/3.x/utils";
+import { type Mat4, mat4, type Vec3, vec3, utils } from "wgpu-matrix";
+const { degToRad } = utils;
 
 class CameraUniforms {
     public readonly buffer = new ArrayBuffer(16 * 4);
