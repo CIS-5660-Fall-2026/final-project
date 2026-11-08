@@ -29,7 +29,7 @@ export default class Scene {
     const bodies: BodyInitialState[] = [];
 
     for (let i = 0; i < options.initialBodyCount; i++) {
-      const mass = range(1, 8);
+      const mass = range(1, 20);
       const density = range(10, 30);
       const radius = Math.cbrt(3 * mass / (4 * Math.PI * density));
 

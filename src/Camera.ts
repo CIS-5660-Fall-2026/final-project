@@ -11,7 +11,7 @@ class CameraUniforms {
 }
 
 export default class Camera {
-  public position: Vec3 = vec3.create(0, 0, 10);
+  public position: Vec3 = vec3.create(0, 0, 30);
   public yaw: number = 0;
   public pitch: number = 0;
   

@@ -1,3 +1,4 @@
+import { vec3 } from "wgpu-matrix";
 import CameraController from "./CameraController";
 import Renderer from "./Renderer";
 import Scene from "./Scene";
@@ -18,12 +19,16 @@ const gpuContext = await WebGpuContext.create(canvas);
 
 const scene = new Scene({
   seed: 0,
-  initialBodyCount: 100,
+  initialBodyCount: 500,
   simulationConfig: {
     capacity: 10000,
     fixedDt: 1 / 120,
-    gravitationalConstant: 1,
+    gravitationalConstant: 0.1,
     softeningLength: 0.1
+  },
+  boundary: {
+    min: vec3.create(-20, -10, -10), 
+    max: vec3.create(20, 10, 10)
   }
 });
 
