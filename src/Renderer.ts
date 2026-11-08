@@ -8,27 +8,26 @@ import type WebGpuContext from "./WebGpuContext";
 export default class Renderer {
   private readonly gpuContext: WebGpuContext;
 
-  private frameId: number | null = null;
+  private readonly camera: Camera = new Camera();
+  private readonly cameraBuffer: GPUBuffer;
 
-  private camera: Camera = new Camera();
-  private cameraBuffer: GPUBuffer;
+  private readonly renderPipeline: GPURenderPipeline;
 
-  private computePipeline: GPUComputePipeline;
-  private renderPipeline: GPURenderPipeline;
+  private readonly cameraBindGroup: GPUBindGroup;
+  private readonly bodiesBindGroup: GPUBindGroup;
 
-  private cameraBindGroup: GPUBindGroup;
-  private bodiesBindGroup: GPUBindGroup;
+  private readonly sphereVertexBuffer: GPUBuffer;
+  private readonly sphereIndexBuffer: GPUBuffer;
 
-  private bodiesBuffer: GPUBuffer;
+  private readonly indirectBuffer: GPUBuffer;
 
-  private sphereVertexBuffer: GPUBuffer;
-  private sphereIndexBuffer: GPUBuffer;
+  private readonly depthTexture: GPUTexture;
 
-  private indirectBuffer: GPUBuffer;
-
-  private depthTexture: GPUTexture;
-
-  constructor(gpuContext: WebGpuContext, scene: Scene) {
+  constructor(
+    gpuContext: WebGpuContext, 
+    bodiesBuffer: GPUBuffer, 
+    bodyCount: number
+  ) {
     this.gpuContext = gpuContext;
     
     const device = this.gpuContext.device;
@@ -42,14 +41,6 @@ export default class Renderer {
       size: this.camera.uniforms.buffer.byteLength,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
-
-    this.bodiesBuffer = device.createBuffer({
-      size: scene.simulationConfig.capacity * BODY_STRIDE,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
-    });
-
-    device.queue.writeBuffer(this.bodiesBuffer, 0, 
-      packBodies(scene.initialBodies, scene.simulationConfig.capacity));
 
     const mesh = createSphereMesh();
 
@@ -75,24 +66,12 @@ export default class Renderer {
     device.queue.writeBuffer(this.indirectBuffer, 0,
       new Uint32Array([
         mesh.indices.length,
-        scene.initialBodies.length,
+        bodyCount,
         0,
         0,
         0,
       ])
     );
-
-    this.computePipeline = device.createComputePipeline({
-      label: "compute pipeline",
-      layout: "auto",
-      compute: {
-        module: device.createShaderModule({
-          label: "compute shader",
-          code: gravityWgsl
-        }),
-        entryPoint: "gravityNaive"
-      }
-    });
 
     this.depthTexture = device.createTexture({
       size: [canvas.width, canvas.height],
@@ -146,44 +125,20 @@ export default class Renderer {
       label: "bodies bind group",
       layout: this.renderPipeline.getBindGroupLayout(1),
       entries: [
-        {binding: 0, resource: { buffer: this.bodiesBuffer }}
+        {binding: 0, resource: { buffer: bodiesBuffer }}
       ]
     });
   }
 
-  public start(): void {
-    this.frameId = requestAnimationFrame(this.onFrame);
-  }
-
-  public stop(): void {
-    if (this.frameId) {
-      cancelAnimationFrame(this.frameId);
-      this.frameId = null;
-    }
-  }
-
-  private onFrame = (): void => {
+  public onFrame = (): void => {
     const device = this.gpuContext.device;
 
+    this.camera.updateViewProjection();
     this.camera.onFrame();
-
     device.queue.writeBuffer(this.cameraBuffer, 0, this.camera.uniforms.buffer);
-
-    this.render();
-    this.frameId = requestAnimationFrame(this.onFrame);
   }
 
-  public render(): void {   
-    const device = this.gpuContext.device;
-    const encoder = device.createCommandEncoder();
-
-    const computePass = encoder.beginComputePass({
-      label: "compute pass"
-    });
-    computePass.setPipeline(this.computePipeline);
-    computePass.dispatchWorkgroups(1);
-    computePass.end();
-    
+  public encode(encoder: GPUCommandEncoder): void {
     const renderPass = encoder.beginRenderPass({
       colorAttachments: [{
         view: this.gpuContext.context.getCurrentTexture().createView(),
@@ -204,7 +159,5 @@ export default class Renderer {
     renderPass.setIndexBuffer(this.sphereIndexBuffer, "uint16");
     renderPass.drawIndexedIndirect(this.indirectBuffer, 0);
     renderPass.end();
-
-    device.queue.submit([encoder.finish()]);
   }
 }

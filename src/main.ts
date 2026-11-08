@@ -1,5 +1,6 @@
 import Renderer from "./Renderer";
 import Scene from "./Scene";
+import Simulation from "./Simulation";
 import WebGpuContext from "./WebGpuContext";
 import "./style.css"
 
@@ -25,5 +26,39 @@ const scene = new Scene({
   }
 });
 
-const renderer = new Renderer(gpuContext, scene);
-renderer.start();
+const simulation = new Simulation(gpuContext.device, scene);
+
+const renderer = new Renderer(
+  gpuContext, 
+  simulation.bodiesBuffer, 
+  scene.initialBodies.length
+);
+
+let previousTime: number | undefined;
+let accTime: number = 0;
+
+const frame = (time: number): void => {
+  const dt = previousTime === undefined 
+    ? 0 : Math.min((time - previousTime) * 0.001, 0.1);
+  
+  previousTime = time;
+  accTime += dt;
+
+  const device = gpuContext.device;
+  const encoder = device.createCommandEncoder();
+  const fixedDt = scene.simulationConfig.fixedDt;
+
+  while (accTime >= fixedDt) {
+    simulation.encodeStep(encoder);
+    accTime -= fixedDt;
+  }
+
+  renderer.onFrame();
+  renderer.encode(encoder);
+
+  device.queue.submit([encoder.finish()]);
+  
+  requestAnimationFrame(frame);
+}
+
+requestAnimationFrame(frame);
