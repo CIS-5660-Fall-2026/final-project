@@ -1,0 +1,22 @@
+{
+  "name": "hw00-intro-base",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "start": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/dat.gui": "^0.7.13",
+    "typescript": "^5.7.2",
+    "vite": "^8.0.0"
+  },
+  "dependencies": {
+    "3d-view-controls": "^2.2.2",
+    "dat.gui": "^0.7.9",
+    "gl-matrix": "^3.4.3",
+    "stats-js": "^1.0.1"
+  }
+}
