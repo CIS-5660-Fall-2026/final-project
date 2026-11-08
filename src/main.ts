@@ -1,3 +1,4 @@
+import CameraController from "./CameraController";
 import Renderer from "./Renderer";
 import Scene from "./Scene";
 import Simulation from "./Simulation";
@@ -34,6 +35,8 @@ const renderer = new Renderer(
   scene.initialBodies.length
 );
 
+const cameraController = new CameraController(canvas, renderer.camera);
+
 let previousTime: number | undefined;
 let accTime: number = 0;
 
@@ -52,6 +55,8 @@ const frame = (time: number): void => {
     simulation.encodeStep(encoder);
     accTime -= fixedDt;
   }
+
+  cameraController.update(dt);
 
   renderer.onFrame();
   renderer.encode(encoder);

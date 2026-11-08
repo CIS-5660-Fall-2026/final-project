@@ -40,14 +40,24 @@ export default class Camera {
     this.projection = mat4.perspective(this.fovY, this.aspect, this.near, this.far);
   }
 
-  public updateView() {
-    const front = vec3.create(
+  public get forward(): Vec3 {
+    return vec3.create(
       Math.sin(this.yaw) * Math.cos(this.pitch),
       Math.sin(this.pitch),
       -Math.cos(this.yaw) * Math.cos(this.pitch),
     );
+  }
 
-    const target = vec3.add(this.position, front);
+  public get right(): Vec3 {
+    return vec3.create(
+      Math.cos(this.yaw),
+      0,
+      Math.sin(this.yaw),
+    );
+  }
+
+  public updateView() {
+    const target = vec3.add(this.position, this.forward);
     this.view = mat4.lookAt(this.position, target, [0, 1, 0]);
   }
 

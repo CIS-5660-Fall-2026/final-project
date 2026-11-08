@@ -6,7 +6,7 @@ import type WebGpuContext from "./WebGpuContext";
 export default class Renderer {
   private readonly gpuContext: WebGpuContext;
 
-  private readonly camera: Camera = new Camera();
+  public readonly camera: Camera = new Camera();
   private readonly cameraBuffer: GPUBuffer;
 
   private readonly renderPipeline: GPURenderPipeline;
