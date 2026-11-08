@@ -1,7 +1,5 @@
-import { BODY_STRIDE, packBodies } from "./Body";
 import Camera from "./Camera";
-import type Scene from "./Scene";
-import { bodiesWgsl, gravityWgsl } from "./shaders";
+import { bodiesWgsl } from "./shaders";
 import { createSphereMesh } from "./Sphere";
 import type WebGpuContext from "./WebGpuContext";
 
