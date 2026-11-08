@@ -7,6 +7,18 @@ struct Body {
     angularVelocity: vec3<f32>
 }
 
+struct SimulationUniforms {
+    fixedDt: f32,
+    gravitationalConstant: f32,
+    softeningLength: f32,
+    bodyCount: u32,
+
+    boundaryMin: vec3<f32>,
+    boundaryEnabled: u32,
+
+    boundaryMax: vec3<f32>
+}
+
 fn multiplyQuaternion(
     a: vec4<f32>,
     b: vec4<f32>,

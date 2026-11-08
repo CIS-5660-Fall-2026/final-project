@@ -1,15 +1,3 @@
-struct SimulationUniforms {
-    fixedDt: f32,
-    gravitationalConstant: f32,
-    softeningLength: f32,
-    bodyCount: u32,
-
-    boundaryMin: vec3<f32>,
-    boundaryEnabled: u32,
-
-    boundaryMax: vec3<f32>
-}
-
 @group(0) @binding(0) 
 var<storage, read> inputBodies: array<Body>;
 

@@ -1,7 +1,7 @@
 import { BODY_STRIDE, packBodies } from "./Body";
 import type Scene from "./Scene";
 import { SimulationUniforms } from "./Scene";
-import { gravityWgsl } from "./shaders";
+import { collisionWgsl, gravityWgsl } from "./shaders";
 
 export default class Simulation {
   private readonly device: GPUDevice;
@@ -11,12 +11,15 @@ export default class Simulation {
   private readonly bodiesA: GPUBuffer;
   private readonly bodiesB: GPUBuffer;
   private readonly paramsBuffer: GPUBuffer;
+  private readonly collisionCandidates: GPUBuffer;
 
   private readonly driftPipeline: GPUComputePipeline;
   private readonly gravityPipeline: GPUComputePipeline;
+  private readonly collisionPipeline: GPUComputePipeline;
 
   private readonly driftBindGroup: GPUBindGroup;
   private readonly gravityBindGroup: GPUBindGroup;
+  private readonly collisionBindGroup: GPUBindGroup;
 
   constructor(device: GPUDevice, scene: Scene) {
     this.device = device;
@@ -44,6 +47,12 @@ export default class Simulation {
       label: "simulation params",
       size: 48,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+
+    this.collisionCandidates = device.createBuffer({
+      label: "collision candidates",
+      size: config.capacity * Uint32Array.BYTES_PER_ELEMENT,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
 
     const uniforms = new SimulationUniforms();
@@ -81,6 +90,18 @@ export default class Simulation {
       },
     });
 
+    this.collisionPipeline = device.createComputePipeline({
+      label: "collision detection pipeline",
+      layout: "auto",
+      compute: {
+        module: device.createShaderModule({
+          label: "collision detection shader",
+          code: collisionWgsl,
+        }),
+        entryPoint: "detectCollisions",
+      },
+    });
+
     this.driftBindGroup = device.createBindGroup({
       label: "drift half bind group",
       layout: this.driftPipeline.getBindGroupLayout(0),
@@ -101,11 +122,25 @@ export default class Simulation {
       ],
     });
 
+    this.collisionBindGroup = device.createBindGroup({
+      label: "collision detection bind group",
+      layout: this.collisionPipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: this.bodiesA } },
+        { binding: 1, resource: { buffer: this.collisionCandidates } },
+        { binding: 2, resource: { buffer: this.paramsBuffer } },
+      ],
+    });
+
     this.reset();
   }
 
   public get bodiesBuffer(): GPUBuffer {
     return this.bodiesA;
+  }
+  
+  public get collisionCandidatesBuffer(): GPUBuffer {
+    return this.collisionCandidates;
   }
 
   public encodeStep(encoder: GPUCommandEncoder): void {
@@ -130,6 +165,15 @@ export default class Simulation {
     gravityPass.setBindGroup(0, this.gravityBindGroup);
     gravityPass.dispatchWorkgroups(this.workgroupCount);
     gravityPass.end();
+
+    const collisionPass = encoder.beginComputePass({
+      label: "collision detection pass",
+    });
+
+    collisionPass.setPipeline(this.collisionPipeline);
+    collisionPass.setBindGroup(0, this.collisionBindGroup);
+    collisionPass.dispatchWorkgroups(this.workgroupCount);
+    collisionPass.end();
   }
 
   public reset(): void {
@@ -140,11 +184,26 @@ export default class Simulation {
 
     this.device.queue.writeBuffer(this.bodiesA, 0, data);
     this.device.queue.writeBuffer(this.bodiesB, 0, data);
+
+    const candidates = new Uint32Array(
+      this.scene.simulationConfig.capacity,
+    );
+
+    for (let i = 0; i < candidates.length; i++) {
+      candidates[i] = i;
+    }
+
+    this.device.queue.writeBuffer(
+      this.collisionCandidates,
+      0,
+      candidates,
+    );
   }
 
   public destroy(): void {
     this.bodiesA.destroy();
     this.bodiesB.destroy();
     this.paramsBuffer.destroy();
+    this.collisionCandidates.destroy();
   }
 }

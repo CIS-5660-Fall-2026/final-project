@@ -24,7 +24,8 @@ export default class Renderer {
   constructor(
     gpuContext: WebGpuContext, 
     bodiesBuffer: GPUBuffer, 
-    bodyCount: number
+    bodyCount: number,
+    collisionCandidatesBuffer: GPUBuffer
   ) {
     this.gpuContext = gpuContext;
     
@@ -123,7 +124,8 @@ export default class Renderer {
       label: "bodies bind group",
       layout: this.renderPipeline.getBindGroupLayout(1),
       entries: [
-        {binding: 0, resource: { buffer: bodiesBuffer }}
+        { binding: 0, resource: { buffer: bodiesBuffer } },
+        { binding: 1, resource: { buffer: collisionCandidatesBuffer } }
       ]
     });
   }

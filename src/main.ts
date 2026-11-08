@@ -32,7 +32,8 @@ const simulation = new Simulation(gpuContext.device, scene);
 const renderer = new Renderer(
   gpuContext, 
   simulation.bodiesBuffer, 
-  scene.initialBodies.length
+  scene.initialBodies.length,
+  simulation.collisionCandidatesBuffer
 );
 
 const cameraController = new CameraController(canvas, renderer.camera);
