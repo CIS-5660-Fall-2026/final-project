@@ -1,5 +1,5 @@
 {
-  "name": "hw00-intro-base",
+  "name": "flow-field-painting",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,7 +14,6 @@
     "vite": "^8.0.0"
   },
   "dependencies": {
-    "3d-view-controls": "^2.2.2",
     "dat.gui": "^0.7.9",
     "gl-matrix": "^3.4.3",
     "stats-js": "^1.0.1"
