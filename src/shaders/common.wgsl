@@ -4,7 +4,8 @@ struct Body {
     velocity: vec3<f32>,
     radius: f32,
     orientation: vec4<f32>,
-    angularVelocity: vec3<f32>
+    angularVelocity: vec3<f32>,
+    seed: u32
 }
 
 struct SimulationUniforms {

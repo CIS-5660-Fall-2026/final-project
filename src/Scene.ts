@@ -20,9 +20,11 @@ export default class Scene {
     this.simulationConfig = { ...options.simulationConfig };
     this.boundary = options.boundary;
 
-    const rng = seedrandom(String(this.seed));
+    const simulationRng = seedrandom(String(this.seed));
+    const surfaceRng = seedrandom(`${this.seed}:surface`);
+
     const range = (min: number, max: number): number =>
-      min + (max - min) * rng();
+      min + (max - min) * simulationRng();
 
     const min = this.boundary?.min ?? vec3.create(-10, -10, -10);
     const max = this.boundary?.max ?? vec3.create(10, 10, 10);
@@ -45,7 +47,8 @@ export default class Scene {
         mass, 
         radius,
         orientation: quat.identity(),
-        angularVelocity: vec3.create(0, range(0.1, 1.0), 0)
+        angularVelocity: vec3.create(0, range(0.1, 1.0), 0),
+        seed: surfaceRng.int32() >>> 0
       });
     }
 

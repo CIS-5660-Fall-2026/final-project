@@ -1,15 +1,18 @@
 import Camera from "./Camera";
-import { bodiesWgsl } from "./shaders";
+import { bodiesDebugWgsl, bodiesWgsl } from "./shaders";
 import { createSphereMesh } from "./Sphere";
 import type WebGpuContext from "./WebGpuContext";
 
 export default class Renderer {
   private readonly gpuContext: WebGpuContext;
-
+  
   public readonly camera: Camera = new Camera();
   private readonly cameraBuffer: GPUBuffer;
 
-  private readonly renderPipeline: GPURenderPipeline;
+  public mode: "surface" | "debug" = "surface";
+
+  private readonly surfacePipeline: GPURenderPipeline;
+  private readonly debugPipeline: GPURenderPipeline;  
 
   private readonly cameraBindGroup: GPUBindGroup;
   private readonly bodiesBindGroup: GPUBindGroup;
@@ -78,43 +81,84 @@ export default class Renderer {
       usage: GPUTextureUsage.RENDER_ATTACHMENT
     })
 
-    const bodiesShaderModule = device.createShaderModule({
-      label: "vertex shader",
-      code: bodiesWgsl
+    const cameraLayout = device.createBindGroupLayout({
+      label: "camera bind group layout",
+      entries: [{
+        binding: 0,
+        visibility: GPUShaderStage.VERTEX,
+        buffer: { type: "uniform" }
+      }]
     });
 
-    this.renderPipeline = device.createRenderPipeline({
-      label: "render pipeline",
-      layout: "auto",
-      depthStencil: {
-        depthWriteEnabled: true,
-        depthCompare: "less",
-        format: "depth24plus"
-      },
-      vertex: {
-        module: bodiesShaderModule,
-        entryPoint: "vertMain",
-        buffers: [{
-          arrayStride: 12,
-          attributes: [{
-            shaderLocation: 0,
-            offset: 0,
-            format: "float32x3"
-          }]
-        }]
-      },
-      fragment: {
-        module: bodiesShaderModule,
-        entryPoint: "fragMain",
-        targets: [{
-          format: this.gpuContext.format
-        }]
-      }
+    const bodiesLayout = device.createBindGroupLayout({
+      label: "bodies bind group layout",
+      entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+          buffer: { type: "read-only-storage" }
+        },
+        {
+          binding: 1,
+          visibility: GPUShaderStage.FRAGMENT,
+          buffer: { type: "read-only-storage" }
+        }
+      ]
     });
+
+    const pipelineLayout = device.createPipelineLayout({
+      label: "render pipeline layout",
+      bindGroupLayouts: [
+        cameraLayout, 
+        bodiesLayout
+      ]
+    });
+
+    const createPipeline = (
+      label: string,
+      code: string
+    ): GPURenderPipeline => {
+      const module = device.createShaderModule({ 
+        label: `${label} module`, 
+        code 
+      });
+
+      return device.createRenderPipeline({
+        label: `${label} pipeline`,
+        layout: pipelineLayout,
+        depthStencil: {
+          depthWriteEnabled: true,
+          depthCompare: "less",
+          format: "depth24plus"
+        },
+        vertex: {
+          module,
+          entryPoint: "vertMain",
+          buffers: [{
+            arrayStride: 12,
+            attributes: [{
+              shaderLocation: 0,
+              offset: 0,
+              format: "float32x3"
+            }]
+          }]
+        },
+        fragment: {
+          module,
+          entryPoint: "fragMain",
+          targets: [{
+            format: this.gpuContext.format
+          }]
+        }
+      });
+    };
+
+    this.surfacePipeline = createPipeline("surface pipeline", bodiesWgsl);
+    this.debugPipeline = createPipeline("debug pipeline", bodiesDebugWgsl); 
 
     this.cameraBindGroup = device.createBindGroup({
       label: "camera bind group",
-      layout: this.renderPipeline.getBindGroupLayout(0),
+      layout: cameraLayout,
       entries: [
         { binding: 0, resource: { buffer: this.cameraBuffer } }
       ]
@@ -122,7 +166,7 @@ export default class Renderer {
 
     this.bodiesBindGroup = device.createBindGroup({
       label: "bodies bind group",
-      layout: this.renderPipeline.getBindGroupLayout(1),
+      layout: bodiesLayout,
       entries: [
         { binding: 0, resource: { buffer: bodiesBuffer } },
         { binding: 1, resource: { buffer: collisionCandidatesBuffer } }
@@ -152,7 +196,8 @@ export default class Renderer {
         depthStoreOp: "store"
       }
     });
-    renderPass.setPipeline(this.renderPipeline);
+    renderPass.setPipeline(this.mode === "debug" 
+      ? this.debugPipeline : this.surfacePipeline);
     renderPass.setBindGroup(0, this.cameraBindGroup);
     renderPass.setBindGroup(1, this.bodiesBindGroup);
     renderPass.setVertexBuffer(0, this.sphereVertexBuffer);
