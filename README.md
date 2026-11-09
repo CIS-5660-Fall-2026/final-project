@@ -43,7 +43,7 @@ I already have a WebGPU implementation of a Forward+ renderer, so I plan to buil
 
 #### Design:
 
-![](froxel_fog_pass_graph_forward_plus.png)
+![](img/froxel_fog_pass_graph_forward_plus.png)
 
 #### Timeline:
 
