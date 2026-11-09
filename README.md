@@ -20,14 +20,14 @@ https://github.com/user-attachments/assets/671911ed-a612-42ec-a1ee-6a1fcdc4ebc5
 
 **Raymarching Volumetric Effects (mainly interested in the use of noise for defining volumes):**
 
-https://www.shadertoy.com/view/XslGRr
-https://blog.maximeheckel.com/posts/real-time-cloudscapes-with-volumetric-raymarching/
-https://blog.maximeheckel.com/posts/shaping-light-volumetric-lighting-with-post-processing-and-raymarching/
+- https://www.shadertoy.com/view/XslGRr
+- https://blog.maximeheckel.com/posts/real-time-cloudscapes-with-volumetric-raymarching/
+- https://blog.maximeheckel.com/posts/shaping-light-volumetric-lighting-with-post-processing-and-raymarching/
 
 **PBR and Froxel-based Volumetric Fog:**
 
-https://www.mattiasstrand.com/posts/volumetric-fog/
-https://www.slideshare.net/slideshow/physically-based-and-unified-volumetric-rendering-in-frostbite/51840934
+- https://www.mattiasstrand.com/posts/volumetric-fog/
+- https://www.slideshare.net/slideshow/physically-based-and-unified-volumetric-rendering-in-frostbite/51840934
 
 #### Specification & Techniques:
 
