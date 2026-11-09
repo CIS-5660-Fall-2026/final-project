@@ -51,3 +51,17 @@ I will handle the modeling, generator, lighting, animation, and documentation.
 | Nov 24–30 | Apply critique feedback and render the final shot. | Houdini scene, eight-second loop, two seed stills, presentation, and postmortem |
 
 [Original course assignment and submission instructions](docs/course-brief.md)
+
+## Milestone #1
+
+The core generator is working. It builds an uneven sphere, reserves clearings for the rose and volcano, and scatters grass and white flowers in patches. Plants follow the displaced surface, with variation in their size and orientation. The **Seed**, **Terrain Relief**, and **Plant Density** controls change the layout, surface shape, and amount of ground cover. Reusing a seed reproduces the same planet.
+
+I have also added initial models of the rose, glass dome, and volcano, plus a camera, lighting, and an eight-second turntable. This covers the terrain and planting goals in my first-week plan. The image below shows the current scene.
+
+![Planet generated with seed 12](media/seed-12.png)
+
+The still was rendered with Mantra. [Watch the eight-second Houdini viewport preview](media/B612-turntable.mp4).
+
+The glass dome initially obscured the rose. I corrected its material binding and isolated its opacity from the terrain and plants. The render still has visible noise, and the glass looks different in the viewport and Mantra. My next step is to refine the lighting and dome shading so the rose reads more clearly, then check the composition throughout the rotation.
+
+To try the generator, open [B612.hipnc](B612.hipnc) in Houdini and select `/obj/B612_PLANET`. Under **Planet Controls**, switch **Seed** between 12 and 47, adjust **Terrain Relief**, or set **Plant Density** to zero to inspect the bare terrain. Choose `storybook_camera` in the viewport and play frames 1–192 at 24 fps to see one full turn. The scene contains the generator code, and the editable source is included in [scripts](scripts/).

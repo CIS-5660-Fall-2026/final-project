@@ -1,0 +1,26 @@
+// Sample the actual displaced mesh. A fixed candidate set makes density edits predictable.
+int seed = chi("../seed");
+int flower = chi("flower");
+float density = chf("../density");
+int samples = flower ? 1600 : 3100;
+float phase = rand(seed*19+flower)*6.283185;
+for (int i=0; i<samples; i++) {
+    float y = 1-2*(i+.5)/samples;
+    float t = i*2.39996323 + phase;
+    float r = sqrt(max(0,1-y*y));
+    vector dir = set(r*cos(t),y,r*sin(t));
+    vector pos, uv;
+    int prim = intersect(1,dir*3.3,-dir*2.6,pos,uv);
+    if (prim<0) continue;
+    float cover = primuv(1,"meadow",prim,uv);
+    float chance = density*cover*cover*(flower?.52:.73);
+    if (rand(i*.721+seed*32+flower*13)>chance || chance<=0) continue;
+    vector normal = normalize(prim_normal(1,prim,uv.x,uv.y));
+    if (dot(normal,dir)<0) normal*=-1;
+    normal = normalize(lerp(dir,normal,.55));
+    int p = addpoint(0,pos-dir*.008);
+    vector4 spin = quaternion(6.283185*rand(i*1.12+seed),normal);
+    vector4 orient = qmultiply(spin,dihedral(set(0,1,0),normal));
+    setpointattrib(0,"orient",p,orient);
+    setpointattrib(0,"pscale",p,fit01(rand(i*3.47+seed),.66,1.38));
+}
