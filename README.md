@@ -1,28 +1,34 @@
 # Final Project!
 
-This is it! The culmination of your procedural graphics experience this semester. For your final project, we'd like to give you the time and space to explore a topic of your choosing. You may choose any topic you please, so long as you vet the topic and scope with an instructor or TA. We've provided some suggestions below. The scope of your project should be roughly 1.5 homework assignments). To help structure your time, we're breaking down the project into 4 milestones:
-
-## Project planning: Design Doc (due 11/4)
-Before submitting your first milestone, _you must get your project idea and scope approved by Rachel, Adam or a TA._
-
-### Design Doc
-Start off by forking this repository. In your README, write a design doc to outline your project goals and implementation plan. It must include the following sections:
+# Project planning: Design Doc (due 11/4)
 
 #### Introduction
-- What motivates your project?
+One of the videos that brought me into programming is the series of development videos by Rujik: (Critter Crosser)[https://www.youtube.com/watch?v=j9IEhJnh0Bw].
+My goal is to try to implement many of the procedural features we learnt in class to create a similar procedural creature creator.
+
 
 #### Goal
-- What do you intend to achieve with this project?
+These are the goals ordered in importance:
+- Create pleasing looking and procedurally varied creatures
+- Give them procedural behaviors and animations that match their features / hidden driving traits.
+- Code them to interact with their environment and train to get rewards.
+
+**Bonus goals:**
+- Advanced lighting fog and cool shaders
+- Have them damagable and react to broken limbs
+(These goals are from my other scrapped project and I will only attempt them if I'm undeniably goated)
 
 #### Inspiration/reference:
-- You must have some form of reference material for your final project. Your reference may be a research paper, a blog post, some artwork, a video, another class at Penn, etc.  
-- Include in your design doc links to and images of your reference material.
+- https://www.youtube.com/watch?v=j9IEhJnh0Bw 
+- TBD
 
 #### Specification:
-- Outline the main features of your project.
+- Procedural creatures, long bodies, varying shapes
+- IK for limbs, Full body animation somehow
+- Simple terrain generation for background
 
 #### Techniques:
-- What are the main technical/algorithmic tools you’ll be using? Give an overview, citing specific papers/articles.
+- Limb IK, 
 
 #### Design:
 - How will your program fit together? Make a simple free-body diagram illustrating the pieces.
