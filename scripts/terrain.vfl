@@ -1,0 +1,19 @@
+// Surface functions use rest-space directions, so the pattern rotates with the planet.
+vector d = normalize(@P);
+int seed = chi("../seed");
+vector offset = set(seed*.732, seed*1.33, seed*.359);
+float hill = snoise(d*1.8+offset) + .34*snoise(d*5.2+offset) + .12*snoise(d*13+offset);
+vector rose = normalize(set(-.30,.80,.52));
+vector vent = normalize(set(.43,.86,.29));
+float keep = smooth(.20,.34,distance(d,rose))*smooth(.24,.36,distance(d,vent));
+float relief = chf("../relief") * hill * keep;
+@P = d*(2.0+relief);
+float patch = .44 + .34*d.y + .59*snoise(d*3.4+offset+17) + .11*snoise(d*11+offset);
+f@meadow = smooth(.22,.69,patch)*keep;
+float mineral = clamp(.50+.48*snoise(d*7.4+offset)+.13*sin(31*d.y+4*hill),0,1);
+vector rock = lerp(set(.23,.192,.176),set(.70,.55,.36),mineral);
+float strata = smooth(.36,.91,cos(48*d.y+7*hill+3*snoise(d*4+offset)));
+rock = lerp(rock,set(.73,.57,.36),strata*.27);
+f@Alpha = 1.0;
+vector moss = lerp(set(.235,.298,.112),set(.45,.47,.168),clamp(.45+.6*snoise(d*6-offset),0,1));
+@Cd = lerp(rock,moss,smooth(.36,.79,patch));
