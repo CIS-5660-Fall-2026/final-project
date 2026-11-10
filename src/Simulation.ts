@@ -5,8 +5,8 @@ import { collisionWgsl, gravityWgsl } from "./shaders";
 
 export default class Simulation {
   private readonly device: GPUDevice;
-  private readonly scene: Scene;
-  private readonly workgroupCount: number;
+  private workgroupCount = 0;
+  private readonly uniforms = new SimulationUniforms();
 
   private readonly bodiesA: GPUBuffer;
   private readonly bodiesB: GPUBuffer;
@@ -23,13 +23,8 @@ export default class Simulation {
 
   constructor(device: GPUDevice, scene: Scene) {
     this.device = device;
-    this.scene = scene;
 
-    const bodyCount = this.scene.initialBodies.length;
-    const config = this.scene.simulationConfig;
-    
-    const workgroupSize = 64;
-    this.workgroupCount = Math.ceil(bodyCount / workgroupSize);
+    const config = scene.simulationConfig;
     
     this.bodiesA = device.createBuffer({
       label: "simulation bodies A",
@@ -55,17 +50,13 @@ export default class Simulation {
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
 
-    const uniforms = new SimulationUniforms();
-    uniforms.fixedDt = config.fixedDt;
-    uniforms.gravitationalConstant = config.gravitationalConstant;
-    uniforms.softeningLength = config.softeningLength;
-    uniforms.bodyCount = bodyCount;
-    
-    if (scene.boundary) {
-      uniforms.boundary = scene.boundary;
-    }
+    this.uniforms.fixedDt = config.fixedDt;
+    this.uniforms.gravitationalConstant = config.gravitationalConstant;
+    this.uniforms.softeningLength = config.softeningLength;
 
-    device.queue.writeBuffer(this.paramsBuffer, 0, uniforms.buffer);
+    if (scene.boundary) {
+      this.uniforms.boundary = scene.boundary;
+    }
 
     const module = device.createShaderModule({
       label: "simulation shader",
@@ -132,7 +123,7 @@ export default class Simulation {
       ],
     });
 
-    this.reset();
+    this.reset(scene);
   }
 
   public get bodiesBuffer(): GPUBuffer {
@@ -176,27 +167,41 @@ export default class Simulation {
     collisionPass.end();
   }
 
-  public reset(): void {
-    const data = packBodies(
-      this.scene.initialBodies,
-      this.scene.simulationConfig.capacity,
-    );
+  public reset(scene: Scene): void {
+    const bodyCount = scene.initialBodies.length;
+    const capacity = scene.simulationConfig.capacity;
 
+    const workgroupSize = 64;
+    this.workgroupCount = Math.ceil(bodyCount / workgroupSize);
+    this.uniforms.bodyCount = bodyCount;
+
+    const data = packBodies(scene.initialBodies, capacity);
     this.device.queue.writeBuffer(this.bodiesA, 0, data);
     this.device.queue.writeBuffer(this.bodiesB, 0, data);
-
-    const candidates = new Uint32Array(
-      this.scene.simulationConfig.capacity,
+    this.device.queue.writeBuffer(
+      this.paramsBuffer, 0, this.uniforms.buffer,
     );
+
+    const candidates = new Uint32Array(capacity);
 
     for (let i = 0; i < candidates.length; i++) {
       candidates[i] = i;
     }
 
     this.device.queue.writeBuffer(
-      this.collisionCandidates,
-      0,
-      candidates,
+      this.collisionCandidates, 0, candidates,
+    );
+  }
+
+  public setPhysics(
+    gravitationalConstant: number,
+    softeningLength: number,
+  ): void {
+    this.uniforms.gravitationalConstant = gravitationalConstant;
+    this.uniforms.softeningLength = softeningLength;
+
+    this.device.queue.writeBuffer(
+      this.paramsBuffer, 0, this.uniforms.buffer,
     );
   }
 

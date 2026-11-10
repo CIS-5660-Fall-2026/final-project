@@ -1,10 +1,11 @@
 import { vec3 } from "wgpu-matrix";
 import CameraController from "./CameraController";
 import Renderer from "./Renderer";
-import Scene from "./Scene";
+import Scene, { type SceneOptions } from "./Scene";
 import Simulation from "./Simulation";
 import WebGpuContext from "./WebGpuContext";
 import "./style.css"
+import { createControlPanel } from "./ControlPanel";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#gpu-canvas");
 
@@ -17,11 +18,11 @@ canvas.height = Math.round(canvas.clientHeight * window.devicePixelRatio);
 
 const gpuContext = await WebGpuContext.create(canvas);
 
-const scene = new Scene({
+const sceneOptions: SceneOptions = {
   seed: 0,
   initialBodyCount: 500,
   simulationConfig: {
-    capacity: 10000,
+    capacity: 100000,
     fixedDt: 1 / 120,
     gravitationalConstant: 0.1,
     softeningLength: 0.1
@@ -30,7 +31,9 @@ const scene = new Scene({
     min: vec3.create(-20, -10, -10), 
     max: vec3.create(20, 10, 10)
   }
-});
+};
+
+const scene = new Scene(sceneOptions);
 
 const simulation = new Simulation(gpuContext.device, scene);
 
@@ -45,6 +48,22 @@ const cameraController = new CameraController(canvas, renderer.camera);
 
 let previousTime: number | undefined;
 let accTime: number = 0;
+
+createControlPanel(
+  sceneOptions,
+  simulation,
+  renderer,
+  cameraController,
+  (options) => {
+    const newScene = new Scene(options);
+
+    simulation.reset(newScene);
+    renderer.setBodyCount(newScene.initialBodies.length);
+
+    accTime = 0;
+    previousTime = undefined;
+  },
+);
 
 const frame = (time: number): void => {
   const dt = previousTime === undefined 

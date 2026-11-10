@@ -2,7 +2,7 @@ import { quat, vec3, type Vec3 } from "wgpu-matrix";
 import type { BodyInitialState } from "./Body";
 import seedrandom from "seedrandom";
 
-interface SceneOptions {
+export interface SceneOptions {
   seed: number;
   initialBodyCount: number;
   simulationConfig: Readonly<SimulationConfig>;

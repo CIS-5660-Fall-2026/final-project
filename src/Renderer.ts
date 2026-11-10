@@ -205,4 +205,12 @@ export default class Renderer {
     renderPass.drawIndexedIndirect(this.indirectBuffer, 0);
     renderPass.end();
   }
+
+  public setBodyCount(bodyCount: number): void {
+    this.gpuContext.device.queue.writeBuffer(
+      this.indirectBuffer,
+      4,
+      new Uint32Array([bodyCount]),
+    );
+  }
 }
