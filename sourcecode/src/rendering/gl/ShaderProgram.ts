@@ -29,6 +29,10 @@ class ShaderProgram {
   unifModelInvTr: WebGLUniformLocation;
   unifViewProj: WebGLUniformLocation;
   unifColor: WebGLUniformLocation;
+  unifTime: WebGLUniformLocation;
+  unifMode: WebGLUniformLocation;
+  unifResolution: WebGLUniformLocation;
+  unifDirection: WebGLUniformLocation;
 
   constructor(shaders: Array<Shader>) {
     this.prog = gl.createProgram();
@@ -48,6 +52,10 @@ class ShaderProgram {
     this.unifModelInvTr = gl.getUniformLocation(this.prog, "u_ModelInvTr");
     this.unifViewProj   = gl.getUniformLocation(this.prog, "u_ViewProj");
     this.unifColor      = gl.getUniformLocation(this.prog, "u_Color");
+    this.unifTime       = gl.getUniformLocation(this.prog, "u_Time");
+    this.unifMode       = gl.getUniformLocation(this.prog, "u_Mode");
+    this.unifResolution = gl.getUniformLocation(this.prog, "u_Resolution");
+    this.unifDirection  = gl.getUniformLocation(this.prog, "u_Direction");
   }
 
   use() {
@@ -83,6 +91,26 @@ class ShaderProgram {
     if (this.unifColor !== -1) {
       gl.uniform4fv(this.unifColor, color);
     }
+  }
+
+  setTime(time: number) {
+    this.use();
+    gl.uniform1f(this.unifTime, time);
+  }
+
+  setMode(mode: number) {
+    this.use();
+    gl.uniform1i(this.unifMode, mode);
+  }
+
+  setResolution(x: number, y: number) {
+    this.use();
+    gl.uniform2f(this.unifResolution, x, y);
+  }
+
+  setDirection(x: number, y: number, z: number) {
+    this.use();
+    gl.uniform3f(this.unifDirection, x, y, z);
   }
 
   draw(d: Drawable) {
