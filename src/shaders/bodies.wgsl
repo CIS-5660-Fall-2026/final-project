@@ -44,27 +44,25 @@ fn vertMain(
 
 @fragment
 fn fragMain(input: VertexOutput) -> @location(0) vec4<f32> {
-    let spherePosition = normalize(input.localPosition);
-    let p = 4.0 * spherePosition + input.surfaceOffset;
+    let p = normalize(input.localPosition);
+    let detail = fbm(6.0 * p + input.surfaceOffset) / 1.875;
 
-    let h = fbm(p);
-    let tone = smoothstep(-0.2, 0.2, h);
-
-    let darkColor = mix(
-        vec3<f32>(0.07, 0.08, 0.09),
-        vec3<f32>(0.09, 0.08, 0.07),
+    let rockColor = mix(
+        vec3<f32>(0.30, 0.32, 0.34),
+        vec3<f32>(0.34, 0.32, 0.29),
         input.paletteMix
     );
-    let lightColor = mix(
-        vec3<f32>(0.40, 0.43, 0.46),
-        vec3<f32>(0.46, 0.43, 0.39),
-        input.paletteMix
-    );
-    let baseColor = mix(darkColor, lightColor, tone);
+    let baseColor = rockColor
+        * (0.95 + 0.10 * smoothstep(-0.25, 0.25, detail));
 
     let normal = normalize(input.normal);
-    let lightDirection = normalize(vec3<f32>(1.0, 1.0, 1.0));
-    let brightness = 0.2 + 0.8 * max(dot(normal, lightDirection), 0.0);
 
-    return vec4<f32>(baseColor * brightness, 1.0);
+    let lightDirection = normalize(vec3<f32>(1.0, 1.0, 1.0));
+    let lightColor = vec3<f32>(1.0, 0.95, 0.90);
+    let lightIntensity = 1.0;
+
+    let diffuse = max(dot(normal, lightDirection), 0.0);
+    let lighting = lightColor * lightIntensity * diffuse;
+
+    return vec4<f32>(baseColor * lighting, 1.0);
 }

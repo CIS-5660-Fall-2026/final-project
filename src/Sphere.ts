@@ -4,8 +4,8 @@ export interface SphereMesh {
 }
 
 export const createSphereMesh = (): SphereMesh => {
-  const longitudeDivisions = 16;
-  const latitudeDivisions = 8;
+  const longitudeDivisions = 24;
+  const latitudeDivisions = 12;
   const positions: number[] = [];
   const indices: number[] = [];
 
