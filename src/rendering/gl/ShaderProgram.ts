@@ -30,9 +30,7 @@ class ShaderProgram {
   unifViewProj: WebGLUniformLocation;
   unifColor: WebGLUniformLocation;
   unifTime: WebGLUniformLocation;
-  unifHeight: WebGLUniformLocation;
-  unifTemperature: WebGLUniformLocation;
-  unifCurl: WebGLUniformLocation;
+  unifDitherTex: WebGLUniformLocation;
   constructor(shaders: Array<Shader>) {
     this.prog = gl.createProgram();
 
@@ -52,9 +50,7 @@ class ShaderProgram {
     this.unifViewProj   = gl.getUniformLocation(this.prog, "u_ViewProj");
     this.unifColor      = gl.getUniformLocation(this.prog, "u_Color");
     this.unifTime       = gl.getUniformLocation(this.prog, "u_Time");
-    this.unifHeight     = gl.getUniformLocation(this.prog, "u_Height");
-    this.unifTemperature = gl.getUniformLocation(this.prog, "u_Temperature");
-    this.unifCurl = gl.getUniformLocation(this.prog, "u_Curl");
+    this.unifDitherTex  = gl.getUniformLocation(this.prog, "u_DitherTex");
   }
 
   use() {
@@ -99,25 +95,11 @@ class ShaderProgram {
     }
   }
 
-  setHeight(height: number) {
-    this.use()
-    if (this.unifHeight != -1) {
-      gl.uniform1f(this.unifHeight, height);
-    }
-  }
-
-  setTemperature(temperature: number) {
-    this.use()
-    if (this.unifTemperature != -1) {
-      gl.uniform1f(this.unifTemperature, temperature);
-    }
-  }
-
-  setCurl(curl: number) {
-    this.use()
-    if (this.unifCurl != -1) {
-      gl.uniform1f(this.unifCurl, curl);
-    }
+  setDitherTexture(tex: WebGLTexture, unit: number = 0) {
+    this.use();
+    gl.activeTexture(gl.TEXTURE0 + unit);
+    gl.bindTexture(gl.TEXTURE_3D, tex);
+    gl.uniform1i(this.unifDitherTex, unit);
   }
 
   draw(d: Drawable) {

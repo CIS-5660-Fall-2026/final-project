@@ -10,8 +10,10 @@ in vec4 vs_Nor;
 in vec4 vs_Col;
 
 out vec4 fs_Nor;
+out vec3 fs_ObjNor;
 out vec4 fs_LightVec; 
 out vec4 fs_Col;
+out vec4 fs_Pos;
 
 const vec4 lightPos = vec4(10, 10, 10, 5);
 
@@ -19,6 +21,8 @@ const vec4 lightPos = vec4(10, 10, 10, 5);
 void main()
 {
     fs_Col = vs_Col;
+    fs_Pos = vs_Pos;
+    fs_ObjNor = normalize(vs_Nor.xyz);
 
     mat3 invTranspose = mat3(u_ModelInvTr);
     fs_Nor = vec4(invTranspose * vec3(vs_Nor), 0); 

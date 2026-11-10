@@ -3,10 +3,12 @@ import Stats from 'stats-js';
 import * as DAT from 'dat.gui';
 import Icosphere from './geometry/Icosphere';
 import Square from './geometry/Square';
+import Cube from './geometry/Cube'
 import OpenGLRenderer from './rendering/gl/OpenGLRenderer';
 import Camera from './Camera';
 import {setGL} from './globals';
 import ShaderProgram, {Shader} from './rendering/gl/ShaderProgram';
+import {createDitherTexture} from './rendering/gl/Texture';
 
 import lambertVertSource from './shaders/lambert-vert.glsl?raw';
 import lambertFragSource from './shaders/lambert-frag.glsl?raw';
@@ -22,9 +24,6 @@ import backgroundFragSource from './shaders/background-frag.glsl?raw';
 
 const defaultParams = {
   tesselations: 5,
-  temperature: 0.0,
-  height: 0.3,
-  curl: 0.4,
 };
 
 const defaults = Object.freeze(Object.assign({}, defaultParams));
@@ -32,35 +31,29 @@ const defaults = Object.freeze(Object.assign({}, defaultParams));
 const controls = {
   tesselations: 5,
   'Load Scene': loadScene, // A function pointer, essentially
-  temperature: 0.0,
-  height: 0.3,
-  curl: 0.4,
   'Reset Defaults': resetDefaults,
 };
 
 let icosphere: Icosphere;
 let square: Square;
+let cube: Cube;
 let prevTesselations: number = 5;
 let time: number = 0.0;
-let prevTemperature: number = 0.0;
-let prevHeight: number = 0.3;
-let prevCurl: number = 0.4;
 
 const gui = new DAT.GUI();
 
 function resetDefaults() {
   controls.tesselations = defaults.tesselations;
-  controls.height = defaults.height;
-  controls.curl = defaults.curl;
-  controls.temperature = defaults.temperature;
   if (gui) gui.updateDisplay();
 }
 
 function loadScene() {
-  icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, controls.tesselations);
+  icosphere = new Icosphere(vec3.fromValues(-1, 0, 0), 1, controls.tesselations);
   icosphere.create();
-  square = new Square(vec3.fromValues(0, 0, 0));
+  square = new Square(vec3.fromValues(0, -1, 0));
   square.create();
+  cube = new Cube(vec3.fromValues(1, 0, 0));
+  cube.create();
 }
 
 function main() {
@@ -75,10 +68,6 @@ function main() {
   // Add controls to the gui
   gui.add(controls, 'tesselations', 0, 8).step(1);
   gui.add(controls, 'Load Scene');
-  gui.add(controls, 'height', 0.1, 0.6).step(0.01);
-  gui.add(controls, 'curl', 0.0, 1.0).step(0.01);
-  gui.add(controls, 'temperature', 0.0, 1.0).step(0.01);
-
   gui.add(controls, 'Reset Defaults');
 
   // get canvas and webgl context
@@ -115,6 +104,9 @@ function main() {
     new Shader(gl.FRAGMENT_SHADER, ditherFragSource),
   ]);
 
+  const ditherTex = createDitherTexture(32);
+  dither.setDitherTexture(ditherTex); 
+
   const background = new ShaderProgram([
     new Shader(gl.VERTEX_SHADER, backgroundVertSource),
     new Shader(gl.FRAGMENT_SHADER, backgroundFragSource),
@@ -134,22 +126,10 @@ function main() {
       icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, prevTesselations);
       icosphere.create();
     }
-    if(controls.height != prevHeight)
-    {
-      prevHeight = controls.height;
-    }
-    if(controls.curl != prevCurl)
-    {
-      prevCurl = controls.curl;
-    }
-    if(controls.temperature != prevTemperature)
-    {
-      prevTemperature = controls.temperature;
-    }
     renderer.renderBackground(camera, background, time, square);
-    renderer.render(camera, dither, time, prevHeight, prevTemperature, prevCurl, [
+    renderer.render(camera, dither, time, [
       icosphere,
-      // square,
+      cube,
     ]);
     stats.end();
 

@@ -56,4 +56,6 @@ void main()
     vec3 finalColor = mix(bgColor, smokeColor, smoke);
 
     out_Col = vec4(finalColor, 1.0);
+
+    out_Col = vec4(0.1, 0.1, 0.1, 1.0);
 }
