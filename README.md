@@ -2,6 +2,8 @@
 
 *A tiny universe with a questionable life expectancy.*
 
+[Live Demo](https://jamesliu12.github.io/cosmic-chaos/)
+
 ## Introduction
 
 I love the visual chaos of celestial bodies pulling each other in, growing, and blowing apart. I also enjoy GPU programming, so this project is a chance to build a tiny universe while exploring parallel simulation and performance optimization!
@@ -62,3 +64,27 @@ This is a solo project, so I'll handle simulation, rendering, interaction, and p
 - **Week 2 — by Nov 18:** Implement merging, explosions, and fragment recycling. Add the tiled gravity solver and compare its performance with the naive version.
 - **Week 3 — by Nov 23:** Finish procedural surfaces, glow, and simulation controls. Test larger body counts, fix simulation issues, and finalize the core features.
 - **Week 4 — by Nov 30:** Polish the visuals and scene presets, add optional interactions if time permits, and prepare the browser demo, video, and final writeup.
+
+## Milestone #1
+
+I hit all my Milestone #1 goals! The WebGPU sandbox has a fly-around camera, seeded body generation, and a first pass at rocky surfaces.
+
+The simulation uses a fixed-step leapfrog integrator. Bodies move half a step, get a velocity update from softened all-pairs gravity, then move the remaining half step. 
+
+A separate GPU pass checks for overlaps, which I can highlight in the debug view. 
+
+The renderer draws straight from the simulation’s GPU buffer, so body positions never need to make a round trip through the CPU.
+
+### Generator examples
+
+<!-- ![Default scene with 500 rocky bodies](screenshots/milestone-1-seed-0.png) -->
+
+*Seed 0, 500 bodies. The default scene starts with a cloud of spinning rocks of different sizes.*
+
+<!-- ![Sparse scene with 50 bodies in debug mode](screenshots/milestone-1-seed-42.png) -->
+
+*Seed 42, 50 bodies. The debug mode highlights collision candidates.*
+
+Please check out the [live demo](https://jamesliu12.github.io/cosmic-chaos/) and try a seed of your own!
+
+Next up are merging, explosions, and a faster gravity solver.
