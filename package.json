@@ -1,22 +1,25 @@
 {
-  "name": "hw00-intro-base",
+  "name": "cis5650-project4-webgpu-forward-plus-and-clustered-deferred",
   "private": true,
+  "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "start": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "dev": "vite --open",
+    "build": "vite build && cp -r scenes/ dist/"
   },
   "devDependencies": {
     "@types/dat.gui": "^0.7.13",
-    "typescript": "^5.7.2",
-    "vite": "^8.0.0"
+    "@types/seedrandom": "^3.0.8",
+    "@types/stats.js": "^0.17.3",
+    "@webgpu/types": "^0.1.44",
+    "typescript": "^5.2.2",
+    "vite": "^7.1.9"
   },
   "dependencies": {
-    "3d-view-controls": "^2.2.2",
+    "@loaders.gl/gltf": "^4.2.2",
+    "@loaders.gl/images": "^4.2.3",
     "dat.gui": "^0.7.9",
-    "gl-matrix": "^3.4.3",
-    "stats-js": "^1.0.1"
+    "stats.js": "^0.17.0",
+    "wgpu-matrix": "^3.0.2"
   }
 }
