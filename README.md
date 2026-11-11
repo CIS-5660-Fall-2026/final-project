@@ -77,11 +77,11 @@ The renderer draws straight from the simulation’s GPU buffer, so body position
 
 ### Generator examples
 
-<!-- ![Default scene with 500 rocky bodies](screenshots/milestone-1-seed-0.png) -->
+<img width="1267" height="728" alt="Default scene with 500 rocky bodies" src="https://github.com/user-attachments/assets/e02f0d8e-2c34-47a5-9281-1387aea0e8e7" />
 
 *Seed 0, 500 bodies. The default scene starts with a cloud of spinning rocks of different sizes.*
 
-<!-- ![Sparse scene with 50 bodies in debug mode](screenshots/milestone-1-seed-42.png) -->
+<img width="1266" height="725" alt="Sparse scene with 50 bodies in debug mode" src="https://github.com/user-attachments/assets/4ff5c361-02c3-4471-8d4e-a058e58f6ca3" />
 
 *Seed 42, 50 bodies. The debug mode highlights collision candidates.*
 
