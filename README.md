@@ -178,6 +178,61 @@ Solo project: all tasks are done by Yikai Li.
 
 ---
 
+## Milestone #1
+
+### Progress
+
+The full pipeline works: the sky, the sun's movement, the clouds, and the "weather map" that decides where clouds appear are all running together in Unity 6.2 (URP). The Unity project is in [`Skyward/`](Skyward/).
+
+| Noon | Sunset |
+|---|---|
+| ![Noon](img/m1_noon.png) | ![Sunset](img/m1_sunset.png) |
+
+**Time of day:** dragging one slider moves the sun. The sky, the clouds and the scene lighting all change with it.
+
+![Time of day](img/TOD.webp)
+
+**What I built**
+- **Sky.** The sky color is computed physically. For every pixel, the shader steps along the view ray through the atmosphere and adds up how much sunlight air and haze scatter toward the camera. This is why the sky is blue overhead, whiter near the horizon, and warm at sunset. The physical constants come from Hillaire 2020.
+- **Sun and time of day.** A script ([`SkyController.cs`](Skyward/Assets/Skyward/Scripts/SkyController.cs)) turns a 0–24 h slider into a sun direction. It also computes how much sunlight survives the trip through the atmosphere, and uses that to color the scene's directional light. At sunset the light on the ground turns warm, and it matches the sky.
+- **Weather map.** A 2D noise texture covering the sky, seen from above. It answers two questions for every location: *is there a cloud here*, and *what kind of cloud*. It drifts with the wind and slowly changes over time, so clouds form and dissolve. One **Coverage** slider controls how cloudy the sky is overall.
+- **Volumetric clouds.** The clouds are real 3D volumes between 1.5 km and 4 km altitude, not flat pictures. The shader marches through this layer and asks at each step how thick the cloud is there. The cloud shapes come from 3D noise: a large, puffy noise for the overall shape, and a finer noise that eats away the edges (the approach from *Horizon Zero Dawn*, Schneider 2015). For lighting, it checks how much cloud lies between each point and the sun. That makes the side facing the sun bright, the bottoms darker, and the edges glow when you look toward the sun.
+- **How it is plugged into Unity.** Everything above is one shader ([`SkyAndClouds.shader`](Skyward/Assets/Skyward/Shaders/SkyAndClouds.shader)) that runs over the whole screen after the scene is drawn. It only paints pixels where there is no object, so buildings and terrain correctly block the sky. A menu item, **Skyward → Setup Scene**, sets everything up in one click.
+
+**Coverage slider**
+
+![Coverage 0.3 vs 0.8](img/m1_coverage.png)
+
+Left: coverage 0.3 gives a few separate clouds. Right: coverage 0.8 gives a mostly cloudy sky that still has gaps and shape.
+
+**Weather map debug view**
+
+![Weather map](img/m1_weathermap.png)
+
+The bottom-left corner shows the weather map around the camera (60 km × 60 km). The more red, the more cloud; the more green, the taller the cloud type.
+
+**Performance:** about 73 FPS at 1568×882 in Play mode. This number includes the Unity editor's own overhead, so it does not yet show exactly how much time the sky and clouds take on the GPU.
+
+### What I simplified compared to the plan
+To get everything working by this milestone, I chose the quickest version of each part:
+- **The sky is computed from scratch for every pixel, every frame.** The plan is to precompute it into small lookup textures, which is much faster. Light that bounces more than once in the air is also not included yet.
+- **The cloud noise is generated live in the shader.** The plan is to generate it once ahead of time and store it in 3D textures.
+- **The clouds are drawn at full resolution.** The plan is to draw them at a quarter of the resolution and scale them up, which is a common trick in games.
+
+### What's giving me trouble
+- **Making the Coverage slider look natural.** My first attempts gave either no clouds at all or a flat grey sheet. A later version gave tiny round puffs. What fixed it was splitting the job in two: the weather map decides *where* clouds are, and the cloud shape decides *how thick* they are.
+- **Speed.** Generating 3D noise live is expensive, and the lighting check toward the sun repeats that work several times per step. Pre-generating the noise and drawing at lower resolution should fix most of this.
+- **The sky is a bit too dark.** Because multiple light bounces are missing, the sky near the horizon is slightly darker and duller than in the reference images.
+- **Far-away clouds look blurry.** Near the horizon a ray crosses up to 40 km of cloud layer with the same number of steps as an overhead ray, so distant clouds lose detail and show faint stripes.
+
+### Plan for Milestone 2
+1. Pre-generate the cloud noise into 3D textures.
+2. Draw the clouds at a quarter of the resolution, then upscale them. If time allows, reuse results from the previous frame to make them even cheaper (temporal reprojection).
+3. Switch the sky to precomputed lookup textures, and add multiple light bounces.
+4. Add an on-screen control panel and accurate GPU timings.
+
+---
+
 <details>
 <summary>Original assignment instructions</summary>
 
