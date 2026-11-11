@@ -26,45 +26,12 @@ uniform float u_ColorTransition;
 in vec4 fs_Nor;
 in vec4 fs_LightVec;
 in vec4 fs_Col;
+in vec4 fs_Pos;
 
 in float fs_Displacement;
 
 out vec4 out_Col; // This is the final output color that you will see on your
                   // screen for the pixel that is currently being processed.
-
-float bias(float b, float t)
-{
-    return pow(t, log(b) / log(0.5));
-}
-
-float gain(float g, float t)
-{
-    if (t < 0.5)
-        return bias(1.0 - g, 2.0 * t) / 2.0;
-    else
-        return 1.0 - bias(1.0 - g, 2.0 - 2.0 * t) / 2.0;
-}
-
-float impulse(float k, float x)
-{
-    float h = k * x;
-    return h * exp(1.0 - h);
-}
-
-float square_wave(float x, float freq, float amplitude)
-{
-    return abs(mod(floor(x * freq), 2.0) * amplitude);
-}
-
-float sawtooth_wave(float x, float freq, float amplitude)
-{
-    return (x * freq - floor(x * freq)) * amplitude;
-}
-
-float triangle_wave(float x, float freq, float amplitude)
-{
-    return abs(mod(x * freq, amplitude) - (0.5 * amplitude));
-}
 
 vec3 random3(vec3 p) {
     return fract(sin(vec3(
@@ -93,7 +60,7 @@ float WorleyNoise3D(vec3 p, out vec3 color) {
     vec3 pFract = fract(p);
 
     float minDist = 1.0;
-    vec3 cell = vec3(0);
+    vec3 cell = vec3(0.);
 
     // Search the 3��3��3 neighborhood
     for (int z = -1; z <= 1; z++) {
@@ -189,91 +156,47 @@ vec3 palette2(in float t, in vec3 a, in vec3 b, in vec3 c, in vec3 d)
 }
 
 vec3 BWRPalette(float t) {
-    vec3 v1 = u_Color.xyz;
-    vec3 v2 = u_Color2.xyz;
-    vec3 v3 = u_Color3.xyz;
-    vec3 v4 = u_Color4.xyz;
-    //vec3 v1 = vec3(0.55, 0.60, 0.85); 
-    // vec3 v2 = vec3(0.30, 0.25, 0.10);
-    // vec3 v3 = vec3(0.80, 0.90, 1.00); 
-    // vec3 v4 = vec3(0.85, 0.90, 0.95); 
+    vec3 v1 = vec3(0.250, 0.000, 0.250);
+    vec3 v2 = vec3(0.228, 0.038, 0.500);
+    vec3 v3 = vec3(0.700, 1.000, 1.000);
+    vec3 v4 = vec3(0.0667, 0.333, 0.000);
 
     return palette(t, v1, v2, v3, v4);
 }
 
-vec3 BWRPalette2(float t) {
-    vec3 v1 = vec3(0.88, 0.78, 0.95);  
-    vec3 v2 = vec3(0.18, 0.10, 0.22);  
-    vec3 v3 = vec3(1.0, 1.0, 1.0);
-    vec3 v4 = vec3(0.00, 0.16, 0.08);  
-
-    return palette2(t, v1, v2, v3, v4);
-}
-
 void main()
 {
-    // Background
-    // vec4 FragColor = u_Color;
-    // vec3 starColor;
-    // vec3 dummy;
+    //Background
+    vec4 FragColor;
+    vec3 starColor;
+    vec3 dummy;
 
-    // vec3 dir = normalize(fs_Pos.xyz);
+    vec3 dir = normalize(fs_Pos.xyz);
+    vec3 moveDir = normalize(vec3(1.0, 1.0, 1.0));
 
-    // float noise2 = fPerlin(dir);
-    // float mask = perlinNoise3D(dir + vec3(0.0, sin(u_Time*0.005), 0.0));
-    // float noise2_clamped = noise2 * 0.5 + 0.5;
-    // mask = mask * 0.5 + 0.5;
-    // mask = smoothstep(0.4, 0.8, mask);
+    float noise2 = fPerlin(dir);
+    float mask = perlinNoise3D(dir + vec3(0.0, u_Time*0.00125, 0.0));
+    float noise2_clamped = noise2 * 0.5 + 0.5;
+    mask = mask * 0.5 + 0.5;
+    mask = smoothstep(0.4, 0.8, mask);
 
-    // vec4 nebulaCol = mix(vec4(0.5, 0.0, 0.5, 1.0), vec4(0.0, 0.0, 0.0, 1.0), noise2 * 2.0);
-    // nebulaCol = vec4(BWRPallete(noise2 * 2.0), 1.0);
-    // nebulaCol = nebulaCol * u_Color;
-    // FragColor = mix(vec4(0.0, 0.0, 0.0, 1.0), nebulaCol, mask);
+    vec4 nebulaCol = mix(vec4(0.5, 0.0, 0.5, 1.0), vec4(0.0, 0.0, 0.0, 1.0), noise2 * 2.0);
+    nebulaCol = vec4(BWRPalette(noise2 * 2.0), 1.0);
+    FragColor = mix(vec4(0.0, 0.0, 0.0, 1.0), nebulaCol, mask);
 
-    // float noise = WorleyNoise3D(dir * 50.0, starColor);
-    // float intensity = WorleyNoise3D(dir * 75.0, dummy);
-    // if (noise < 0.1) {
-    //     // HDR stars - make them bright enough to bloom
-    //     float pow_intensity = pow(intensity, 5.0);
-    //     float starBrightness;
-    //     if (pow_intensity > 0.85) {
-    //         starBrightness = 25.0 * intensity;
-    //     }
-    //     else {
-    //         starBrightness = intensity;
-    //     }
-    //     FragColor = vec4(starColor * starBrightness, 1.0);
-    // }
+    float noise = WorleyNoise3D(u_Time * 0.0003 + dir * 50.0, starColor);
+    float intensity = WorleyNoise3D(dir * 75.0, dummy);
+    if (noise < 0.1) {
+        float pow_intensity = pow(intensity, 5.0);
+        float starBrightness;
+        if (pow_intensity > 0.85) {
+            starBrightness = 25.0 * intensity;
+        }
+        else {
+            starBrightness = intensity;
+        }
+        FragColor = vec4(starColor * starBrightness, 1.0);
+    }
 
-    // out_Col = FragColor;
-
-    //vec3 resultColor = mix(innerColor, outerColor, t);
-    
-    vec3 resultColor = BWRPalette(fs_Displacement + u_Time*u_ColorTransition);
-
-    float phase = fract(u_Time * 0.001*u_Speed);
-    float pulse = impulse(25.0, phase);
-
-    pulse = gain(0.75, pulse);
-
-    vec3 impulseColor = BWRPalette2(fs_Displacement);
-
-    resultColor = mix(resultColor, impulseColor, pulse);
-
-    vec4 diffuseColor = vec4(resultColor,1.0);
-
-    // Calculate the diffuse term for Lambert shading
-    float diffuseTerm = dot(normalize(fs_Nor), normalize(fs_LightVec));
-    // Avoid negative lighting values
-    diffuseTerm = clamp(diffuseTerm, 0., 1.);
-
-    float ambientTerm = 0.5;
-
-    float lightIntensity = diffuseTerm + ambientTerm;   //Add a small float value to the color multiplier
-                                                        //to simulate ambient lighting. This ensures that faces that are not
-                                                        //lit by our point light are not completely black.
-    
-    // Compute final shaded color
-    //out_Col = vec4(diffuseColor.rgb * lightIntensity, diffuseColor.a);
-    out_Col = vec4(resultColor, 1.0);
+    out_Col = FragColor;
 }

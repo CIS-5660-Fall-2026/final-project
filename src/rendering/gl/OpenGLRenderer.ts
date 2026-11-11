@@ -56,6 +56,29 @@ class OpenGLRenderer {
       prog.draw(drawable);
     }
   }
+  
+  renderSkybox(camera: Camera, prog: ShaderProgram, skybox: Drawable) {
+    let model = mat4.create();
+    let viewProj = mat4.create();
+
+    mat4.identity(model);
+
+    mat4.multiply(
+      viewProj,
+      camera.projectionMatrix,
+      camera.viewMatrix
+    );
+
+    prog.setModelMatrix(model);
+    prog.setViewProjMatrix(viewProj);
+
+    gl.cullFace(gl.FRONT);
+
+    prog.draw(skybox);
+
+    gl.cullFace(gl.BACK);
+  }
+
 };
 
 export default OpenGLRenderer;

@@ -212,43 +212,6 @@ vec3 BWRPalette2(float t) {
 
 void main()
 {
-    // Background
-    // vec4 FragColor = u_Color;
-    // vec3 starColor;
-    // vec3 dummy;
-
-    // vec3 dir = normalize(fs_Pos.xyz);
-
-    // float noise2 = fPerlin(dir);
-    // float mask = perlinNoise3D(dir + vec3(0.0, sin(u_Time*0.005), 0.0));
-    // float noise2_clamped = noise2 * 0.5 + 0.5;
-    // mask = mask * 0.5 + 0.5;
-    // mask = smoothstep(0.4, 0.8, mask);
-
-    // vec4 nebulaCol = mix(vec4(0.5, 0.0, 0.5, 1.0), vec4(0.0, 0.0, 0.0, 1.0), noise2 * 2.0);
-    // nebulaCol = vec4(BWRPallete(noise2 * 2.0), 1.0);
-    // nebulaCol = nebulaCol * u_Color;
-    // FragColor = mix(vec4(0.0, 0.0, 0.0, 1.0), nebulaCol, mask);
-
-    // float noise = WorleyNoise3D(dir * 50.0, starColor);
-    // float intensity = WorleyNoise3D(dir * 75.0, dummy);
-    // if (noise < 0.1) {
-    //     // HDR stars - make them bright enough to bloom
-    //     float pow_intensity = pow(intensity, 5.0);
-    //     float starBrightness;
-    //     if (pow_intensity > 0.85) {
-    //         starBrightness = 25.0 * intensity;
-    //     }
-    //     else {
-    //         starBrightness = intensity;
-    //     }
-    //     FragColor = vec4(starColor * starBrightness, 1.0);
-    // }
-
-    // out_Col = FragColor;
-
-    //vec3 resultColor = mix(innerColor, outerColor, t);
-    
     vec3 resultColor = BWRPalette(fs_Displacement + u_Time*u_ColorTransition);
 
     float phase = fract(u_Time * 0.001*u_Speed);

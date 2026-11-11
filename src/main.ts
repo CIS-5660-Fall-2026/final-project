@@ -12,6 +12,9 @@ import ShaderProgram, {Shader} from './rendering/gl/ShaderProgram';
 import lambertVertSource from './shaders/lambert-vert.glsl?raw';
 import lambertFragSource from './shaders/lambert-frag.glsl?raw';
 
+import skyboxVertSource from './shaders/skybox-vert.glsl?raw';
+import skyboxFragSource from './shaders/skybox-frag.glsl?raw';
+
 // Define an object with application parameters and button callbacks
 // This will be referred to by dat.GUI's functions that add GUI elements.
 const controls = {
@@ -47,6 +50,7 @@ function resetFireball() {
 }
 
 let icosphere: Icosphere;
+let skybox: Icosphere;
 let square: Square;
 let prevTesselations: number = 5;
 let cube: Cube;
@@ -54,10 +58,12 @@ let cube: Cube;
 function loadScene() {
   icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, controls.tesselations);
   icosphere.create();
-  square = new Square(vec3.fromValues(0, 0, 0));
-  square.create();
-  cube = new Cube(vec3.fromValues(0,0,0));
-  cube.create();
+  skybox = new Icosphere(vec3.fromValues(0,0,0), 5000, 5);
+  skybox.create();
+  // square = new Square(vec3.fromValues(0, 0, 0));
+  // square.create();
+  // cube = new Cube(vec3.fromValues(0,0,0));
+  // cube.create();
 }
 
 function main() {
@@ -71,15 +77,15 @@ function main() {
 
   // Add controls to the gui
   const gui = new DAT.GUI();
-  gui.add(controls, 'tesselations', 0, 8).step(1).listen();
-  gui.addColor(controls, 'Base').listen();
-  gui.addColor(controls, 'Variation').listen();
-  gui.addColor(controls, 'Frequency').listen();
-  gui.addColor(controls, 'Phase').listen();
-  gui.add(controls, 'Tail', -0.95, 2.95).step(0.05).listen();
-  gui.add(controls, 'Speed', -10, 10).step(0.05).listen();
-  gui.add(controls, 'Length', -20, 20).step(0.1).listen();
-  gui.add(controls, 'ColorWave', 0, 0.2).step(0.01).listen();
+  controllers.push(gui.add(controls, 'tesselations', 0, 8).step(1));
+  controllers.push(gui.addColor(controls, 'Base'));
+  controllers.push(gui.addColor(controls, 'Variation'));
+  controllers.push(gui.addColor(controls, 'Frequency'));
+  controllers.push(gui.addColor(controls, 'Phase'));
+  controllers.push(gui.add(controls, 'Tail', -0.95, 2.95).step(0.05));
+  controllers.push(gui.add(controls, 'Speed', -10, 10).step(0.05));
+  controllers.push(gui.add(controls, 'Length', -20, 20).step(0.1));
+  controllers.push(gui.add(controls, 'ColorWave', 0, 0.2).step(0.01));
   gui.add(controls, 'Reset Fireball');
 
   // get canvas and webgl context
@@ -106,6 +112,11 @@ function main() {
     new Shader(gl.FRAGMENT_SHADER, lambertFragSource),
   ]);
 
+  const skyShader = new ShaderProgram([
+    new Shader(gl.VERTEX_SHADER, skyboxVertSource),
+    new Shader(gl.FRAGMENT_SHADER, skyboxFragSource),
+  ])
+
   let time = 0;
 
   // This function will be called every frame
@@ -122,6 +133,17 @@ function main() {
       icosphere.create();
     }
     
+    // Skybox
+    skyShader.setTime(time);
+
+    renderer.renderSkybox(
+      camera,
+      skyShader,
+      skybox
+    );
+
+
+    // Fireball
     lambert.setTime(time);
 
     renderer.render(camera, lambert, 
@@ -135,6 +157,7 @@ function main() {
       controls.ColorWave,
       [
       icosphere,
+      //skybox,
       //square
       //cube,
     ]);
