@@ -1,8 +1,9 @@
 import {vec4, mat4} from 'gl-matrix';
 import Drawable from './Drawable';
+import {Uniform} from './Uniform';
 import {gl} from '../../globals';
 
-var activeProgram: WebGLProgram = null;
+let activeProgram: WebGLProgram | null = null;
 
 export class Shader {
   shader: WebGLShader;
@@ -23,17 +24,19 @@ class ShaderProgram {
 
   attrPos: number;
   attrNor: number;
-  attrCol: number;
 
-  unifModel: WebGLUniformLocation;
-  unifModelInvTr: WebGLUniformLocation;
-  unifViewProj: WebGLUniformLocation;
-  unifColor: WebGLUniformLocation;
-  unifTime: WebGLUniformLocation;
-  unifWobble: WebGLUniformLocation;
-  unifNoise: WebGLUniformLocation;
+  // Built-in uniforms the scene sets for every shader (per object / per frame).
+  // Anything shader-specific (wobble, noise, ...) goes through Uniform classes instead.
+  private unifModel: WebGLUniformLocation | null;
+  private unifModelInvTr: WebGLUniformLocation | null;
+  private unifViewProj: WebGLUniformLocation | null;
+  private unifColor: WebGLUniformLocation | null;
+  private unifTime: WebGLUniformLocation | null;
 
-  constructor(shaders: Array<Shader>) {
+  private custom = new Map<string, Uniform<any>>();
+  private invTr = mat4.create();
+
+  constructor(shaders: Array<Shader>, uniforms: Array<Uniform<any>> = []) {
     this.prog = gl.createProgram();
 
     for (let shader of shaders) {
@@ -46,16 +49,14 @@ class ShaderProgram {
 
     this.attrPos = gl.getAttribLocation(this.prog, "vs_Pos");
     this.attrNor = gl.getAttribLocation(this.prog, "vs_Nor");
-    this.attrCol = gl.getAttribLocation(this.prog, "vs_Col");
+
     this.unifModel      = gl.getUniformLocation(this.prog, "u_Model");
     this.unifModelInvTr = gl.getUniformLocation(this.prog, "u_ModelInvTr");
     this.unifViewProj   = gl.getUniformLocation(this.prog, "u_ViewProj");
     this.unifColor      = gl.getUniformLocation(this.prog, "u_Color");
-    this.unifTime      = gl.getUniformLocation(this.prog, "u_Time");
-    this.unifWobble     = gl.getUniformLocation(this.prog, "u_Wobble");
-    this.unifNoise      = gl.getUniformLocation(this.prog, "u_Noise");
+    this.unifTime       = gl.getUniformLocation(this.prog, "u_Time");
 
-
+    for (const u of uniforms) this.addUniform(u);
   }
 
   use() {
@@ -65,54 +66,67 @@ class ShaderProgram {
     }
   }
 
+  // ---- custom uniforms ----------------------------------------------------
+
+  /** Link a uniform to this program. Returns it so you can keep a reference. */
+  addUniform<U extends Uniform<any>>(u: U): U {
+    if (!u.link(this.prog)) {
+      // Either a typo in the name, or the GLSL compiler optimized it away.
+      console.warn(`Uniform "${u.name}" not found in shader program`);
+    }
+    this.custom.set(u.name, u);
+    return u;
+  }
+
+  getUniform<U extends Uniform<any> = Uniform<any>>(name: string): U {
+    const u = this.custom.get(name);
+    if (!u) throw new Error(`No uniform "${name}" registered on this shader`);
+    return u as U;
+  }
+
+  /** Upload all custom uniforms. Call once per shader per frame, not per object. */
+  applyUniforms() {
+    this.use();
+    for (const u of this.custom.values()) u.upload();
+  }
+
+  // ---- built-in uniforms --------------------------------------------------
+
   setModelMatrix(model: mat4) {
     this.use();
-    if (this.unifModel !== -1) {
+    if (this.unifModel !== null) {
       gl.uniformMatrix4fv(this.unifModel, false, model);
     }
 
-    if (this.unifModelInvTr !== -1) {
-      let modelinvtr: mat4 = mat4.create();
-      mat4.transpose(modelinvtr, model);
-      mat4.invert(modelinvtr, modelinvtr);
-      gl.uniformMatrix4fv(this.unifModelInvTr, false, modelinvtr);
+    if (this.unifModelInvTr !== null) {
+      mat4.invert(this.invTr, model);
+      mat4.transpose(this.invTr, this.invTr);
+      gl.uniformMatrix4fv(this.unifModelInvTr, false, this.invTr);
     }
   }
 
   setViewProjMatrix(vp: mat4) {
     this.use();
-    if (this.unifViewProj !== -1) {
+    if (this.unifViewProj !== null) {
       gl.uniformMatrix4fv(this.unifViewProj, false, vp);
     }
   }
 
   setGeometryColor(color: vec4) {
     this.use();
-    if (this.unifColor !== -1) {
+    if (this.unifColor !== null) {
       gl.uniform4fv(this.unifColor, color);
     }
   }
 
-  setTime(time : GLfloat){
+  setTime(time: number) {
     this.use();
-    if(this.unifTime !== -1){
+    if (this.unifTime !== null) {
       gl.uniform1f(this.unifTime, time);
     }
   }
 
-  setWobble(wobble : GLfloat){
-    this.use();
-    if(this.unifTime !== -1){
-      gl.uniform1f(this.unifWobble, wobble);
-    }
-  }
-
-  setNoise(type : GLint){
-    this.use();
-    if(this.unifNoise !== -1){
-      gl.uniform1i(this.unifNoise, type);
-    } 
-  }
+  // ---- drawing ------------------------------------------------------------
 
   draw(d: Drawable) {
     this.use();

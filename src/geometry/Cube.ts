@@ -21,7 +21,7 @@ class Cube extends Drawable {
                                   12, 13, 14,  15, 14, 13, // bottom
                                   16, 17, 18,  19, 18, 17, // right
                                   20, 21, 22,  23, 22, 21 // .eft
-                                ]);
+                                ]); 
   this.normals = new Float32Array([0, 0, 1, 1,
                                    0, 0, 1, 1,
                                    0, 0, 1, 1,

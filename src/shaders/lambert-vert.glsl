@@ -36,16 +36,6 @@ out float fs_Wobble;
 const vec4 lightPos = vec4(5, 5, 3, 1); //The position of our virtual light, which is used to compute the shading of
                                         //the geometry in the fragment shader.
 
-float wobbleAmount(vec4 pos){
-    return sin(3.*u_Time + 10.*(pos.x - pos.y + pos.z));
-}
-
-vec4 wobblePosition(vec4 pos){
-    float amount = wobbleAmount(pos);
-    pos += vec4(u_Wobble * normalize(pos.xyz)*amount, 1.0);
-    return pos;
-}
-
 void main()
 {
     fs_Col = vs_Col;                         // Pass the vertex colors to the fragment shader for interpolation
@@ -57,9 +47,8 @@ void main()
                                                             // perpendicular to the surface after the surface is transformed by
                                                             // the model matrix.
 
-    fs_Wobble = wobbleAmount(vs_Pos);
-    vec4 modifiedposition = wobblePosition(vs_Pos);
-    vec4 modelposition = u_Model * modifiedposition;   // Temporarily store the transformed vertex positions for use below
+
+    vec4 modelposition = u_Model * vs_Pos;   // Temporarily store the transformed vertex positions for use below
 
     fs_LightVec = lightPos - modelposition;  // Compute the direction in which the light source lies
 
