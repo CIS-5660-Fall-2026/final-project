@@ -19,9 +19,11 @@ These are the goals ordered in importance:
 (These goals are from my other scrapped project and I will only attempt them if I'm undeniably goated)
 
 #### Inspiration/reference:
-- https://www.youtube.com/watch?v=j9IEhJnh0Bw 
-- https://www.youtube.com/watch?v=KPoeNZZ6H4s
-- https://www.youtube.com/watch?v=qlfh_rv6khY
+- [Critter crosser](https://www.youtube.com/watch?v=j9IEhJnh0Bw)
+- [Robotic procedural animation techniques](https://www.youtube.com/watch?v=KPoeNZZ6H4s)
+- [Procedural shaped fish](https://www.youtube.com/watch?v=qlfh_rv6khY)
+- [Tentacle](https://www.youtube.com/watch?v=-h2dkiKy_4I)
+- [GDC Rain world deep dive](https://www.youtube.com/watch?v=sVntwsrjNe4)
 
 #### Specification:
 - Procedural creatures, long bodies, varying shapes
