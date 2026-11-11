@@ -33,7 +33,7 @@ A visually compelling night skybox involving stars, aurora, volumetric clouds, v
 Stars and nebulae in the far background -> Aurora borealis in the background -> Clouds in front of the aurora -> A moon producing volumetric lighting effects -> a SDF landscape drawn on the lower half of the scene.
 
 #### Timeline:
-- Week1: Procedural aurora borealis (or don’t do this and do volumetric clouds + sdf landscape)
+- Week1: Porting in basecode from hw01
 - Week2: Volumetric clouds (froxels?)
 - Week3: Volumetric lighting
 - Stretch: IG style cool SDF landscape + volumetric shadowmap
