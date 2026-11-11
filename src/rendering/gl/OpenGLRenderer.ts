@@ -38,6 +38,7 @@ class OpenGLRenderer {
     let color4 = vec4.fromValues(draw_color4[0]/255.0, draw_color4[1]/255.0, draw_color4[2]/255.0, 1.);
 
     mat4.identity(model);
+    mat4.scale(model, model, [0.05,0.05,0.05]);
     mat4.multiply(viewProj, camera.projectionMatrix, camera.viewMatrix);
     prog.setModelMatrix(model);
     prog.setViewProjMatrix(viewProj);
