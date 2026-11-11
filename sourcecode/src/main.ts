@@ -6,6 +6,9 @@ import ShaderProgram, {Shader} from './rendering/gl/ShaderProgram';
 import LineBatch from './rendering/gl/LineBatch';
 import Accumulator from './rendering/gl/Accumulator';
 import Square from './geometry/Square';
+import FlowField, {FIELD_PERLIN, FIELD_CURL} from './field/FlowField';
+import Particles from './sim/Particles';
+import {setNoiseSeed} from './noise/perlin';
 import lineVertSrc from './shaders/line-vert.glsl?raw';
 import lineFragSrc from './shaders/line-frag.glsl?raw';
 import screenVertSrc from './shaders/screen-vert.glsl?raw';
@@ -15,17 +18,14 @@ const PAPER = [0.96, 0.94, 0.89];
 const INK_STRENGTH = 1.0;
 const RENDER_MODE = 0;
 
-
-function addTestLines(batch: LineBatch, w: number, h: number, count: number) {
-  batch.clear();
-  for (let i = 0; i < count; i++) {
-    const x = Math.random() * w, y = Math.random() * h;
-    const ang = Math.random() * Math.PI * 2, len = 20 + Math.random() * 80;
-    batch.push(x, y, x + Math.cos(ang) * len, y + Math.sin(ang) * len,
-               0.1, 0.1, 0.15, 0.4);
-  }
-}
-
+const SEED = 256;
+const FIELD_TYPE = FIELD_CURL;
+const NOISE_SCALE = 0.0015;
+const OCTAVES = 3;
+const CELL_SIZE = 8;
+const PARTICLE_COUNT = 20000;
+const SPEED = 120;
+const ALPHA = 0.08;
 
 function main() {
   const stats = Stats();
@@ -47,13 +47,19 @@ function main() {
   const renderer = new OpenGLRenderer(canvas);
   gl.disable(gl.DEPTH_TEST);
 
+  setNoiseSeed(SEED);
   const accum = new Accumulator();
+  let field: FlowField;
+  let particles: Particles;
 
   function resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     renderer.setSize(Math.floor(window.innerWidth * dpr),
                      Math.floor(window.innerHeight * dpr));
     accum.resize(canvas.width, canvas.height);
+    field = new FlowField(canvas.width, canvas.height, CELL_SIZE);
+    field.build(FIELD_TYPE, NOISE_SCALE, OCTAVES, 0.0);
+    particles = new Particles(PARTICLE_COUNT, canvas.width, canvas.height);
   }
   window.addEventListener('resize', resize);
   resize();
@@ -67,7 +73,7 @@ function main() {
     new Shader(gl.FRAGMENT_SHADER, compositeFragSrc),
   ]);
 
-  const batch = new LineBatch(10000);
+  const batch = new LineBatch(PARTICLE_COUNT);
   const screenQuad = new Square(vec3.fromValues(0, 0, 0));
   screenQuad.create();
 
@@ -79,7 +85,7 @@ function main() {
 
     stats.begin();
 
-    addTestLines(batch, canvas.width, canvas.height, 200);
+    particles.step(field, SPEED, dt, ALPHA, batch);
     accum.bind();
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE);
