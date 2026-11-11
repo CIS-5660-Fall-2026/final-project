@@ -1,5 +1,6 @@
 import Drawable from '../rendering/gl/Drawable';
 import {gl} from '../globals';
+import { vec2, vec3 } from 'gl-matrix';
 
 /**
  * A strip of constant (or tapered) width that follows a path, in the XY plane
@@ -101,6 +102,17 @@ class Ribbon extends Drawable {
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.positions, 0, n * 8);
     this.count = (n - 1) * 6;
   }
+  setPointsVec(points: ArrayLike<vec3>, count: number = points.length){
+    const array: number[] = [];
+    for(let i = 0; i < points.length; i++){
+        array.push(points[i][0]);
+        array.push(points[i][1]);
+
+    }
+
+    this.setPoints(array, count);
+  }
 };
+
 
 export default Ribbon;

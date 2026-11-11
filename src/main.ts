@@ -2,6 +2,11 @@ import {vec3, vec4} from 'gl-matrix';
 import Stats from 'stats-js';
 import GUI from 'lil-gui';
 import Square from './geometry/Square';
+import Circle from './geometry/Circle';
+import Drawable from './rendering/gl/Drawable';
+import Line from './geometry/Line';
+import Ribbon from './geometry/Ribbon';
+
 
 import OpenGLRenderer from './rendering/gl/OpenGLRenderer';
 import Camera from './Camera';
@@ -63,23 +68,39 @@ function main() {
 
   const ground = new Square();
   ground.create();
-  ground.setRotationEuler(0, -0.5, -0.1).setScale(50, 50, 1); // lay flat, 100x100 units
+  ground.setRotationEuler(0, 0, 0).setScale(50, 50, 1).setPosition(0,0,-0.5); // lay flat, 100x100 units
   ground.color = vec4.fromValues(0.3, 0.5, 0.3, 1);
   scene.add(ground, lambert);
 
   // One set of vertex buffers shared by every segment
-  const segmentTemplate = new Square();
+  const segmentTemplate = new Circle();
   segmentTemplate.create();
+  
+  const line = new Line();
+  line.setEndpoints(vec3.fromValues(0,0,0), vec3.fromValues(10,0,-0.5),"xy",1);
+  line.color = vec4.fromValues(0,0,1,1);
+  line.create();
 
-  const snake: Square[] = [];
+  scene.add(line, lambert);
+
+
+  const snake: Drawable[] = [];
   for (let i = 0; i < SNAKE_SEGMENTS; i++) {
     const seg = segmentTemplate.instance();
     seg.setScale(SEGMENT_RADIUS, SEGMENT_RADIUS, 1)
-       .setPosition((i - SNAKE_SEGMENTS / 2) * SEGMENT_SPACING, SEGMENT_RADIUS, 0);
+       .setPosition((i - SNAKE_SEGMENTS / 2) * SEGMENT_SPACING, SEGMENT_RADIUS*Math.sin(i), 0);
     vec4.copy(seg.color, controls.color);
     scene.add(seg, lambert);
     snake.push(seg);
   }
+
+  const ribbon = new Ribbon(32);
+  
+  ribbon.create();
+const points: vec3[] = [];
+  
+
+  scene.add(ribbon, lambert);
 
   // GUI binds straight to the uniform objects
   const gui = new GUI();
@@ -96,6 +117,11 @@ function main() {
     const dt = Math.max(0, (now - last) / 1000);
     last = now;
 
+    console.log(now);
+    for (let i = 0; i < SNAKE_SEGMENTS; i++) {
+    points.push(vec3.fromValues((i - SNAKE_SEGMENTS / 2) * SEGMENT_SPACING, 100*SEGMENT_RADIUS + 0.1*i*i*Math.sin(now/1000.+i), 0));
+  }
+  ribbon.setPointsVec(points, SNAKE_SEGMENTS);
     stats.begin();
     camera.update();
     scene.update(dt);
