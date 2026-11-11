@@ -33,6 +33,9 @@ class ShaderProgram {
   unifMode: WebGLUniformLocation;
   unifResolution: WebGLUniformLocation;
   unifDirection: WebGLUniformLocation;
+  unifAccum: WebGLUniformLocation;
+  unifPaper: WebGLUniformLocation;
+  unifInkStrength: WebGLUniformLocation;
 
   constructor(shaders: Array<Shader>) {
     this.prog = gl.createProgram();
@@ -56,6 +59,9 @@ class ShaderProgram {
     this.unifMode       = gl.getUniformLocation(this.prog, "u_Mode");
     this.unifResolution = gl.getUniformLocation(this.prog, "u_Resolution");
     this.unifDirection  = gl.getUniformLocation(this.prog, "u_Direction");
+    this.unifAccum      = gl.getUniformLocation(this.prog, "u_Accum");
+    this.unifPaper      = gl.getUniformLocation(this.prog, "u_Paper");
+    this.unifInkStrength = gl.getUniformLocation(this.prog, "u_InkStrength");
   }
 
   use() {
@@ -111,6 +117,21 @@ class ShaderProgram {
   setDirection(x: number, y: number, z: number) {
     this.use();
     gl.uniform3f(this.unifDirection, x, y, z);
+  }
+
+  setAccum(unit: number) {
+    this.use();
+    gl.uniform1i(this.unifAccum, unit);
+  }
+
+  setPaper(r: number, g: number, b: number) {
+    this.use();
+    gl.uniform3f(this.unifPaper, r, g, b);
+  }
+
+  setInkStrength(k: number) {
+    this.use();
+    gl.uniform1f(this.unifInkStrength, k);
   }
 
   draw(d: Drawable) {
