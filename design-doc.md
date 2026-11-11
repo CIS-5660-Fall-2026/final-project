@@ -81,7 +81,7 @@ Stretch items are not ranked; in week 3 we pick whichever fits the remaining tim
 - Leaf wind in UE
 - Fly-through video with camera animation
 
-**Cut list** (in order, if behind schedule): rubble becomes scattered proxy pieces; edge weathering becomes a material-only effect; vine branching is fixed instead of scaling with `age`.
+**Cut list** (in order, if behind schedule): rubble fragments; real ruin asset (keep the procedural test asset); block tilt; root-pressure feedback; fixed vine branching instead of scaling with `age`.
 
 ## Techniques
 
@@ -145,9 +145,11 @@ Everything left of UE runs inside one HDA. The growth field (`crevice`, `ao`, `m
 
 P1 = structure (Anna), P2 = vegetation (Jacky).
 
+*Revised 11/9: P1 is ahead of schedule, so the P1 column for weeks 2-3 is updated.*
+
 | Week | Due | P1 (structure) | P2 (vegetation) | Shared |
 | --- | --- | --- | --- | --- |
-| 1 (11/4 - 11/11) | Milestone 1 | Blockify test asset; `height` / `support`; first stability score; edge weathering displacement | Attractor scatter on surface; basic space colonization in Houdini; surface projection | Houdini Engine round-trip in UE with `age` exposed; agree attribute contract (`crevice`, `ao`, `moisture`, `age`) |
-| 2 (11/11 - 11/18) |  | Block removal + rubble placement by `age`; growth field export; stone darkening by `age` in UE | Gravity sag, growth budget by `age`; vines exported as curves; spline mesh + leaf material in UE | Integrate both halves on the shared asset; all core features working end to end |
-| 3 (11/18 - 11/23) | Milestone 2 | Parameter cleanup; swap in final ruin asset; fix integration bugs; stretch only if core is done: block tilt | Vine density tuning; fix integration bugs; stretch only if core is done: moss mask | Feature freeze 11/23; working demo for class critique; anything not working by now is cut |
+| 1 (11/4 - 11/11) | Milestone 1 | Blockify test asset; `height` / `support`; first stability score; edge weathering displacement (done early: rubble, HDA, growth field export) | Attractor scatter on surface; basic space colonization in Houdini; surface projection | Agree attribute contract (`crevice`, `ao`, `moisture`, `age`) |
+| 2 (11/11 - 11/18) |  | Optional geometry input on the HDA; test asset gets a doorway, window and L-corner; stone darkening by `age` in UE (or render in Houdini if no license); first integration with P2 | Gravity sag, growth budget by `age`; vines exported as curves; spline mesh + leaf material in UE | UE round-trip with `age` exposed (pending license; fallback: render in Houdini); integrate both halves on the shared asset; all core features working end to end |
+| 3 (11/18 - 11/23) | Milestone 2 | Block tilt before falling; rubble fragments (Voronoi-fracture some fallen blocks into 2-4 pieces); parameter cleanup; fix integration bugs; stretch: root-pressure feedback; real ruin asset only if all else is done | Vine density tuning; fix integration bugs; stretch only if core is done: moss mask | Feature freeze 11/23; working demo for class critique; anything not working by now is cut |
 | 4 (11/23 - 11/30) | Final | Touch-ups from critique; tune decay parameters | Touch-ups from critique; tune vine look | Lighting, camera, video, README results and post mortem, presentation prep. No new features. |
