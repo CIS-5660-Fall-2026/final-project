@@ -30,6 +30,12 @@ To shade the clouds, I will get the 3D representation of the clouds by volumetri
 **Milestone 3:** Create the final scene and add tunable parameters that the user can use to change the dithering effect and the cloud shapes.
 
 ---
+## Milestone #1
+<img width="600" alt="Screenshot 2026-11-11 125452" src="https://github.com/user-attachments/assets/3e59cb3e-cdd8-4675-8e05-fa368bf4355f" />
+
+I successfully implemented the object-space dithering shader on a simple scene. I followed the video fairly closely in terms of techniques. This involved writing a dithering shader in GLSL and a texture maker in Typescript to create the Bayer matrix textures that the shader can sample from. Moving around in the scene keeps the ditherng effect tied to the object, and zooming in and out adds/removes dots to keep the overall look stable. There are moiré patterns that appear especially when I have the dot scale be small, so for Milestone 2 I may try addressing that. Right now, my project is in WebGL, but I may also port it over to WebGPU for future iterations.
+
+
 ---
 
 ## Instructions
