@@ -6,16 +6,19 @@ export interface Params {
     rmaxKm: number;
     hollandB: number;
     outflowTurn: number;
+    outflowSpeed: number;     // peak radial outflow at cloud top (m/s)
+    cloudLifeH: number;       // e-folding decay time of cloud-top height (h)
     eyeRatio: number;
     // Structure
     bandCount: number;
     bandPitchDeg: number;
     bandStrength: number;
-    cdoRadiusKm: number;
+    cdoRadiusKm: number;      // radius of the outflow cloud shield
     // Detail
     detailScaleKm: number;
     detailStrength: number;
-    flowPeriodMin: number;
+    streak: number;           // length / width of the detail streaks along the flow
+    terrace: number;          // 0..1 blend from smooth detail to flat stepped plates
     seed: number;
     // Lighting & view
     sunElevDeg: number;
@@ -24,6 +27,7 @@ export interface Params {
     reliefMix: number;
     shadows: boolean;
     viewHalfKm: number;
+    viewMode: number;         // 0 = clouds, 1 = wind debug
     // Simulation
     timeScale: number;        // storm seconds per real second
     paused: boolean;
@@ -31,6 +35,10 @@ export interface Params {
 }
 
 export const DOMAIN_KM = 1600;
+// Fixed tick of the coarse cloud simulation (storm seconds), independent of the frame rate.
+export const SIM_DT = 60;
+// Side length of the coarse cloud field in texels. Must match SIM_SIZE in advect.cs.wgsl.
+export const SIM_SIZE = 512;
 
 export function defaultParams(): Params {
     return {
@@ -40,21 +48,25 @@ export function defaultParams(): Params {
         rmaxKm: 32,
         hollandB: 1.42,
         outflowTurn: 0.7,
+        outflowSpeed: 9,
+        cloudLifeH: 24,
         eyeRatio: 0.5,
         bandCount: 3,
         bandPitchDeg: 18,
         bandStrength: 1.0,
-        cdoRadiusKm: 220,
+        cdoRadiusKm: 600,
         detailScaleKm: 18,
-        detailStrength: 1.4,
-        flowPeriodMin: 30,
+        detailStrength: 1.0,
+        streak: 4,
+        terrace: 0.7,
         seed: 0,
         sunElevDeg: 18,
         sunAzimDeg: 300,
         exaggeration: 6,
         reliefMix: 0.85,
         shadows: true,
-        viewHalfKm: 450,
+        viewHalfKm: 430,
+        viewMode: 0,
         // The reference GIF covers ~9.5 storm hours in 10 s of playback, so ~1 s = 1 h.
         timeScale: 3600,
         paused: false,
@@ -85,7 +97,7 @@ export function hollandV(p: Params, rKm: number): number {
     return Math.sqrt((p.hollandB * p.deltaPhPa * 100) / 1.15 * x * Math.exp(-x) + fh * fh) - fh;
 }
 
-export const UNIFORM_FLOATS = 24;
+export const UNIFORM_FLOATS = 29;
 
 // Packing order must match `struct Params` in common.wgsl.
 export function packUniforms(out: Float32Array, p: Params, stormTime: number, aspect: number): void {
@@ -104,7 +116,7 @@ export function packUniforms(out: Float32Array, p: Params, stormTime: number, as
         p.cdoRadiusKm,
         p.detailScaleKm,
         p.detailStrength,
-        p.flowPeriodMin * 60,
+        p.streak,
         p.seed,
         p.sunElevDeg,
         p.sunAzimDeg,
@@ -114,6 +126,11 @@ export function packUniforms(out: Float32Array, p: Params, stormTime: number, as
         p.viewHalfKm,
         aspect,
         p.texSize,
+        p.outflowSpeed,
+        p.cloudLifeH * 3600,
+        SIM_DT,
+        p.viewMode,
+        p.terrace,
     ];
     out.set(v);
 }
