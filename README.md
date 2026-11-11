@@ -65,6 +65,8 @@ Found this [forum](https://blenderartists.org/t/uniformly-triangulated-mesh-for-
 
 This jellyfish is just a prototype / visdev, modeled after Elyssa's tutorial entirely in Blender geometry nodes. It was a challenge to recreate similar logic using the geometry nodes system which differs from the Houdini sops in many ways.
 
+I used the experimental cloth simulation node in Blender to animate the ruffles.
+
 <img width="880" height="1130" alt="image" src="https://github.com/user-attachments/assets/e05f3278-0fd5-491a-89f8-826a4ac3aa9a" />
 <img width="746" height="1056" alt="image" src="https://github.com/user-attachments/assets/3c0c72d1-8dfe-4f3b-8f27-b5a1e5b20840" />
 <img width="754" height="1048" alt="image" src="https://github.com/user-attachments/assets/6964b74c-fb4c-47c6-9a63-03ef499d7257" />
