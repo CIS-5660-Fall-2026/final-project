@@ -141,7 +141,7 @@ void main()
 {
         float noise = 0.5;
         noise = max(perlin_noise(10.*fs_Pos.xyz), 0.f);
-        vec4 diffuseColor = vec4(noise * u_Color.rgb, u_Color.a);
+        vec4 diffuseColor = vec4(u_Color.rgb, u_Color.a);
 
         // Calculate the diffuse term for Lambert shading
         float diffuseTerm = dot(normalize(fs_Nor), normalize(fs_LightVec));
@@ -155,5 +155,5 @@ void main()
                                                             //lit by our point light are not completely black.
 
         // Compute final shaded color
-        out_Col = vec4(diffuseColor.rgb * lightIntensity, diffuseColor.a);
+        out_Col = vec4(diffuseColor.rgb, diffuseColor.a);
 }

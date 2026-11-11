@@ -63,7 +63,7 @@ function main() {
 
   const ground = new Square();
   ground.create();
-  ground.setRotationEuler(-90, 0, 0).setScale(50, 50, 1); // lay flat, 100x100 units
+  ground.setRotationEuler(0, -0.5, -0.1).setScale(50, 50, 1); // lay flat, 100x100 units
   ground.color = vec4.fromValues(0.3, 0.5, 0.3, 1);
   scene.add(ground, lambert);
 
