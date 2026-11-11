@@ -3,7 +3,7 @@
 # Project planning: Design Doc (due 11/4)
 
 #### Introduction
-One of the videos that brought me into programming is the series of development videos by Rujik: (Critter Crosser)[https://www.youtube.com/watch?v=j9IEhJnh0Bw].
+One of the videos that brought me into programming is the series of development videos by Rujik: [Critter Crosser](https://www.youtube.com/watch?v=j9IEhJnh0Bw).
 My goal is to try to implement many of the procedural features we learnt in class to create a similar procedural creature creator.
 
 
