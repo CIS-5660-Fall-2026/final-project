@@ -1,0 +1,99 @@
+{
+  "milestone": 1,
+  "recordedAt": "2026-11-12T22:39:42.744Z",
+  "runtime": "v24.20.0",
+  "sampleCount": 300,
+  "failures": 0,
+  "shortfalls": 0,
+  "meanGenerationMs": 0.64,
+  "maxGenerationMs": 1.53,
+  "timingNote": "Node timings measure generation and SVG serialization, not browser paint. Results vary by machine.",
+  "presets": [
+    {
+      "rooms": 8,
+      "symmetry": 0,
+      "loops": 0
+    },
+    {
+      "rooms": 16,
+      "symmetry": 0.65,
+      "loops": 0.5
+    },
+    {
+      "rooms": 24,
+      "symmetry": 1,
+      "loops": 1
+    }
+  ],
+  "samples": [
+    {
+      "name": "sable-archive",
+      "parameters": {
+        "seed": "1473",
+        "rooms": 18,
+        "symmetry": 0.65,
+        "loops": 0.5
+      },
+      "rooms": 18,
+      "connections": 19,
+      "loops": 2,
+      "floorCells": 949,
+      "generationMs": 3.48,
+      "svgSerializationMs": 22.84,
+      "validation": {
+        "valid": true,
+        "errors": [],
+        "reachableRooms": 18,
+        "reachableCells": 949,
+        "components": 1,
+        "loops": 2
+      }
+    },
+    {
+      "name": "small-sanctuary",
+      "parameters": {
+        "seed": "2306",
+        "rooms": 8,
+        "symmetry": 1,
+        "loops": 0.25
+      },
+      "rooms": 8,
+      "connections": 7,
+      "loops": 0,
+      "floorCells": 457,
+      "generationMs": 0.68,
+      "svgSerializationMs": 11.8,
+      "validation": {
+        "valid": true,
+        "errors": [],
+        "reachableRooms": 8,
+        "reachableCells": 457,
+        "components": 1,
+        "loops": 0
+      }
+    },
+    {
+      "name": "large-vaults",
+      "parameters": {
+        "seed": "5660",
+        "rooms": 24,
+        "symmetry": 0.2,
+        "loops": 0.85
+      },
+      "rooms": 24,
+      "connections": 27,
+      "loops": 4,
+      "floorCells": 1107,
+      "generationMs": 1.34,
+      "svgSerializationMs": 24.94,
+      "validation": {
+        "valid": true,
+        "errors": [],
+        "reachableRooms": 24,
+        "reachableCells": 1107,
+        "components": 1,
+        "loops": 4
+      }
+    }
+  ]
+}
