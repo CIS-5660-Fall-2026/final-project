@@ -36,20 +36,25 @@ These are the goals ordered in importance:
 #### Design:
 - How will your program fit together? Make a simple free-body diagram illustrating the pieces.
 
-#### Timeline:
-- ASAP: character generation.
-
 
 # Requirements:
 ## Milestone 1: Implementation part 1 (due 11/11)
-Begin implementing your engine! Don't worry too much about polish or parameter tuning -- this week is about getting together the bulk of your generator implemented. By the end of the week, even if your visuals are crude, the majority of your generator's functionality should be done.
-
-Put all your code in your forked repository.
-
-Submission: Add a new section to your README titled: Milestone #1, which should include
-- written description of progress on your project goals. If you haven't hit all your goals, what's giving you trouble?
-- Examples of your generators output so far
-We'll check your repository for updates. No need to create a new pull request.
+I haven't made much progress towards the character generator. My two main issues were not having a good idea of how the creatures should look, and not figuring out how to take any graphics engine and generate limbs, much less creatures.
+### Creature design
+I think my problem is I didn't have a well defined idea about how the creatures actually looked, only that I wanted to play with their procedural animations (and that they would look good). I hadn't even figured out if I wanted it to be top down or side view. I narrowed it down since then after much deliberating.  
+The pros for the top down view were that the project is somewhat simpler, some of my references [do that already](https://www.youtube.com/watch?v=qlfh_rv6khY). My problem is that essentially, these animals are all just snake blobs with cosmetic arms attached to them. The animations aren't really the driving factor in this perspective.  
+Ultimately, I warmed up to the idea of a pure side view idea. There is a lot more inspiration to choose from for sideview games, and I started looking more into a game that does procedural animation very well, [rain world](https://www.youtube.com/watch?v=sVntwsrjNe4).
+### Engine Choice
+My next bottleneck this week has been wrangling with the graphics engine I am using. I'm having difficulty figuring out how I take the raw webgl and turn it into body parts, shapes, etc.
+I explored switching to unity I made a simple chain of circles for a character, I ultimately decided to come back and give webgl another shot for all the reasons I chose webgl in the first place.
+I am currently looking into using threejs or pixijs instead, I think either option would simplify my process going forward.
+### Week 2 plans:
+- Pick a javascript rendering engine, create an oblong shape and see that shaders work on it.
+- Create core systems I will be using soon, Fabrik/CCD IK.
+- I want a blob body and two legs coming out of it somehow.
+- Work at parametrizing the animations to work with different shapes and sizes well, shorter legs trot faster, more legs means varied gaits.
+- **Leave the visuals as blobs until I have an actual generator working**
+  - once I have some animations, ill look into how to make these blobs look like limbs.
 ## Milestone 2: Implementation part 2 (due 11/23)
 We're over halfway there! This week should be about fixing bugs and extending the core of your generator. Make sure by the end of this week _your generator works and is feature complete._ Any core engine features that don't make it in this week should be cut! Don't worry if you haven't managed to exactly hit your goals. We're more interested in seeing proof of your development effort than knowing your planned everything perfectly. 
 
