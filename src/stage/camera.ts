@@ -3,7 +3,7 @@ import { toRadians } from "../math_util";
 import { device, canvas, fovYDegrees, aspectRatio } from "../renderer";
 
 class CameraUniforms {
-    static readonly bufferBytes = 52 * Float32Array.BYTES_PER_ELEMENT;
+    static readonly bufferBytes = 68 * Float32Array.BYTES_PER_ELEMENT;
     readonly buffer = new ArrayBuffer(CameraUniforms.bufferBytes);
     private readonly floatView = new Float32Array(this.buffer);
 
@@ -17,20 +17,24 @@ class CameraUniforms {
         this.floatView.set(mat, 16);
     }
 
-    set invProjMat(mat: Float32Array) {
+    set invViewMat(mat: Float32Array) {
         this.floatView.set(mat, 32);
     }
 
+    set invProjMat(mat: Float32Array) {
+        this.floatView.set(mat, 48);
+    }
+
     set screenResolution(res: Float32Array) {
-        this.floatView.set(res, 48);
+        this.floatView.set(res, 64);
     }
 
     set nearZ(near: number) {
-        this.floatView.set(new Float32Array([near]), 50);
+        this.floatView.set(new Float32Array([near]), 66);
     }
 
     set farZ(far: number) {
-        this.floatView.set(new Float32Array([far]), 51);
+        this.floatView.set(new Float32Array([far]), 67);
     }
 }
 
@@ -160,6 +164,7 @@ export class Camera {
 
         const lookPos = vec3.add(this.cameraPos, vec3.scale(this.cameraFront, 1));
         const viewMat = mat4.lookAt(this.cameraPos, lookPos, [0, 1, 0]);
+        const invViewMat = mat4.inverse(viewMat);
         const viewProjMat = mat4.mul(this.projMat, viewMat);
 
         // TODO-1.1: set `this.uniforms.viewProjMat` to the newly calculated view proj mat
@@ -167,6 +172,7 @@ export class Camera {
 
         // TODO-2: write to extra buffers needed for light clustering here
         this.uniforms.viewMat = viewMat;
+        this.uniforms.invViewMat = invViewMat;
 
         // TODO-1.1: upload `this.uniforms.buffer` (host side) to `this.uniformsBuffer` (device side)
         // check `lights.ts` for examples of using `device.queue.writeBuffer()`

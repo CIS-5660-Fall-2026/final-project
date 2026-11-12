@@ -30,6 +30,7 @@ struct CameraUniforms {
     // TODO-1.3: add an entry for the view proj mat (of type mat4x4f)
     viewProjMat: mat4x4f,
     viewMat: mat4x4f,
+    invViewMat: mat4x4f,
     invProjMat: mat4x4f,
     screenResolution: vec2f,
     zNear: f32,
@@ -48,4 +49,24 @@ fn calculateLightContrib(light: Light, posWorld: vec3f, nor: vec3f) -> vec3f {
 
     let lambert = max(dot(nor, normalize(vecToLight)), 0.f);
     return light.color * lambert * rangeAttenuation(distToLight);
+}
+
+// Find the view-space point along the given vector that intersects
+// a Z-aligned plane at a given input z coordinate
+fn intersectZPlane(v: vec3f, z: f32) -> vec3f {
+    return v * (z / v.z);
+}
+
+fn convertClipToView(pClip: vec4f, invProjMat: mat4x4f) -> vec4f {
+    let pView: vec4f = invProjMat * pClip;
+    return (pView / pView.w);
+}
+
+fn convertScreenToView(pScreen: vec4f, screenResolution: vec2f, invProjMat: mat4x4f) -> vec4f {
+    let pUV: vec2f = pScreen.xy / screenResolution;
+    return convertClipToView(
+        vec4f((vec2f(pUV.x, 1.0 - pUV.y) * 2.0) - 1.0,
+            pScreen.z,
+            pScreen.w),
+        invProjMat);
 }

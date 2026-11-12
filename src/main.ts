@@ -8,6 +8,7 @@ import { ClusteredDeferredRenderer } from './renderers/clustered_deferred';
 
 import { setupLoaders, Scene } from './stage/scene';
 import { Lights } from './stage/lights';
+import { Volumetrics } from './stage/volumetrics';
 import { Camera } from './stage/camera';
 import { Stage } from './stage/stage';
 
@@ -19,6 +20,7 @@ await scene.loadGltf('./scenes/sponza/Sponza.gltf');
 
 const camera = new Camera();
 const lights = new Lights(camera);
+const volumetrics = new Volumetrics(camera);
 
 const stats = new Stats();
 stats.showPanel(0);
@@ -30,7 +32,7 @@ gui.add(lights, 'numLights').min(1).max(Lights.maxNumLights).step(1).onChange(()
     renderer?.resetTiming();
 });
 
-const stage = new Stage(scene, lights, camera, stats);
+const stage = new Stage(scene, lights, volumetrics, camera, stats);
 
 var renderer: Renderer | undefined;
 

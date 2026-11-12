@@ -3,25 +3,6 @@
 @group(${bindGroup_scene}) @binding(1) var<storage, read> lightSet: LightSet;
 @group(${bindGroup_scene}) @binding(2) var<storage, read_write> clusterSet: ClusterSet;
 
-// Find the view-space point along the given vector that intersects
-// a Z-aligned plane at a given input z coordinate
-fn intersectZPlane(v: vec3f, z: f32) -> vec3f {
-    return v * (z / v.z);
-}
-
-fn convertClipToView(pClip: vec4f) -> vec4f {
-    let pView: vec4f = camera.invProjMat * pClip;
-    return (pView / pView.w);
-}
-
-fn convertScreenToView(pScreen: vec4f) -> vec4f {
-    let pUV: vec2f = pScreen.xy / camera.screenResolution;
-    return convertClipToView(
-        vec4f((vec2f(pUV.x, 1.0 - pUV.y) * 2.0) - 1.0,
-        pScreen.z,
-        pScreen.w));
-}
-
 fn doesSphereIntersectBoundingBox(lightPos: vec3f, clusterBounds: ClusterBounds) -> bool {
     let lightPosView: vec3f = vec4f(camera.viewMat * vec4f(lightPos, 1.0)).xyz;
     let closestPointOnBox: vec3f = clamp(lightPosView, clusterBounds.minValues, clusterBounds.maxValues);
@@ -52,8 +33,14 @@ fn computeClusterBounds(clusterId: vec3u) -> ClusterBounds {
         0.0,
         1.0);
 
-    let minPointView: vec3f = convertScreenToView(minPointScreen).xyz;
-    let maxPointView: vec3f = convertScreenToView(maxPointScreen).xyz;
+    let minPointView: vec3f = convertScreenToView(
+        minPointScreen,
+        camera.screenResolution,
+        camera.invProjMat).xyz;
+    let maxPointView: vec3f = convertScreenToView(
+        maxPointScreen,
+        camera.screenResolution,
+        camera.invProjMat).xyz;
 
     let tileNearViewZ: f32 = -camera.zNear
         * pow(camera.zFar / camera.zNear,
