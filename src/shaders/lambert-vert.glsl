@@ -169,7 +169,9 @@ void main()
     float tailMask = dot(normalDir, tailDir);
     float weight = (tailMask + 1.0)*0.5;
 
-    pos.xyz += randVal;
+    pos.xyz += normalDir * randVal * 0.1;
+    //tailDir * randVal * tailMask;
+    //normalDir * randVal * 0.1;
 
     // everything except dot product 0.95 - 1.0 gets a tail
     tailMask = smoothstep(0.-u_Tail, 0.95, tailMask);

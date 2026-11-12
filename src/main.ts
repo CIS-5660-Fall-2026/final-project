@@ -30,7 +30,7 @@ const controls = {
   Length: 5,
   ColorWave: 0,
   CometSpeed: 50,
-  Scale: 50.0
+  CometSize: 50.0
 };
 
 let controllers: DAT.GUIController[] = [];
@@ -45,8 +45,8 @@ function resetFireball() {
   controls.Speed = 1;
   controls.Length = 5;
   controls.ColorWave = 0;
-  controls.CometSpeed = 0.5,
-  controls.Scale = 50.0
+  controls.CometSpeed = 50.0,
+  controls.CometSize = 50.0
 
   for(let controller of controllers){
     controller.updateDisplay();
@@ -94,9 +94,9 @@ function main() {
   controllers.push(gui.add(controls, 'Speed', -10, 10).step(0.05));
   controllers.push(gui.add(controls, 'Length', -20, 20).step(0.1));
   controllers.push(gui.add(controls, 'ColorWave', 0, 0.2).step(0.01));
+  controllers.push(gui.add(controls, 'CometSpeed', 0, 500).step(0.05));
+  controllers.push(gui.add(controls, 'CometSize', 0.01, 1000).step(0.01));
   gui.add(controls, 'Reset Fireball');
-  gui.add(controls, 'CometSpeed', 0, 5).step(0.05);
-  gui.add(controls, 'Scale', 0.01, 1).step(0.01);
 
 
   // get canvas and webgl context
@@ -167,7 +167,7 @@ function main() {
 
     const model = mat4.create();
     mat4.translate(model, model, cometPos);
-    mat4.scale(model, model, [controls.Scale, controls.Scale, controls.Scale]);
+    mat4.scale(model, model, [controls.CometSize, controls.CometSize, controls.CometSize]);
 
     lambert.setTime(time);
     lambert.setTailDir(vec3.negate(vec3.create(), cometFront));
