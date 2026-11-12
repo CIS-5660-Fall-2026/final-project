@@ -50,8 +50,36 @@ My goal is to build an interactive painting generator using JavaScript, WebGL, a
 ---  
 &nbsp;
 
+## Milestone #1
 
+### Progress
 
+- Implemented procedural flow fields using Perlin and curl noise.
+- Implemented particle simulation and WebGL trail accumulation.
+- Implemented image-guided painting using Sobel gradients to guide particle directions and sampling colors from the input image.
+- Added interactive GUI controls.
+
+The core generator is working well in both procedural and image-guided modes.
+
+### Current Results
+
+| Input Image | Generated Painting |
+| --- | --- |
+| ![](result/i1.jpg) | ![](result/r1.png) |
+| ![](result/i2.jpg) | ![](result/r2.png) |
+| ![](result/i3.png) | ![](result/r3.png) |
+
+### Next Steps
+
+The current Sobel-based direction field can produce noisy strokes in detailed regions. For Milestone 2, I plan to:
+
+- Improve the direction field using structure tensors.
+- Improve edge preservation and color sampling.
+- Add brightness-based stroke density and variable stroke widths.
+- Refine the paper texture and ink effects.
+
+---  
+&nbsp;
 # Final Project!
 
 This is it! The culmination of your procedural graphics experience this semester. For your final project, we'd like to give you the time and space to explore a topic of your choosing. You may choose any topic you please, so long as you vet the topic and scope with an instructor or TA. We've provided some suggestions below. The scope of your project should be roughly 1.5 homework assignments). To help structure your time, we're breaking down the project into 4 milestones:
