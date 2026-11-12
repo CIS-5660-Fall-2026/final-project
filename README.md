@@ -1,45 +1,112 @@
 # Final Project!
 
-This is it! The culmination of your procedural graphics experience this semester. For your final project, we'd like to give you the time and space to explore a topic of your choosing. You may choose any topic you please, so long as you vet the topic and scope with an instructor or TA. We've provided some suggestions below. The scope of your project should be roughly 1.5 homework assignments). To help structure your time, we're breaking down the project into 4 milestones:
+This is it! The culmination of your procedural graphics experience this semester. For your final project, we'd like to give you the time and space to explore a topic of your choosing. You may choose any topic you please, so long as you vet the topic and scope with an instructor or TA. We've provided some suggestions below. The scope of your project should be roughly 1.5 homework assignments. To help structure your time, we're breaking down the project into 4 milestones:
 
 ## Project planning: Design Doc (due 11/4)
+
 Before submitting your first milestone, _you must get your project idea and scope approved by Rachel, Adam or a TA._
 
 ### Design Doc
+
 Start off by forking this repository. In your README, write a design doc to outline your project goals and implementation plan. It must include the following sections:
 
 #### Introduction
-- What motivates your project?
+
+One of my favorite shows is Arcane, and a big reason why was because I really like the animations.
 
 #### Goal
-- What do you intend to achieve with this project?
+
+I would like to try to replicate this scene in Houdini, where I would like to recreate their artstyle through stylized shaders. In addition to this, I would like to create a specific scene where there are black roses that grow out of a face. This means being able to procedurally place the roses, animate their growth and blooming, and be able to generate thorn covered vines across arbitrary 3d surfaces.
+
+![BLEK ROSE](video/blackrose.gif)
 
 #### Inspiration/reference:
-- You must have some form of reference material for your final project. Your reference may be a research paper, a blog post, some artwork, a video, another class at Penn, etc.  
-- Include in your design doc links to and images of your reference material.
+
+I just looked up a few forums online about how to recreate the shader, and I found many talking about something called "FilaToon" shaders.
+
+In addition to this I would most likely create the model for the face myself, referencing the gif above. If this is too difficult I might just take a preexisting model of a face. I found a few that fortiche made on [sketchfab](https://sketchfab.com/tags/fortiche)
+
+I also found a Houdini tutorial on procedural flower modeling and animation: [Houdini Tutorial — Blooming Flowers](https://www.youtube.com/watch?v=aUajIqvl6H4) (might not follow this though and might follow a tutorial on creating a rose by parametric equations).
 
 #### Specification:
-- Outline the main features of your project.
+
+I would like to create a stylized shader, and have procedural vine and rose generation.
 
 #### Techniques:
-- What are the main technical/algorithmic tools you’ll be using? Give an overview, citing specific papers/articles.
+
+For the shading, I plan to use a combination of toon shading, lighting-based color ramps, and procedural texture variation. I also plan to experiment with noise based modulation of the lighting or colors. This is a [stylized Shader Tutorial](https://www.youtube.com/watch?v=hXgflY8NAOo) that I found I might follow.
+
+For the vines, I plan to generate branching curves that follow the contours of a target 3D mesh. 
+
+When it comes to animating, for the vines, I plan to animate their growth by progressively revealing sections of the generated curves. 
+
+For the roses, I plan to procedurally generate them using parametric equations, following an [Instagram tutorial](https://www.instagram.com/reel/DcHBBGuxtFI/) I found that demonstrates how mathematical functions can be used to construct the shape of a rose (not sure how to link it here).
+
 
 #### Design:
-- How will your program fit together? Make a simple free-body diagram illustrating the pieces.
+
+![Design](img/fbd.png)
 
 #### Timeline:
-- Create a week-by-week set of milestones for each person in your group. Make sure you explicitly outline what each group member's duties will be.
 
-Submit your Design doc as usual via pull request against this repository.
+**Milestone 1:**
+
+- Begin implementing the Arcane-inspired shader with basic stylized lighting and color ramps.
+- Experiment with procedural noise and texture variation.
+- Implement an initial vine generator capable of creating branching curves.
+- Test projecting or constraining vines onto a simple 3D surface.
+- Create the basic geometry for a procedural rose.
+
+**Milestone 2:**
+
+- Refine the stylized shader and apply it to the face model.
+- Complete the procedural vine generation system, including branching, thickness, and thorns.
+- Implement vine growth animation.
+- Complete the procedural rose generator and blooming animation.
+- Implement procedural rose placement along the vines.
+- Integrate the geometry and shading systems into a single animated scene.
+
+**Milestone 3:**
+
+- Refine the shader's color palette, shadow shapes, and texture variation to more closely resemble the reference.
+- Adjust vine branching, thorn distribution, and rose placement for visual appeal.
+- Improve animation timing and transitions between vine growth and blooming.
+- Add final lighting, camera movement, and composition.
+- Render the final animation.
+
 ## Milestone 1: Implementation part 1 (due 11/11)
 Begin implementing your engine! Don't worry too much about polish or parameter tuning -- this week is about getting together the bulk of your generator implemented. By the end of the week, even if your visuals are crude, the majority of your generator's functionality should be done.
 
 Put all your code in your forked repository.
 
+### Milestone #1 Progress
+
+This milestone I had to dial things back a bit from what I expected to do. After getting more into it, I realized I hadn't really figured out how I wanted to approach the Arcane style shading in Houdini. I found a lot of resources for getting started in Blender, but it also didn't make a ton of sense to move all the procedural work there. After a while, I decided to split it up where I do the procedural rose and vine generation in Houdini then bring the geometry into Blender for the stylized shading and final render. After scrapping a few ideas, I focused on getting the Houdini part working for this milestone.
+
+I have vines growing across a test head and roses emerging and blooming at editable locations. The node-based setup uses space colonization for branching [1] and parametric equations for the roses [2], inspired by the Instagram reference [3].
+
+Getting the vines to look right took more tuning than I expected. The current version is much close to what I want, but there is still some cleanup and tuning of params.
+
+Because of the time spent figuring out the workflow and fixing the geometry, I haven't started the stylized shader yet. For now, the demo shows the procedural generation and animation with simple viewport colors. Next, I want to polish this setup and start bringing it into Blender for the shading and final look.
+
+#### Current result
+
+![Milestone 1](video/milestone1.gif)
+
+[Video](video/milestone1.mp4)
+
+#### References
+
+1. Runions, A., Lane, B., and Prusinkiewicz, P. (2007). [Modeling Trees with a Space Colonization Algorithm](https://www.algorithmicbotany.org/papers/colonization.egwnp2007.html) — vine branching.
+2. Nylander, P. (2006). [Rose-Shaped Parametric Surface](https://nylander.wordpress.com/2006/06/21/rose-shaped-parametric-surface/) — rose equations.
+3. mathswithmuza. [3D rose surface Instagram reel](https://www.instagram.com/reel/DcHBBGuxtFI/) — visual reference.
+4. SideFX documentation: [Attribute VOP](https://www.sidefx.com/docs/houdini/nodes/sop/attribvop.html), [feedback loops](https://www.sidefx.com/docs/houdini/nodes/sop/block_end.html), [Point Cloud Open](https://www.sidefx.com/docs/houdini/nodes/vop/pcopen.html), [Point Cloud Filter](https://www.sidefx.com/docs/houdini/nodes/vop/pcfilter.html), [Clip](https://www.sidefx.com/docs/houdini/nodes/sop/clip), [Sweep](https://www.sidefx.com/docs/houdini/nodes/sop/sweep), and [Copy to Points](https://www.sidefx.com/docs/houdini/nodes/sop/copytopoints.html).
+
 Submission: Add a new section to your README titled: Milestone #1, which should include
 - written description of progress on your project goals. If you haven't hit all your goals, what's giving you trouble?
 - Examples of your generators output so far
 We'll check your repository for updates. No need to create a new pull request.
+
 ## Milestone 2: Implementation part 2 (due 11/23)
 We're over halfway there! This week should be about fixing bugs and extending the core of your generator. Make sure by the end of this week _your generator works and is feature complete._ Any core engine features that don't make it in this week should be cut! Don't worry if you haven't managed to exactly hit your goals. We're more interested in seeing proof of your development effort than knowing your planned everything perfectly. 
 
