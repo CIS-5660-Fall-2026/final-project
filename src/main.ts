@@ -24,7 +24,9 @@ const SEGMENT_SPACING = 0.7;
 
 const controls = {
   color: vec4.fromValues(1.0, 0, 0, 1.0), // snake color
+  cameraSize: 5
 };
+
 
 function main() {
   // Initial display for framerate
@@ -44,7 +46,8 @@ function main() {
   // Must happen before any Drawable/ShaderProgram is created: they read `gl` from globals.
   setGL(gl);
 
-  const camera = new Camera(vec3.fromValues(0, 6, 10), vec3.fromValues(0, 0, 0));
+  const camera = new Camera(vec3.fromValues(0, 0, 10), vec3.fromValues(0, 0, 0));
+  
 
   const renderer = new OpenGLRenderer(canvas);
   renderer.setClearColor(0.2, 0.2, 0.2, 1);
@@ -55,13 +58,10 @@ function main() {
   gl.cullFace(gl.BACK);
   gl.frontFace(gl.CCW);
 
-  // Shader + its own uniforms. Keep the references; mutate `.value` any time.
-  const wobble = new FloatUniform('u_Wobble', 0.045);
-  const noise = new IntUniform('u_Noise', 1);
   const lambert = new ShaderProgram([
     new Shader(gl.VERTEX_SHADER, lambertVertSource),
     new Shader(gl.FRAGMENT_SHADER, lambertFragSource),
-  ], [wobble, noise]);
+  ], []);
 
   // Scene: big ground plane + a chain of small squares (snake placeholder)
   const scene = new Scene();
@@ -107,8 +107,17 @@ const points: vec3[] = [];
   gui.addColor(controls, 'color').listen().onChange(() => {
     for (const seg of snake) vec4.copy(seg.color, controls.color);
   });
-  gui.add(wobble, 'value', 0, 0.5).name('wobble');
-  gui.add(noise, 'value', {Voronoi : 1, Worley : 2, Misc : 3}).name('noise');
+  gui.add(controls, 'cameraSize').listen().onChange(() => {camera.setOrthoSize(controls.cameraSize);
+    camera.updateProjectionMatrix();
+  });
+  gui.add({ button: () => { 
+    camera.target = camera.position;
+    camera.target[2] -= 10;
+  } 
+}, 'button').name('Straighten camera');
+
+  // gui.add(wobble, 'value', 0, 0.5).name('wobble');
+  // gui.add(noise, 'value', {Voronoi : 1, Worley : 2, Misc : 3}).name('noise');
 
   let last = performance.now();
 

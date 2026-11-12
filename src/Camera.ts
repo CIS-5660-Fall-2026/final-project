@@ -9,6 +9,7 @@ class Camera {
   aspectRatio: number = 1;
   near: number = 0.1;
   far: number = 1000;
+  orthoSize: number = 5;
   position: vec3 = vec3.create();
   direction: vec3 = vec3.create();
   target: vec3 = vec3.create();
@@ -27,8 +28,12 @@ class Camera {
     this.aspectRatio = aspectRatio;
   }
 
+  setOrthoSize(size : number){
+    this.orthoSize = size;
+  }
+
   updateProjectionMatrix() {
-    mat4.perspective(this.projectionMatrix, this.fovy, this.aspectRatio, this.near, this.far);
+    mat4.ortho(this.projectionMatrix, -this.orthoSize*this.aspectRatio, this.orthoSize*this.aspectRatio, -this.orthoSize, this.orthoSize, 0.1, 100);
   }
 
   update() {
