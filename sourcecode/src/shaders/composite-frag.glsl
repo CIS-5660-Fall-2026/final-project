@@ -16,7 +16,7 @@ void main() {
         float coverage = 1.0 - exp(-u_InkStrength * acc.a);
         col = mix(u_Paper, inkColor, coverage);
     } else {
-        col = 1.0 - exp(-u_InkStrength * acc.rgb);
+        col = 1.0 - exp(-u_InkStrength * (acc.a - acc.rgb));
     }
     out_Col = vec4(col, 1.0);
 }

@@ -25,8 +25,8 @@ class FlowField {
     const n = new Float32Array(cols * rows);
     for (let j = 0; j < rows; j++) {
       for (let i = 0; i < cols; i++) {
-        const nx = i * this.cellSize * noiseScale;
-        const ny = j * this.cellSize * noiseScale;
+        const nx = i * this.cellSize/ noiseScale;
+        const ny = j * this.cellSize/ noiseScale;
         n[j * cols + i] = fbmPerlin3D(nx, ny, time, octaves, 2.0, 0.5);
       }
     }

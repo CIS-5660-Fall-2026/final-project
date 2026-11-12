@@ -13,19 +13,24 @@ import lineVertSrc from './shaders/line-vert.glsl?raw';
 import lineFragSrc from './shaders/line-frag.glsl?raw';
 import screenVertSrc from './shaders/screen-vert.glsl?raw';
 import compositeFragSrc from './shaders/composite-frag.glsl?raw';
+import * as DAT from 'dat.gui';
 
 const PAPER = [0.96, 0.94, 0.89];
-const INK_STRENGTH = 1.0;
-const RENDER_MODE = 0;
-
-const SEED = 256;
-const FIELD_TYPE = FIELD_CURL;
-const NOISE_SCALE = 0.0015;
-const OCTAVES = 3;
 const CELL_SIZE = 8;
-const PARTICLE_COUNT = 20000;
-const SPEED = 120;
-const ALPHA = 0.08;
+const MAX_PARTICLES = 50000;
+
+const defaultParams = {
+  field: 'Curl',
+  seed: 256,
+  noiseScale: 512,
+  octaves: 3,
+  particleCount: 20000,
+  speed: 120,
+  alpha: 0.08,
+  style: 'Ink',
+  inkStrength: 1.0,
+  paused: false,
+};
 
 function main() {
   const stats = Stats();
@@ -47,22 +52,78 @@ function main() {
   const renderer = new OpenGLRenderer(canvas);
   gl.disable(gl.DEPTH_TEST);
 
-  setNoiseSeed(SEED);
   const accum = new Accumulator();
   let field: FlowField;
   let particles: Particles;
+  let saveRequested = false;
+
+  const controls = {
+    ...defaultParams,
+    'Clear': () => {
+      accum.clear();
+    },
+    'New Seed': () => {
+      controls.seed = Math.floor(Math.random() * 1000);
+      restart();
+    },
+    'Save PNG': () => {
+      saveRequested = true;
+    },
+    'Reset': () => {
+      Object.assign(controls, defaultParams);
+      restart();
+    },
+  };
+
+  function restart() {
+    setNoiseSeed(controls.seed);
+    const type = controls.field === 'Curl' ? FIELD_CURL : FIELD_PERLIN;
+    field = new FlowField(canvas.width, canvas.height, CELL_SIZE);
+    field.build(type, controls.noiseScale, controls.octaves, 0.0);
+    particles = new Particles(controls.particleCount, canvas.width, canvas.height);
+    accum.clear();
+  }
 
   function resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     renderer.setSize(Math.floor(window.innerWidth * dpr),
                      Math.floor(window.innerHeight * dpr));
     accum.resize(canvas.width, canvas.height);
-    field = new FlowField(canvas.width, canvas.height, CELL_SIZE);
-    field.build(FIELD_TYPE, NOISE_SCALE, OCTAVES, 0.0);
-    particles = new Particles(PARTICLE_COUNT, canvas.width, canvas.height);
+    restart();
   }
   window.addEventListener('resize', resize);
   resize();
+
+  const gui = new DAT.GUI();
+
+  const guiControllers = [
+    gui.add(controls, 'field', ['Curl', 'Perlin']).onFinishChange(restart),
+
+    gui.add(controls, 'seed', 0, 1000).step(1).onFinishChange(restart),
+
+    gui.add(controls, 'noiseScale', 10, 6000).step(10).onFinishChange(restart),
+
+    gui.add(controls, 'octaves', 1, 6).step(1).onFinishChange(restart),
+
+    gui.add(controls, 'particleCount', 1000, MAX_PARTICLES).step(1000).onFinishChange(restart),
+
+    gui.add(controls, 'speed', 20, 400),
+
+    gui.add(controls, 'alpha', 0.01, 0.3).step(0.01),
+
+    gui.add(controls, 'style', ['Ink', 'Glow']),
+
+    gui.add(controls, 'inkStrength', 0.2, 3.0).step(0.05),
+
+    gui.add(controls, 'paused'),
+  ];
+  gui.add(controls, 'Clear');
+  gui.add(controls, 'New Seed');
+  gui.add(controls, 'Save PNG');
+  gui.add(controls, 'Reset');
+
+
+
 
   const lineProg = new ShaderProgram([
     new Shader(gl.VERTEX_SHADER, lineVertSrc),
@@ -73,7 +134,7 @@ function main() {
     new Shader(gl.FRAGMENT_SHADER, compositeFragSrc),
   ]);
 
-  const batch = new LineBatch(PARTICLE_COUNT);
+  const batch = new LineBatch(MAX_PARTICLES);
   const screenQuad = new Square(vec3.fromValues(0, 0, 0));
   screenQuad.create();
 
@@ -85,13 +146,15 @@ function main() {
 
     stats.begin();
 
-    particles.step(field, SPEED, dt, ALPHA, batch);
-    accum.bind();
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.ONE, gl.ONE);
-    lineProg.setResolution(accum.width, accum.height);
-    batch.draw();
-    gl.disable(gl.BLEND);
+    if (!controls.paused) {
+      particles.step(field, controls.speed, dt, controls.alpha, batch);
+      accum.bind();
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.ONE, gl.ONE);
+      lineProg.setResolution(accum.width, accum.height);
+      batch.draw();
+      gl.disable(gl.BLEND);
+    }
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, canvas.width, canvas.height);
@@ -99,9 +162,17 @@ function main() {
     gl.bindTexture(gl.TEXTURE_2D, accum.texture);
     compositeProg.setAccum(0);
     compositeProg.setPaper(PAPER[0], PAPER[1], PAPER[2]);
-    compositeProg.setInkStrength(INK_STRENGTH);
-    compositeProg.setMode(RENDER_MODE);
+    compositeProg.setInkStrength(controls.inkStrength);
+    compositeProg.setMode(controls.style === 'Ink' ? 0 : 1);
     compositeProg.draw(screenQuad);
+
+    if (saveRequested) {
+      saveRequested = false;
+      const link = document.createElement('a');
+      link.download = 'flow-field-' + controls.seed + '.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
 
     stats.end();
     requestAnimationFrame(tick);
