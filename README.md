@@ -1,46 +1,62 @@
 # Final Project!
 
-This is it! The culmination of your procedural graphics experience this semester. For your final project, we'd like to give you the time and space to explore a topic of your choosing. You may choose any topic you please, so long as you vet the topic and scope with an instructor or TA. We've provided some suggestions below. The scope of your project should be roughly 1.5 homework assignments). To help structure your time, we're breaking down the project into 4 milestones:
-
-## Project planning: Design Doc (due 11/4)
-Before submitting your first milestone, _you must get your project idea and scope approved by Rachel, Adam or a TA._
-
-### Design Doc
-Start off by forking this repository. In your README, write a design doc to outline your project goals and implementation plan. It must include the following sections:
+# Project planning: Design Doc (due 11/4)
 
 #### Introduction
-- What motivates your project?
+One of the videos that brought me into programming is the series of development videos by Rujik: [Critter Crosser](https://www.youtube.com/watch?v=j9IEhJnh0Bw).
+My goal is to try to implement many of the procedural features we learnt in class to create a similar procedural creature creator.
+
 
 #### Goal
-- What do you intend to achieve with this project?
+These are the goals ordered in importance:
+- Create pleasing looking and procedurally varied creatures
+- Give them procedural behaviors and animations that match their features / hidden driving traits.
+- Code them to interact with their environment and train to get rewards.
+
+**Bonus goals:**
+- Advanced lighting fog and cool shaders
+- Have them damagable and react to broken limbs
+(These goals are from my other scrapped project and I will only attempt them if I'm undeniably goated)
 
 #### Inspiration/reference:
-- You must have some form of reference material for your final project. Your reference may be a research paper, a blog post, some artwork, a video, another class at Penn, etc.  
-- Include in your design doc links to and images of your reference material.
+- [Critter crosser](https://www.youtube.com/watch?v=j9IEhJnh0Bw)
+- [Robotic procedural animation techniques](https://www.youtube.com/watch?v=KPoeNZZ6H4s)
+- [Procedural shaped fish](https://www.youtube.com/watch?v=qlfh_rv6khY)
+- [Tentacle](https://www.youtube.com/watch?v=-h2dkiKy_4I)
+- [GDC Rain world deep dive](https://www.youtube.com/watch?v=sVntwsrjNe4)
 
 #### Specification:
-- Outline the main features of your project.
+- Procedural creatures, long bodies, varying shapes
+- IK for limbs, Full body animation somehow
+- Simple terrain generation for background
 
 #### Techniques:
-- What are the main technical/algorithmic tools you’ll be using? Give an overview, citing specific papers/articles.
+- Limb IK, ...
 
 #### Design:
 - How will your program fit together? Make a simple free-body diagram illustrating the pieces.
 
-#### Timeline:
-- Create a week-by-week set of milestones for each person in your group. Make sure you explicitly outline what each group member's duties will be.
 
-Submit your Design doc as usual via pull request against this repository.
+# Requirements:
 ## Milestone 1: Implementation part 1 (due 11/11)
-Begin implementing your engine! Don't worry too much about polish or parameter tuning -- this week is about getting together the bulk of your generator implemented. By the end of the week, even if your visuals are crude, the majority of your generator's functionality should be done.
-
-Put all your code in your forked repository.
-
-Submission: Add a new section to your README titled: Milestone #1, which should include
-- written description of progress on your project goals. If you haven't hit all your goals, what's giving you trouble?
-- Examples of your generators output so far
-We'll check your repository for updates. No need to create a new pull request.
+I haven't made much progress towards the character generator. My two main issues were not having a good idea of how the creatures should look, and not figuring out how to take any graphics engine and generate limbs, much less creatures.
+### Creature design
+I think my problem is I didn't have a well defined idea about how the creatures actually looked, only that I wanted to play with their procedural animations (and that they would look good). I hadn't even figured out if I wanted it to be top down or side view. I narrowed it down since then after much deliberating.  
+The pros for the top down view were that the project is somewhat simpler, some of my references [do that already](https://www.youtube.com/watch?v=qlfh_rv6khY). My problem is that essentially, these animals are all just snake blobs with cosmetic arms attached to them. The animations aren't really the driving factor in this perspective.  
+Ultimately, I warmed up to the idea of a pure side view idea. There is a lot more inspiration to choose from for sideview games, and I started looking more into a game that does procedural animation very well, [rain world](https://www.youtube.com/watch?v=sVntwsrjNe4).
+### Engine Choice
+My next bottleneck this week has been wrangling with the graphics engine I am using. I'm having difficulty figuring out how I take the raw webgl and turn it into body parts, shapes, etc.
+I explored switching to unity I made a simple chain of circles for a character, I ultimately decided to come back and give webgl another shot for all the reasons I chose webgl in the first place.
+I am currently looking into using threejs or pixijs instead, I think either option would simplify my process going forward.
+### Week 2 plans:
+- Pick a javascript rendering engine, create an oblong shape and see that shaders work on it.
+- Create core systems I will be using soon, Fabrik/CCD IK.
+- I want a blob body and two legs coming out of it somehow.
+- Work at parametrizing the animations to work with different shapes and sizes well, shorter legs trot faster, more legs means varied gaits.
+- **Leave the visuals as blobs until I have an actual generator working**
+  - once I have some animations, ill look into how to make these blobs look like limbs.
 ## Milestone 2: Implementation part 2 (due 11/23)
+IDEALLY: animations and some graphics
 We're over halfway there! This week should be about fixing bugs and extending the core of your generator. Make sure by the end of this week _your generator works and is feature complete._ Any core engine features that don't make it in this week should be cut! Don't worry if you haven't managed to exactly hit your goals. We're more interested in seeing proof of your development effort than knowing your planned everything perfectly. 
 
 Put all your code in your forked repository.
@@ -62,56 +78,3 @@ Submission:
   - final results with images and a live demo if possible
   - post mortem: how did your project go overall? Did you accomplish your goals? Did you have to pivot?
 
-## Topic Suggestions
-
-### Create a generator in Houdini
-
-### A CLASSIC 4K DEMO
-- In the spirit of the demo scene, create an animation that fits into a 4k executable that runs in real-time. Feel free to take inspiration from the many existing demos. Focus on efficiency and elegance in your implementation.
-- Example: 
-  - [cdak by Quite & orange](https://www.youtube.com/watch?v=RCh3Q08HMfs&list=PLA5E2FF8E143DA58C)
-
-### A RE-IMPLEMENTATION
-- Take an academic paper or other pre-existing project and implement it, or a portion of it.
-- Examples:
-  - [2D Wavefunction Collapse Pokémon Town](https://gurtd.github.io/566-final-project/)
-  - [3D Wavefunction Collapse Dungeon Generator](https://github.com/whaoran0718/3dDungeonGeneration)
-  - [Reaction Diffusion](https://github.com/charlesliwang/Reaction-Diffusion)
-  - [WebGL Erosion](https://github.com/LanLou123/Webgl-Erosion)
-  - [Particle Waterfall](https://github.com/chloele33/particle-waterfall)
-  - [Voxelized Bread](https://github.com/ChiantiYZY/566-final)
-
-### A FORGERY
-Taking inspiration from a particular natural phenomenon or distinctive set of visuals, implement a detailed, procedural recreation of that aesthetic. This includes modeling, texturing and object placement within your scene. Does not need to be real-time. Focus on detail and visual accuracy in your implementation.
-- Examples:
-  - [The Shrines](https://github.com/byumjin/The-Shrines)
-  - [Watercolor Shader](https://github.com/gracelgilbert/watercolor-stylization)
-  - [Sunset Beach](https://github.com/HanmingZhang/homework-final)
-  - [Sky Whales](https://github.com/WanruZhao/CIS566FinalProject)
-  - [Snail](https://www.shadertoy.com/view/ld3Gz2)
-  - [Journey](https://www.shadertoy.com/view/ldlcRf)
-  - [Big Hero 6 Wormhole](https://2.bp.blogspot.com/-R-6AN2cWjwg/VTyIzIQSQfI/AAAAAAAABLA/GC0yzzz4wHw/s1600/big-hero-6-disneyscreencaps.com-10092.jpg)
-
-### A GAME LEVEL
-- Like generations of game makers before us, create a game which generates an navigable environment (eg. a roguelike dungeon, platforms) and some sort of goal or conflict (eg. enemy agents to avoid or items to collect). Aim to create an experience that will challenge players and vary noticeably in different playthroughs, whether that means procedural dungeon generation, careful resource management or an interesting AI model. Focus on designing a system that is capable of generating complex challenges and goals.
-- Examples:
-  - [Rhythm-based Mario Platformer](https://github.com/sgalban/platformer-gen-2D)
-  - [Pokémon Ice Puzzle Generator](https://github.com/jwang5675/Ice-Puzzle-Generator)
-  - [Abstract Exploratory Game](https://github.com/MauKMu/procedural-final-project)
-  - [Tiny Wings](https://github.com/irovira/TinyWings)
-  - Spore
-  - Dwarf Fortress
-  - Minecraft
-  - Rogue
-
-### AN ANIMATED ENVIRONMENT / MUSIC VISUALIZER
-- Create an environment full of interactive procedural animation. The goal of this project is to create an environment that feels responsive and alive. Whether or not animations are musically-driven, sound should be an important component. Focus on user interactions, motion design and experimental interfaces.
-- Examples:
-  - [The Darkside](https://github.com/morganherrmann/thedarkside)
-  - [Music Visualizer](https://yuruwang.github.io/MusicVisualizer/)
-  - [Abstract Mesh Animation](https://github.com/mgriley/cis566_finalproj)
-  - [Panoramical](https://www.youtube.com/watch?v=gBTTMNFXHTk)
-  - [Bound](https://www.youtube.com/watch?v=aE37l6RvF-c)
-
-### YOUR OWN PROPOSAL
-- You are of course welcome to propose your own topic . Regardless of what you choose, you and your team must research your topic and relevant techniques and come up with a detailed plan of execution. You will meet with some subset of the procedural staff before starting implementation for approval.
