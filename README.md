@@ -1,5 +1,13 @@
 Charlie Wang Final Project 
 
+#### Milestone 1
+
+Implemented basic procedural rock generation in houdini. This is done by taking a cube and randomly chiseling the outside with boolean operations and then applying noise.
+
+<img src="milestone1_1.png" width="400">
+<img src="milestone1_2.jpg" width="400">
+<img src="milestone1_3.png" width="400">
+
 
 #### Introduction
 I want to create cool procedural stylized rocks to be used in various unity projects.
