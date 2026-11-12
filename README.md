@@ -61,6 +61,9 @@ I already have a WebGPU implementation of a Forward+ renderer, so I plan to buil
 - Stretch goal: Volumetric shadow maps (per-light), to allow objects to cast shadows through the volume
 
 ## Milestone 1: Implementation part 1 (due 11/11)
+
+**NCHORTEK NOTE:** I am using my final late day of the semester and will commit/push my Milestone 1 work on 11/12.
+
 Begin implementing your engine! Don't worry too much about polish or parameter tuning -- this week is about getting together the bulk of your generator implemented. By the end of the week, even if your visuals are crude, the majority of your generator's functionality should be done.
 
 Put all your code in your forked repository.
