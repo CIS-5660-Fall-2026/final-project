@@ -1,117 +1,172 @@
-# Final Project!
+# Neural-Procedural Terrain in WebGPU
 
-This is it! The culmination of your procedural graphics experience this semester. For your final project, we'd like to give you the time and space to explore a topic of your choosing. You may choose any topic you please, so long as you vet the topic and scope with an instructor or TA. We've provided some suggestions below. The scope of your project should be roughly 1.5 homework assignments). To help structure your time, we're breaking down the project into 4 milestones:
+CIS 5660 Fall 2026 Final Project — Xuan Zhu
 
-## Project planning: Design Doc (due 11/4)
-Before submitting your first milestone, _you must get your project idea and scope approved by Rachel, Adam or a TA._
+## Design Doc
 
-### Design Doc
-Start off by forking this repository. In your README, write a design doc to outline your project goals and implementation plan. It must include the following sections:
+### Introduction
+Procedural terrain built from noise and signed distance functions (SDFs) can produce infinite, detailed worlds, but rich detail is expensive: every ray-marching step must evaluate many octaves of noise. Neural fields (e.g. Instant-NGP) take the opposite approach and store detail in a small neural network that can be queried quickly on the GPU.
 
-#### Introduction
-- What motivates your project?
+This project combines the two. An infinite FBM terrain is generated procedurally, and procedurally placed rocks are represented as **neural SDFs**: their expensive multi-octave procedural shapes are distilled into tiny neural networks that are evaluated by **custom, hand-optimized WebGPU compute kernels**. The project sits at the meeting point of procedural graphics and GPU/ML systems, which is the area I want to grow in.
 
-#### Goal
-- What do you intend to achieve with this project?
+### Goal
+- A real-time WebGPU fly-through of an **infinite procedural terrain** (FBM height-field SDF) populated with **procedurally placed neural-SDF rocks**.
+- **Neural distillation:** train small networks (multi-resolution hash-grid encoding + tiny MLP) to reproduce expensive procedural rock SDFs.
+- **Custom GPU kernels:** implement neural SDF evaluation from scratch in WGSL, then optimize it (kernel fusion, shared memory, fp16, early ray termination).
+- **Measured results:** per-pass GPU timings and speed-ups for each optimization, plus quality comparisons against the original procedural SDF.
+- An artist-facing **parameter panel** (terrain shape, rock density and variety, seed, quality vs. speed).
 
-#### Inspiration/reference:
-- You must have some form of reference material for your final project. Your reference may be a research paper, a blog post, some artwork, a video, another class at Penn, etc.  
-- Include in your design doc links to and images of your reference material.
+**Concept frame** (procedural GLSL prototype; the timing panel is an illustrative mock-up, not measured):
 
-#### Specification:
-- Outline the main features of your project.
+![Concept frame](images/concept_neural_sdf.png)
 
-#### Techniques:
-- What are the main technical/algorithmic tools you’ll be using? Give an overview, citing specific papers/articles.
+### Inspiration / Reference
+- T. Müller, A. Evans, C. Schied, A. Keller, *Instant Neural Graphics Primitives with a Multiresolution Hash Encoding*, SIGGRAPH 2022. https://nvlabs.github.io/instant-ngp/
+- T. Müller, *tiny-cuda-nn* (fully fused MLP kernels). https://github.com/NVlabs/tiny-cuda-nn
+- T. Takikawa et al., *Neural Geometric Level of Detail: Real-time Rendering with Implicit 3D Shapes*, CVPR 2021.
+- J. J. Park et al., *DeepSDF: Learning Continuous Signed Distance Functions for Shape Representation*, CVPR 2019.
+- J. C. Hart, *Sphere Tracing: A Geometric Method for the Antialiased Ray Tracing of Implicit Surfaces*, The Visual Computer, 1996.
+- I. Quilez, articles on FBM, terrain ray marching and SDFs. https://iquilezles.org/articles/
 
-#### Design:
-- How will your program fit together? Make a simple free-body diagram illustrating the pieces.
+### Specification
 
-#### Timeline:
-- Create a week-by-week set of milestones for each person in your group. Make sure you explicitly outline what each group member's duties will be.
+**1. Procedural world**
+- Infinite height-field terrain from FBM / ridged noise, ray-marched as an SDF.
+- Slope- and height-based procedural materials (grass, rock, snow), sun light, soft shadows, aerial fog.
+- Procedural rock placement by cell hashing (jittered grid): position, scale, rotation and rock type per cell.
 
-Submit your Design doc as usual via pull request against this repository.
-## Milestone 1: Implementation part 1 (due 11/11)
-Begin implementing your engine! Don't worry too much about polish or parameter tuning -- this week is about getting together the bulk of your generator implemented. By the end of the week, even if your visuals are crude, the majority of your generator's functionality should be done.
+**2. Neural SDF rocks**
+- Several rock "species" defined by expensive procedural SDFs (displaced spheres with high-octave 3D noise).
+- Each species is distilled offline (PyTorch) into a neural SDF: multi-resolution hash-grid encoding + 2-layer MLP (~10K parameters).
+- Weights and hash tables are exported to GPU buffers and evaluated in WGSL during sphere tracing.
 
-Put all your code in your forked repository.
+**3. GPU kernels and optimization**
+- Baseline: separate passes for hash encoding and each MLP layer.
+- Optimizations, each measured with WebGPU timestamp queries:
+  - **Kernel fusion:** hash encoding + MLP in one kernel, with no intermediate buffers.
+  - **Shared memory:** MLP weights loaded once per workgroup.
+  - **fp16** weights and activations (where supported).
+  - **Bounding-volume culling and early ray termination:** the network is only queried near rocks.
+- Quality check: neural vs. procedural SDF error and image differences.
 
-Submission: Add a new section to your README titled: Milestone #1, which should include
-- written description of progress on your project goals. If you haven't hit all your goals, what's giving you trouble?
-- Examples of your generators output so far
-We'll check your repository for updates. No need to create a new pull request.
-## Milestone 2: Implementation part 2 (due 11/23)
-We're over halfway there! This week should be about fixing bugs and extending the core of your generator. Make sure by the end of this week _your generator works and is feature complete._ Any core engine features that don't make it in this week should be cut! Don't worry if you haven't managed to exactly hit your goals. We're more interested in seeing proof of your development effort than knowing your planned everything perfectly. 
+**4. Presentation**
+- Live web demo with free camera, parameter panel and a kernel switch (naive / fused / fp16) showing timings.
+- Fly-through video and a performance report (charts of speed-ups per optimization).
 
-Put all your code in your forked repository.
+**Stretch goals:** neural level of detail (smaller networks at a distance), procedural caves carved with SDF operations, more rock and plant species.
 
-Submission: Add a new section to your README titled: Milestone #3, which should include
-- written description of progress on your project goals. If you haven't hit all your goals, what did you have to cut and why? 
-- Detailed output from your generator, images, video, etc.
-We'll check your repository for updates. No need to create a new pull request.
+### Planning
 
-Come to class on the due date with a WORKING COPY of your project. We'll be spending time in class critiquing and reviewing your work so far.
+**Short list (ideas considered)**
+1. **Neural-procedural terrain (chosen).** Procedural FBM/SDF world plus neural SDF assets evaluated by custom fused GPU kernels.
+2. **Neural cellular automata texture synthesis.** Self-organizing procedural textures with WebGPU inference kernels; simpler, but 2D only.
+3. **Multi-scale procedural universe** (planet → galaxy → black hole). Strong visuals but rendering-focused, with no neural component.
 
-## Final submission (due 11/30)
-Time to polish! Spen this last week of your project using your generator to produce beautiful output. Add textures, tune parameters, play with colors, play with camera animation. Take the feedback from class critques and use it to take your project to the next level.
+**Decision:** #1. It uses core course techniques (noise, FBM, SDFs, ray marching, procedural placement) and adds a neural/GPU-systems component that matches my interests. #2 remains the fallback if neural training proves too slow.
 
-Submission:
-- Push all your code / files to your repository
-- Come to class ready to present your finished project
-- Update your README with two sections 
-  - final results with images and a live demo if possible
-  - post mortem: how did your project go overall? Did you accomplish your goals? Did you have to pivot?
+**1. Features, by priority (≈ 1.5 assignments of work)**
+- **Must have:** procedural FBM terrain sphere tracing; procedural rock placement; one distilled neural SDF rock species with a naive WGSL evaluator; parameter GUI.
+- **Should have:** fused kernel, shared-memory weights, fp16; several rock species; timing panel and performance report.
+- **Nice to have:** neural LOD, caves, more species, offline high-quality video mode.
 
-## Topic Suggestions
+**2. Presentation / final product:** live demo (GitHub Pages), a fly-through video, and a performance report with before/after timings.
 
-### Create a generator in Houdini
+**3. Visual assets:** none imported. Terrain, materials and rock shapes are procedural; the neural rocks are trained from my own procedural SDFs, so no external meshes or textures are needed.
 
-### A CLASSIC 4K DEMO
-- In the spirit of the demo scene, create an animation that fits into a 4k executable that runs in real-time. Feel free to take inspiration from the many existing demos. Focus on efficiency and elegance in your implementation.
-- Example: 
-  - [cdak by Quite & orange](https://www.youtube.com/watch?v=RCh3Q08HMfs&list=PLA5E2FF8E143DA58C)
+**4. Weekly targets:** see **Timeline** below.
 
-### A RE-IMPLEMENTATION
-- Take an academic paper or other pre-existing project and implement it, or a portion of it.
-- Examples:
-  - [2D Wavefunction Collapse Pokémon Town](https://gurtd.github.io/566-final-project/)
-  - [3D Wavefunction Collapse Dungeon Generator](https://github.com/whaoran0718/3dDungeonGeneration)
-  - [Reaction Diffusion](https://github.com/charlesliwang/Reaction-Diffusion)
-  - [WebGL Erosion](https://github.com/LanLou123/Webgl-Erosion)
-  - [Particle Waterfall](https://github.com/chloele33/particle-waterfall)
-  - [Voxelized Bread](https://github.com/ChiantiYZY/566-final)
+**5. Resources:** see **Inspiration / Reference** above and **Techniques** below.
 
-### A FORGERY
-Taking inspiration from a particular natural phenomenon or distinctive set of visuals, implement a detailed, procedural recreation of that aesthetic. This includes modeling, texturing and object placement within your scene. Does not need to be real-time. Focus on detail and visual accuracy in your implementation.
-- Examples:
-  - [The Shrines](https://github.com/byumjin/The-Shrines)
-  - [Watercolor Shader](https://github.com/gracelgilbert/watercolor-stylization)
-  - [Sunset Beach](https://github.com/HanmingZhang/homework-final)
-  - [Sky Whales](https://github.com/WanruZhao/CIS566FinalProject)
-  - [Snail](https://www.shadertoy.com/view/ld3Gz2)
-  - [Journey](https://www.shadertoy.com/view/ldlcRf)
-  - [Big Hero 6 Wormhole](https://2.bp.blogspot.com/-R-6AN2cWjwg/VTyIzIQSQfI/AAAAAAAABLA/GC0yzzz4wHw/s1600/big-hero-6-disneyscreencaps.com-10092.jpg)
+### Techniques
+- **Sphere tracing** (Hart 1996): step along each ray by the SDF value until the surface is reached.
+- **FBM terrain:** height field $h(x,z)=\sum_{i} a^{i}\,\mathrm{noise}(f^{i}\,(x,z))$ with rotated octaves and ridged variants; terrain SDF approximated as $d=\lambda\,(y-h(x,z))$ with $\lambda<1$ for safe stepping.
+- **Scene SDF:** $d(\mathbf{p})=\min\big(d_{\text{terrain}}(\mathbf{p}),\, d_{\text{rock}}(\mathbf{p})\big)$, with rocks found by cell hashing around $\mathbf{p}$.
+- **Neural SDF:** multi-resolution hash encoding (Müller et al. 2022). At level $l$ a point is mapped to grid vertices whose features are looked up by spatial hash $\big(\bigoplus_{k} x_k \pi_k\big) \bmod T$, trilinearly interpolated, concatenated over levels and fed to an MLP:
 
-### A GAME LEVEL
-- Like generations of game makers before us, create a game which generates an navigable environment (eg. a roguelike dungeon, platforms) and some sort of goal or conflict (eg. enemy agents to avoid or items to collect). Aim to create an experience that will challenge players and vary noticeably in different playthroughs, whether that means procedural dungeon generation, careful resource management or an interesting AI model. Focus on designing a system that is capable of generating complex challenges and goals.
-- Examples:
-  - [Rhythm-based Mario Platformer](https://github.com/sgalban/platformer-gen-2D)
-  - [Pokémon Ice Puzzle Generator](https://github.com/jwang5675/Ice-Puzzle-Generator)
-  - [Abstract Exploratory Game](https://github.com/MauKMu/procedural-final-project)
-  - [Tiny Wings](https://github.com/irovira/TinyWings)
-  - Spore
-  - Dwarf Fortress
-  - Minecraft
-  - Rogue
+  $$\hat{d}(\mathbf{p}) = \mathrm{MLP}\big(\mathrm{enc}(\mathbf{p})\big)$$
 
-### AN ANIMATED ENVIRONMENT / MUSIC VISUALIZER
-- Create an environment full of interactive procedural animation. The goal of this project is to create an environment that feels responsive and alive. Whether or not animations are musically-driven, sound should be an important component. Focus on user interactions, motion design and experimental interfaces.
-- Examples:
-  - [The Darkside](https://github.com/morganherrmann/thedarkside)
-  - [Music Visualizer](https://yuruwang.github.io/MusicVisualizer/)
-  - [Abstract Mesh Animation](https://github.com/mgriley/cis566_finalproj)
-  - [Panoramical](https://www.youtube.com/watch?v=gBTTMNFXHTk)
-  - [Bound](https://www.youtube.com/watch?v=aE37l6RvF-c)
+- **Distillation loss:** sample points near the procedural rock surface and minimize
 
-### YOUR OWN PROPOSAL
-- You are of course welcome to propose your own topic . Regardless of what you choose, you and your team must research your topic and relevant techniques and come up with a detailed plan of execution. You will meet with some subset of the procedural staff before starting implementation for approval.
+  $$\mathcal{L} = \mathbb{E}_{\mathbf{p}}\,\big\lvert \hat{d}(\mathbf{p}) - d_{\text{proc}}(\mathbf{p}) \big\rvert$$
+
+- **GPU optimization:** fused kernels (Müller, *tiny-cuda-nn*), workgroup shared memory for weights, fp16, timestamp-query profiling.
+- **Training:** PyTorch (Colab GPU); weights exported as binary buffers for WebGPU.
+
+### Design
+
+```mermaid
+flowchart TB
+    subgraph Offline [Offline, PyTorch]
+      PS[Procedural rock SDFs] --> TR[Distillation training]
+      TR --> W[Hash tables + MLP weights]
+    end
+    subgraph Runtime [Runtime, WebGPU]
+      UI[Parameter GUI + camera] --> ST[Sphere-tracing compute pass]
+      W --> NK[Neural SDF kernel<br/>naive / fused / fp16]
+      PT[FBM terrain SDF] --> ST
+      PL[Procedural placement<br/>cell hashing] --> ST
+      NK --> ST
+      ST --> SH[Shading, shadows, fog]
+      SH --> OUT[Screen + timing panel]
+    end
+```
+
+Stack: TypeScript + WebGPU + WGSL (Vite, lil-gui) for runtime; Python + PyTorch for training. Live demo hosted on GitHub Pages.
+
+### Timeline
+Solo project; all tasks by Xuan Zhu.
+
+| Week | Dates | Milestone | Tasks |
+|---|---|---|---|
+| 1 | 11/8 – 11/11 | **Milestone 1** | WebGPU framework; FBM terrain sphere tracing; procedural rock placement (procedural SDF rocks); first neural SDF trained and evaluated by a naive WGSL kernel. |
+| 2 | 11/12 – 11/17 | | Neural rocks integrated into the terrain; multiple species; timestamp-query profiling; fused hash-encoding + MLP kernel. |
+| 3 | 11/18 – 11/23 | **Milestone 2** (feature complete) | Shared-memory weights, fp16, culling and early termination; kernel switch and timing panel; quality comparison. |
+| 4 | 11/24 – 11/30 | **Final** | Visual polish (materials, lighting, fog), performance report, fly-through video, final README. Stretch goals if time allows. |
+
+**Risk plan:** procedural rocks keep the scene complete even before the neural path works. If training or the WGSL hash encoding blocks progress by 11/15, I will fall back to a plain MLP SDF (no hash grid) and keep the optimization study on that kernel.
+
+---
+
+## Milestone 1
+
+### Progress
+The core of the engine is in place:
+- **WebGPU framework:** a compute pass ray-marches into an `rgba16float` HDR texture; a blit pass upscales it with bilinear filtering and applies ACES tone mapping and gamma. The render resolution is adjustable (render scale).
+- **Camera and tools:** free-fly camera (WASD/QE + mouse), a lil-gui panel, an FPS / frame-time overlay, and a fixed **benchmark view** so timings are comparable across versions.
+- **Procedural terrain:** infinite FBM height field (7 rotated octaves of value noise), sphere-traced with a conservative step, plus slope/height-based materials (grass, rock, snow), soft shadows, sun and distance fog.
+- **Procedural rocks (the "teacher" shapes):** one candidate rock per 14 m grid cell, chosen by hashing (existence, size, offset, flattening). Each rock SDF is a sphere displaced by **6-octave 3D FBM**, with a bounding-sphere early-out. The scene SDF combines terrain and rocks; rocks cast and receive shadows.
+
+| Terrain only | Terrain + procedural rocks |
+|---|---|
+| ![Terrain](images/m1_terrain.jpg) | ![Rocks](images/m1_rocks.jpg) |
+
+### Performance baseline
+RTX 5070 Laptop GPU, Chrome (WebGPU), benchmark view (also logged in `perf/benchmarks.md`):
+
+| Render scale | Resolution | FPS | Frame time |
+|---|---|---|---|
+| 0.5 | 1280×673 | 27.5 | 36.4 ms |
+| 1.0 | 2560×1347 | 8.0 | 124.2 ms |
+
+The procedural rocks are expensive: every ray step searches 3×3 cells, re-evaluates the terrain height for each candidate rock, and near a rock evaluates 6 octaves of 3D noise. This is exactly the cost the neural SDF is meant to replace.
+
+### Difference from the plan
+- Done as planned: framework, camera, FBM terrain, procedural rock placement, baseline timings.
+- **Not done yet:** the first distilled neural SDF and its naive WGSL evaluator. This moves to the start of Milestone 2.
+
+### Complications
+- The height-field terrain is not an exact SDF, so the march step is scaled down (more steps per ray).
+- High-DPI displays multiply the pixel count; I added a render-resolution scale.
+- My first FPS counter clamped the frame time and hid the real cost; it now reports the true frame time.
+
+### Plan for Milestone 2
+- Distill one rock species into a neural SDF (start with a plain MLP + positional encoding, then multi-resolution hash grid) and evaluate it in WGSL.
+- Add WebGPU timestamp queries for per-pass GPU timing.
+- Cheap fair-comparison fixes for the baseline (2×2 cell search, cached rock parameters), then kernel fusion, shared-memory weights and fp16.
+- Scope and deliverables are otherwise unchanged.
+
+## Milestone 2
+_TBD_
+
+## Final Submission
+_TBD_
