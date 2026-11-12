@@ -128,7 +128,42 @@ Solo project; all tasks by Xuan Zhu.
 ---
 
 ## Milestone 1
-_TBD_
+
+### Progress
+The core of the engine is in place:
+- **WebGPU framework:** a compute pass ray-marches into an `rgba16float` HDR texture; a blit pass upscales it with bilinear filtering and applies ACES tone mapping and gamma. The render resolution is adjustable (render scale).
+- **Camera and tools:** free-fly camera (WASD/QE + mouse), a lil-gui panel, an FPS / frame-time overlay, and a fixed **benchmark view** so timings are comparable across versions.
+- **Procedural terrain:** infinite FBM height field (7 rotated octaves of value noise), sphere-traced with a conservative step, plus slope/height-based materials (grass, rock, snow), soft shadows, sun and distance fog.
+- **Procedural rocks (the "teacher" shapes):** one candidate rock per 14 m grid cell, chosen by hashing (existence, size, offset, flattening). Each rock SDF is a sphere displaced by **6-octave 3D FBM**, with a bounding-sphere early-out. The scene SDF combines terrain and rocks; rocks cast and receive shadows.
+
+| Terrain only | Terrain + procedural rocks |
+|---|---|
+| ![Terrain](images/m1_terrain.jpg) | ![Rocks](images/m1_rocks.jpg) |
+
+### Performance baseline
+RTX 5070 Laptop GPU, Chrome (WebGPU), benchmark view (also logged in `perf/benchmarks.md`):
+
+| Render scale | Resolution | FPS | Frame time |
+|---|---|---|---|
+| 0.5 | 1280×673 | 27.5 | 36.4 ms |
+| 1.0 | 2560×1347 | 8.0 | 124.2 ms |
+
+The procedural rocks are expensive: every ray step searches 3×3 cells, re-evaluates the terrain height for each candidate rock, and near a rock evaluates 6 octaves of 3D noise. This is exactly the cost the neural SDF is meant to replace.
+
+### Difference from the plan
+- Done as planned: framework, camera, FBM terrain, procedural rock placement, baseline timings.
+- **Not done yet:** the first distilled neural SDF and its naive WGSL evaluator. This moves to the start of Milestone 2.
+
+### Complications
+- The height-field terrain is not an exact SDF, so the march step is scaled down (more steps per ray).
+- High-DPI displays multiply the pixel count; I added a render-resolution scale.
+- My first FPS counter clamped the frame time and hid the real cost; it now reports the true frame time.
+
+### Plan for Milestone 2
+- Distill one rock species into a neural SDF (start with a plain MLP + positional encoding, then multi-resolution hash grid) and evaluate it in WGSL.
+- Add WebGPU timestamp queries for per-pass GPU timing.
+- Cheap fair-comparison fixes for the baseline (2×2 cell search, cached rock parameters), then kernel fusion, shared-memory weights and fp16.
+- Scope and deliverables are otherwise unchanged.
 
 ## Milestone 2
 _TBD_
