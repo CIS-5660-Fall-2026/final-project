@@ -56,6 +56,7 @@ I am currently looking into using threejs or pixijs instead, I think either opti
 - **Leave the visuals as blobs until I have an actual generator working**
   - once I have some animations, ill look into how to make these blobs look like limbs.
 ## Milestone 2: Implementation part 2 (due 11/23)
+IDEALLY: animations and some graphics
 We're over halfway there! This week should be about fixing bugs and extending the core of your generator. Make sure by the end of this week _your generator works and is feature complete._ Any core engine features that don't make it in this week should be cut! Don't worry if you haven't managed to exactly hit your goals. We're more interested in seeing proof of your development effort than knowing your planned everything perfectly. 
 
 Put all your code in your forked repository.
