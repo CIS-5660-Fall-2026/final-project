@@ -6,29 +6,37 @@ This is it! The culmination of your procedural graphics experience this semester
 Before submitting your first milestone, _you must get your project idea and scope approved by Rachel, Adam or a TA._
 
 ### Design Doc
-Start off by forking this repository. In your README, write a design doc to outline your project goals and implementation plan. It must include the following sections:
 
 #### Introduction
-- What motivates your project?
+I've always like the effects that volumetric rendering produces, and some of IQ and Maxime Heckel's shaders have inspired me to build on my star/nebula skybox and include a procedural aurora borealis, volumetric clouds, volumetric lighting, and a SDF landscape.
 
 #### Goal
-- What do you intend to achieve with this project?
+A visually compelling night skybox involving stars, aurora, volumetric clouds, volumetric lighting, and a SDF landscape.
 
-#### Inspiration/reference:
-- You must have some form of reference material for your final project. Your reference may be a research paper, a blog post, some artwork, a video, another class at Penn, etc.  
-- Include in your design doc links to and images of your reference material.
+#### Inspiration/reference: 
+- Aurora: https://www.shadertoy.com/view/XtGGRt
+- Clouds: https://www.shadertoy.com/view/XslGRr
+- Landscape: https://www.shadertoy.com/view/4ttSWf, https://www.shadertoy.com/view/MdX3Rr
 
 #### Specification:
-- Outline the main features of your project.
+- Procedural aurora borealis
+- Volumetric clouds (maybe physically based)
+- Some kind of volumetric lighting
+- Stretch: IG style cool SDF landscape + volumetric shadowmap
 
 #### Techniques:
-- What are the main technical/algorithmic tools you’ll be using? Give an overview, citing specific papers/articles.
+- Procedural skybox: https://www.shadertoy.com/view/XtGGRt
+- Volumetric rendering (clouds and lighting https://www.shadertoy.com/view/XslGRr, https://r3f.maximeheckel.com/solar)
+- SDF landscapes (https://www.shadertoy.com/view/4ttSWf, https://www.shadertoy.com/view/MdX3Rr)
 
 #### Design:
-- How will your program fit together? Make a simple free-body diagram illustrating the pieces.
+Stars and nebulae in the far background -> Aurora borealis in the background -> Clouds in front of the aurora -> A moon producing volumetric lighting effects -> a SDF landscape drawn on the lower half of the scene.
 
 #### Timeline:
-- Create a week-by-week set of milestones for each person in your group. Make sure you explicitly outline what each group member's duties will be.
+- Week1: Porting in basecode from hw01
+- Week2: Volumetric clouds (froxels?)
+- Week3: Volumetric lighting
+- Stretch: IG style cool SDF landscape + volumetric shadowmap
 
 Submit your Design doc as usual via pull request against this repository.
 ## Milestone 1: Implementation part 1 (due 11/11)
