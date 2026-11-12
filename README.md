@@ -39,15 +39,20 @@ Stars and nebulae in the far background -> Aurora borealis in the background -> 
 - Stretch: IG style cool SDF landscape + volumetric shadowmap
 
 Submit your Design doc as usual via pull request against this repository.
-## Milestone 1: Implementation part 1 (due 11/11)
-Begin implementing your engine! Don't worry too much about polish or parameter tuning -- this week is about getting together the bulk of your generator implemented. By the end of the week, even if your visuals are crude, the majority of your generator's functionality should be done.
+# Milestone #1
 
 Put all your code in your forked repository.
 
-Submission: Add a new section to your README titled: Milestone #1, which should include
-- written description of progress on your project goals. If you haven't hit all your goals, what's giving you trouble?
-- Examples of your generators output so far
-We'll check your repository for updates. No need to create a new pull request.
+## Progress
+- Ported in code from the fireball homework to use as the base scene of the project
+- Changed camera controls based on the implementation from a former [WebGPU project](https://github.com/CIS5650-Fall-2026/Project4-WebGPU-Forward-Plus-and-Clustered-Deferred)
+- Adjusted original fireball(comet)'s size and made it move across the screen
+- Added GUI for comet speed and comet scale
+
+<img width="1725" height="892" alt="Screenshot 2026-11-11 at 7 32 56 PM" src="https://github.com/user-attachments/assets/7a77bb4d-2d21-43d4-9691-0467c800b1e4" />
+
+
+
 ## Milestone 2: Implementation part 2 (due 11/23)
 We're over halfway there! This week should be about fixing bugs and extending the core of your generator. Make sure by the end of this week _your generator works and is feature complete._ Any core engine features that don't make it in this week should be cut! Don't worry if you haven't managed to exactly hit your goals. We're more interested in seeing proof of your development effort than knowing your planned everything perfectly. 
 
