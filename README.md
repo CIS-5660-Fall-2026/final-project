@@ -6,6 +6,59 @@ Zhuoyang Pan
 
 *The target: looking west from Wuzhu Youju across the central pond of Zhuozhengyuan (Humble Administrator's Garden), with the Beisi Pagoda behind the garden wall. Photo: Zhangzhugang, [Commons](https://commons.wikimedia.org/wiki/File:Suzhou_Zhuozheng_Yuan_2015.04.23_08-13-49.jpg), CC BY-SA 4.0*
 
+# Milestone #1
+
+Everything is in `zhuozhengyuan.hipnc` (Houdini 22, Apprentice, hence the watermark). The three tools so far are HDAs embedded in the hip: `lattice_window`, `taihu_rock`, `pavilion`. Renders are Karma.
+
+## Matched camera + blockout
+
+![blockout vs photo](img/m1/west_view_compare.jpg)
+*left: photo, right: my blockout from the matched camera*
+
+- camera at Wuzhu Youju, 3 m above the water, 155 mm lens (~15° FOV); distances eyeballed from the photo (pagoda ~1 km away, 76 m tall)
+- both pavilions are the real HDA, shore rocks are 4 `taihu_rock` variants copied along the bank
+- trees, wall, bridge and pagoda are placeholders; haze is baked into the color by distance for now
+
+## lattice_window
+
+![lattice windows](img/m1/lattice.jpg)
+
+- ice-ray grammar in one detail wrangle: start with the window rectangle, keep splitting the biggest piece with one straight bar between two of its edges
+- a split is only allowed if both new pieces are triangles, quads or pentagons (Stiny's rule) and no corner is sharper than 24°
+- out of the allowed splits it picks short, balanced cuts, plus some noise
+- every edge becomes a bar (box on a point), clipped to the inside of the frame
+- params: pattern (ice-ray / grid / diamond), frame (rectangle / circle / octagon), size, border, bar width, depth, piece size, randomness, seed
+
+![ice-ray steps](img/m1/ice_ray_steps.jpg)
+*the grammar after 1, 2, 4, 8, 16, 32, 64 cuts and when it stops*
+
+## taihu_rock
+
+![rocks](img/m1/rocks.jpg)
+*left to right: turning the four qualities on one at a time*
+
+- one volume wrangle writes an SDF, then Convert Volume and Poly Reduce
+- thin: smooth union of capsules along a bent spine, the slider sets radius vs height
+- wrinkled: ridged noise stretched vertically so the grooves run up and down
+- perforated: cellular (Worley) pits carved out
+- see-through: bent tunnels across the body, subtracted
+- darker in holes and grooves by sampling the SDF just outside the surface
+
+## pavilion
+
+![pavilions](img/m1/pavilions.jpg)
+*square with a straight roof, square, hexagon, octagon with more corner lift*
+
+- columns, beams, brackets, benches with the leaning backrest, steps: one point per part with kit shapes copied on (same trick as hw04)
+- roof: a grid per face, height from the juzhe rule (drops of 1/10, 1/20, 1/40 ...), corners lift and flare out toward the eave
+- hip ridges follow the same curve and end in a turned-up tip; tile rows are only color for now
+
+## Progress
+
+- everything planned for this week works, and the juzhe roof + corner lift from next week's list are already in
+- still to do: round openings for Wuzhu Youju, the real pagoda, willows, the wall with lattice windows, materials
+- trouble: my first lattice cut the holes with a Boolean and it randomly dropped some, so I switched to bars. Also `npoints(0)` in a detail wrangle counts the input, not the points you just added, which broke the first roof
+
 # Design Doc
 
 ## Introduction
