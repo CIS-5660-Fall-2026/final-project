@@ -52,6 +52,8 @@ My goal is to build an interactive painting generator using JavaScript, WebGL, a
 
 ## Milestone #1
 
+**Live Demo:** [Try it here](https://leo-luo-lzy.github.io/final-project/)
+
 ### Progress
 
 - Implemented procedural flow fields using Perlin and curl noise.
