@@ -1,9 +1,24 @@
 # TyphoonMaster: Procedural Typhoon in WebGPU
 
-A real-time, procedurally generated typhoon seen from above, the way a weather satellite sees it, rendered in the browser with WebGPU. A control panel controls both the storm's structure and how it looks.
+A real-time, procedurally generated typhoon seen from above, the way a weather satellite sees it, rendered in the browser with WebGPU. A control panel controls both the storm's structure and how it looks. Live demo link [here](https://typhoon.tonyxtian.com).
 
 <p align="center"><img src="media/typhoon.gif" width="420" alt="Reference: 3D-shaded infrared satellite loop of a typhoon"></p>
 <p align="center"><sub>Visual target: a 3D-shaded Himawari infrared loop by YanEric (<a href="https://www.bilibili.com/video/BV1934K6VEfo/">bilibili BV1934K6VEfo</a>).</sub></p>
+
+---
+
+## Milestone 1
+
+<p align="center"><img src="media/milestone1.gif" width="420" alt="Milestone 1 result: the procedural typhoon running in the browser"></p>
+<p align="center"><sub>Milestone 1 result, captured from the running page: about 7 storm hours in 6 seconds.</sub></p>
+
+The whole pipeline runs end to end in real time (120 fps at 2048² on M5 Max):
+
+- **Wind field.** Holland wind profile with outflow that turns anticyclonic far from the center, plus radial outflow at cloud-top level. A debug view shows speed as color and direction as arrows.
+- **Coarse cloud simulation.** A 512² cloud-top height field, moved by the wind with semi-Lagrangian advection on a fixed 60 s tick. Cloud is added at the eyewall and along logarithmic-spiral rainbands, and removed by eye clearing and gradual decay.
+- **Fine detail.** Streaked, terraced noise in log-polar coordinates, carried by a two-phase flow map whose reset period shortens where the shear is strong.
+- **Rendering.** Infrared brightness from height, low-sun relief lighting with shadows, over a blue ocean.
+- **Control panel.** Storm, structure, detail, lighting/view, and simulation folders.
 
 ---
 
