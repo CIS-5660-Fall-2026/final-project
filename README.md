@@ -47,11 +47,9 @@ Put all your code in your forked repository.
 - Ported in code from the fireball homework to use as the base scene of the project
 - Changed camera controls based on the implementation from a former [WebGPU project](https://github.com/CIS5650-Fall-2026/Project4-WebGPU-Forward-Plus-and-Clustered-Deferred)
 - Adjusted original fireball(comet)'s size and made it move across the screen
-- Added GUI for comet speed and comet scale
+- Added GUI elements for comet speed and comet scale
 
 <img width="1725" height="892" alt="Screenshot 2026-11-11 at 7 32 56 PM" src="https://github.com/user-attachments/assets/7a77bb4d-2d21-43d4-9691-0467c800b1e4" />
-
-
 
 ## Milestone 2: Implementation part 2 (due 11/23)
 We're over halfway there! This week should be about fixing bugs and extending the core of your generator. Make sure by the end of this week _your generator works and is feature complete._ Any core engine features that don't make it in this week should be cut! Don't worry if you haven't managed to exactly hit your goals. We're more interested in seeing proof of your development effort than knowing your planned everything perfectly. 
