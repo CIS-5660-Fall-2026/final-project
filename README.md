@@ -72,4 +72,20 @@ Noise displacement is weighted toward edges and upward faces, so the exposed top
 
 ### Jacky (vegetation)
 
-_TBD_
+#### Progress
+
+For Milestone 1, I built a procedural English ivy stem, leaves, and branching leaf veins in Houdini. A single `age` slider animates their growth. Next week I’ll work on using cracks in the wall to guide the vine’s path and on recursive branching so each new shoot can grow shoots of its own.
+
+#### Output
+
+[![English ivy growing along a curve as leaves emerge near the tip](media/vegetation/m1_vegetation.gif)](media/vegetation/m1_vegetation.mov)
+
+The stem follows an input curve as `age` increases. At `age = 1`, it reaches the end of the curve.
+
+Each leaf has a fixed attachment point on the curve. Its position, `u`, runs from 0 at the base to 1 at the tip and determines when the leaf starts growing. For example, a leaf at `u = 0.4` starts growing at `age = 0.4`. By `age = 0.5`, it has reached its own mature size and its L-system has grown through six generations of vein branching.
+
+**Leaf geometry**
+
+The L-system generates the branching veins, and their tips define the lobed outline of the leaf blade. I apply the same noise to the blade surface and the veins so they bend together. The displacement increases toward the edges, giving the blade a rippled shape.
+
+<img src="media/vegetation/leaf.png" alt="Wireframe of a single ivy leaf showing its lobed outline and branching veins" width="520">
