@@ -74,7 +74,7 @@ Noise displacement is weighted toward edges and upward faces, so the exposed top
 
 #### Progress
 
-For Milestone 1, I built a procedural English ivy stem, leaves, and branching leaf veins in Houdini. A single `age` slider animates their growth. Next week I’ll work on using cracks in the wall to guide the vine’s path and on recursive branching so each new shoot can grow shoots of its own.
+For Milestone 1, I built a procedural English ivy stem, leaves, and branching leaf veins in Houdini. A single `age` slider animates their growth. Next week I'll work on using cracks in the wall to guide the vine's path and on recursive branching so each new shoot can grow shoots of its own.
 
 #### Output
 
@@ -89,3 +89,50 @@ Each leaf has a fixed attachment point on the curve. Its position, `u`, runs fro
 The L-system generates the branching veins, and their tips define the lobed outline of the leaf blade. I apply the same noise to the blade surface and the veins so they bend together. The displacement increases toward the edges, giving the blade a rippled shape.
 
 <img src="media/vegetation/leaf.png" alt="Wireframe of a single ivy leaf showing its lobed outline and branching veins" width="520">
+
+## Milestone #2
+
+### Anna (structure)
+
+#### Progress (updated 11/12)
+
+- Test asset: doorway and window with lintels (a lintel falls when either jamb goes); `wall_type` switches between a straight wall and an L-corner.
+- Optional input: block center points replace the built-in layout.
+- Stone color ages: `Cd` darkens with `age` where wet or occluded, `roughness` drops where wet.
+- Demo scene `houdini/scene/ruin_demo.hipnc`: Karma render with a MaterialX stone material reading `Cd` / `roughness`.
+- Parameters grouped into Decay / Weathering / Layout / Color.
+- Next: rubble without interpenetration, stricter support rule (more than half the block width supported), integration with P2.
+
+#### Using the HDA (for P2)
+
+Install `houdini/hda/ruin_structure.hdanc` and wire the vine subnet after `ruin_structure` (the HDA is locked). Baked outputs at `age` 0 / 0.5 / 1: `houdini/export/m2/test_ruin_field00/05/10.bgeo.sc`.
+
+| Parameter | Default | Effect |
+| --- | --- | --- |
+| `age` | 0 | 0 intact, 1 mostly collapsed; drives everything |
+| `collapse_min` / `collapse_max` | 0.3 / 0.8 | stability threshold at age 0 / 1 |
+| `rubble_spread` | 1 | how far fallen blocks land from the wall |
+| `seed` | 0 | weak-block pattern and rubble placement |
+| `erosion_band` / `erosion_depth` | 0.08 / 0.18 | edge weathering width and max depth |
+| `wall_type`, `door`, `window` | Straight, on, on | layout |
+| `base_color`, `stain_color`, `stain_amount` | beige, dark brown, 1 | stone color and how much it darkens |
+
+Output is one mesh (standing wall + rubble, no ground) with these point attributes:
+
+| Attribute | Range | Use |
+| --- | --- | --- |
+| `moisture` | 0..1 | wetness; main scatter density for vines |
+| `crevice` | 0..1 | closeness to a gap or the ground; vine start points |
+| `ao` | 0..1 | ray-cast occlusion, 1 = occluded |
+| `piece` | int | block id |
+| `rubble` | 0/1 | 1 on fallen blocks |
+| `stability`, `height`, `kind` | | why a block falls, course index, wall block (0) or drum (1) |
+| `Cd`, `roughness`, `N` | | aged stone color, roughness, normals |
+
+`age` is also a detail attribute: `detail(0, "age", 0)`.
+
+Optional input 1: one point per block with `P` (center), `v@scale`, `i@height`, `i@kind` (0 wall / 1 drum); missing attributes default to a 1 x 0.5 x 0.5 brick. Blocks are rebuilt as boxes, so a sculpted single mesh won't work.
+
+### Jacky (vegetation)
+
+_TBD_
