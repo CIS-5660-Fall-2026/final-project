@@ -45,7 +45,7 @@ Put all your code in your forked repository.
 
 ## Progress
 - Ported in code from the fireball homework to use as the base scene of the project
-- Changed camera controls based on the implementation from a former [WebGPU project](https://github.com/CIS5650-Fall-2026/Project4-WebGPU-Forward-Plus-and-Clustered-Deferred)
+- Changed camera controls based on the implementation from a former [WebGPU project](https://github.com/lukekwon98/WebGPU-Forward-Plus-and-Clustered-Deferred/tree/main)
 - Adjusted original fireball(comet)'s size and made it move across the screen
 - Added GUI elements for comet speed and comet scale
 
