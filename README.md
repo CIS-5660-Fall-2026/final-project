@@ -1,3 +1,47 @@
+# Progress Checks
+
+## Milestone #1 (at time of 11/11 midnight):
+
+For this milestone, I focused on implementing the core procedural framework for my Howl's Moving Castle inspired generator.
+
+So far, I have implemented:
+
+A central castle body with placeholder architectural geometry.
+
+Candidate attachment point generation based on surface orientation.
+
+Weighted random house placement (a lottery system!) with adjustable count, rotation, clustering, height preference, and seed.
+
+Collision detection using bounding boxes and Oriented Bounding Boxes (as opposed to AABB, just because the houses are rotated), with retries for invalid placements.
+
+I'm not finished with the adaptive supports and exposed HDA parameters, but I will add those as the first thing I do for MS2.
+
+Other than the weights and collision (which had the most work to be done), the main challenge has been balancing collision-free placement with the crowded, irregular look of Howl's Moving Castle. I plan to introduce more house variants and clustered structures to improve the overall silhouette. For example, longer (horizontally longer) houses, skinnier ones, etc. 
+
+Next, I'll expand the system to include towers, pipes, mechanical details, and vegetation, which will hopefully help fill it out. My current idea is that these other systems will depend heavily on the House Placement system that I have in place, so at least right now I have the basis finished.
+
+
+PROGRESS IMAGES BELOW: 
+In order: Copy to Points, Showing Clustering, Textured Base, Collision (houses no longer overlap)
+For video documentation of MS1: https://vimeo.com/1245700571/6d7ae986f6?share=copy&fl=sv&fe=ci
+
+<img src="Progress/2.png" width="550">
+
+<img src="Progress/3_clusterHigh.png" width="550">
+
+<img src="Progress/3_clusterLow.png" width="550">
+
+<img src="Progress/4_clusterStrengthHigh.png" width="550">
+
+<img src="Progress/4_clusterStrengthLow.png" width="550">
+
+<img src="Progress/5_texturedBase.png" width="550">
+
+<img src="Progress/6_collision_housesNoLongerOverlap.png" width="550">
+
+
+
+
 
 
 # Design Doc
