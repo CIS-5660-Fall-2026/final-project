@@ -23,6 +23,7 @@ uniform float u_Time;
 uniform float u_Tail;
 uniform float u_Speed;
 uniform float u_Length;
+uniform vec3 u_TailDir;
 
 in vec4 vs_Pos;             // The array of vertex positions passed to the shader
 
@@ -162,7 +163,7 @@ void main()
     float randVal3 = fbmPerlin(vec3(pos + u_Time*0.01*u_Speed)) * 1.2;
     randVal3 = (randVal3 + 1.0)*0.5;
 
-    vec3 tailDir = normalize(vec3(-1.0));
+    vec3 tailDir = normalize(u_TailDir);
     vec3 normalDir = normalize(vs_Nor.xyz);
 
     float tailMask = dot(normalDir, tailDir);

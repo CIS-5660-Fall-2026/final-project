@@ -1,4 +1,4 @@
-import {vec3} from 'gl-matrix';
+import {vec3, mat4} from 'gl-matrix';
 import Stats from 'stats-js';
 import * as DAT from 'dat.gui';
 import Icosphere from './geometry/Icosphere';
@@ -28,7 +28,9 @@ const controls = {
   Tail: 1,
   Speed: 1,
   Length: 5,
-  ColorWave: 0
+  ColorWave: 0,
+  CometSpeed: 50,
+  Scale: 50.0
 };
 
 let controllers: DAT.GUIController[] = [];
@@ -43,6 +45,8 @@ function resetFireball() {
   controls.Speed = 1;
   controls.Length = 5;
   controls.ColorWave = 0;
+  controls.CometSpeed = 0.5,
+  controls.Scale = 50.0
 
   for(let controller of controllers){
     controller.updateDisplay();
@@ -54,6 +58,10 @@ let skybox: Icosphere;
 let square: Square;
 let prevTesselations: number = 5;
 let cube: Cube;
+
+const cometFront = vec3.normalize(vec3.create(), vec3.fromValues(1, -0.15, 0));
+const cometStart = vec3.fromValues(-250, 175, -300);
+let cometPos = vec3.clone(cometStart);
 
 function loadScene() {
   icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, controls.tesselations);
@@ -87,6 +95,9 @@ function main() {
   controllers.push(gui.add(controls, 'Length', -20, 20).step(0.1));
   controllers.push(gui.add(controls, 'ColorWave', 0, 0.2).step(0.01));
   gui.add(controls, 'Reset Fireball');
+  gui.add(controls, 'CometSpeed', 0, 5).step(0.05);
+  gui.add(controls, 'Scale', 0.01, 1).step(0.01);
+
 
   // get canvas and webgl context
   const canvas = <HTMLCanvasElement> document.getElementById('canvas');
@@ -118,6 +129,7 @@ function main() {
   ])
 
   let time = 0;
+  let lastTime = performance.now();
 
   // This function will be called every frame
   function tick() {
@@ -144,9 +156,23 @@ function main() {
 
 
     // Fireball
-    lambert.setTime(time);
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.1);
+    lastTime = now;
 
-    renderer.render(camera, lambert, 
+    vec3.scaleAndAdd(cometPos, cometPos, cometFront, controls.CometSpeed * dt);
+    if (vec3.distance(cometPos, cometStart) > 1000){
+      vec3.copy(cometPos, cometStart);
+    }
+
+    const model = mat4.create();
+    mat4.translate(model, model, cometPos);
+    mat4.scale(model, model, [controls.Scale, controls.Scale, controls.Scale]);
+
+    lambert.setTime(time);
+    lambert.setTailDir(vec3.negate(vec3.create(), cometFront));
+
+    renderer.render(camera, lambert, model, 
       vec3.fromValues(controls.Base[0], controls.Base[1], controls.Base[2]),
       vec3.fromValues(controls.Variation[0], controls.Variation[1], controls.Variation[2]),
       vec3.fromValues(controls.Frequency[0], controls.Frequency[1], controls.Frequency[2]),

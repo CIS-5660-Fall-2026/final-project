@@ -1,4 +1,4 @@
-import {vec4, mat4} from 'gl-matrix';
+import {vec3, vec4, mat4} from 'gl-matrix';
 import Drawable from './Drawable';
 import {gl} from '../../globals';
 
@@ -37,6 +37,7 @@ class ShaderProgram {
   unifSpeed: WebGLUniformLocation;
   unifLength: WebGLUniformLocation;
   unifColorWave: WebGLUniformLocation;
+  unifTailDir: WebGLUniformLocation;
   
 
   constructor(shaders: Array<Shader>) {
@@ -65,6 +66,7 @@ class ShaderProgram {
     this.unifSpeed = gl.getUniformLocation(this.prog, "u_Speed");
     this.unifLength = gl.getUniformLocation(this.prog, "u_Length");
     this.unifColorWave = gl.getUniformLocation(this.prog, "u_ColorTransition");
+    this.unifTailDir = gl.getUniformLocation(this.prog, "u_TailDir");
   }
 
   use() {
@@ -148,6 +150,13 @@ class ShaderProgram {
     this.use();
     if (this.unifColorWave !== -1) {
       gl.uniform1f(this.unifColorWave, tail);
+    }
+  }
+
+  setTailDir(dir: vec3) {
+    this.use();
+    if (this.unifTailDir !== -1) {
+      gl.uniform3fv(this.unifTailDir, dir);
     }
   }
 

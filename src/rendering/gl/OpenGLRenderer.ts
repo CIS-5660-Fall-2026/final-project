@@ -22,7 +22,7 @@ class OpenGLRenderer {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   }
 
-  render(camera: Camera, prog: ShaderProgram, draw_color1: vec3, draw_color2: vec3,
+  render(camera: Camera, prog: ShaderProgram, model: mat4, draw_color1: vec3, draw_color2: vec3,
     draw_color3: vec3, draw_color4: vec3, 
     tail: number,
     speed: number,
@@ -30,14 +30,12 @@ class OpenGLRenderer {
     colorWave: number,
     drawables: Array<Drawable>) {
 
-    let model = mat4.create();
     let viewProj = mat4.create();
     let color1 = vec4.fromValues(draw_color1[0]/255.0, draw_color1[1]/255.0, draw_color1[2]/255.0, 1.);
     let color2 = vec4.fromValues(draw_color2[0]/255.0, draw_color2[1]/255.0, draw_color2[2]/255.0, 1.);
     let color3 = vec4.fromValues(draw_color3[0]/255.0, draw_color3[1]/255.0, draw_color3[2]/255.0, 1.);
     let color4 = vec4.fromValues(draw_color4[0]/255.0, draw_color4[1]/255.0, draw_color4[2]/255.0, 1.);
 
-    mat4.identity(model);
     mat4.scale(model, model, [0.05,0.05,0.05]);
     mat4.multiply(viewProj, camera.projectionMatrix, camera.viewMatrix);
     prog.setModelMatrix(model);
