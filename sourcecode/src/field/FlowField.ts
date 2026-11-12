@@ -1,4 +1,5 @@
 import {fbmPerlin3D} from '../noise/perlin';
+import ImageGuide from './ImageGuide';
 
 export const FIELD_PERLIN = 0;
 export const FIELD_CURL = 1;
@@ -50,6 +51,29 @@ class FlowField {
           dx = dndy;
           dy = -dndx;
         }
+        const len = Math.sqrt(dx * dx + dy * dy) + 1e-8;
+        this.vx[k] = dx / len;
+        this.vy[k] = dy / len;
+      }
+    }
+  }
+
+  applyImage(guide: ImageGuide, edgeThreshold: number) {
+    for (let j = 0; j < this.rows; j++) {
+      for (let i = 0; i < this.cols; i++) {
+        const k = j * this.cols + i;
+        const g = guide.indexAt(i * this.cellSize, j * this.cellSize);
+
+        let ix = guide.dirX[g];
+        let iy = guide.dirY[g];
+        if (ix * this.vx[k] + iy * this.vy[k] < 0) {
+          ix = -ix;
+          iy = -iy;
+        }
+
+        const w = Math.min(guide.strength[g] / edgeThreshold, 1.0);
+        const dx = this.vx[k] * (1.0 - w) + ix * w;
+        const dy = this.vy[k] * (1.0 - w) + iy * w;
         const len = Math.sqrt(dx * dx + dy * dy) + 1e-8;
         this.vx[k] = dx / len;
         this.vy[k] = dy / len;

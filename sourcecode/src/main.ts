@@ -14,12 +14,16 @@ import lineFragSrc from './shaders/line-frag.glsl?raw';
 import screenVertSrc from './shaders/screen-vert.glsl?raw';
 import compositeFragSrc from './shaders/composite-frag.glsl?raw';
 import * as DAT from 'dat.gui';
+import ImageGuide from './field/ImageGuide';
 
 const PAPER = [0.96, 0.94, 0.89];
 const CELL_SIZE = 8;
 const MAX_PARTICLES = 50000;
+const IMAGE_MAX_SIZE = 512;
 
 const defaultParams = {
+  mode: 'Noise',
+  edgeThreshold: 0.05,
   field: 'Curl',
   seed: 256,
   noiseScale: 512,
@@ -55,16 +59,23 @@ function main() {
   const accum = new Accumulator();
   let field: FlowField;
   let particles: Particles;
+  let guide: ImageGuide = null;
   let saveRequested = false;
+
+  const imageInput = <HTMLInputElement> document.getElementById('imageInput');
 
   const controls = {
     ...defaultParams,
+    'Load Image': () => {
+      imageInput.click();
+    },
     'Clear': () => {
       accum.clear();
     },
     'New Seed': () => {
       controls.seed = Math.floor(Math.random() * 1000);
       restart();
+      guiControllers.forEach(c => c.updateDisplay());
     },
     'Save PNG': () => {
       saveRequested = true;
@@ -72,6 +83,7 @@ function main() {
     'Reset': () => {
       Object.assign(controls, defaultParams);
       restart();
+      guiControllers.forEach(c => c.updateDisplay());
     },
   };
 
@@ -80,7 +92,14 @@ function main() {
     const type = controls.field === 'Curl' ? FIELD_CURL : FIELD_PERLIN;
     field = new FlowField(canvas.width, canvas.height, CELL_SIZE);
     field.build(type, controls.noiseScale, controls.octaves, 0.0);
-    particles = new Particles(controls.particleCount, canvas.width, canvas.height);
+
+    let activeGuide: ImageGuide = null;
+    if (controls.mode === 'Image' && guide) {
+      guide.fitTo(canvas.width, canvas.height);
+      field.applyImage(guide, controls.edgeThreshold);
+      activeGuide = guide;
+    }
+    particles = new Particles(controls.particleCount, canvas.width, canvas.height, activeGuide);
     accum.clear();
   }
 
@@ -94,9 +113,28 @@ function main() {
   window.addEventListener('resize', resize);
   resize();
 
+  imageInput.addEventListener('change', () => {
+    const file = imageInput.files[0];
+    if (!file) return;
+    const img = new Image();
+    img.onload = () => {
+      guide = new ImageGuide(img, IMAGE_MAX_SIZE);
+      URL.revokeObjectURL(img.src);
+      controls.mode = 'Image';
+      restart();
+      guiControllers.forEach(c => c.updateDisplay());
+    };
+    img.src = URL.createObjectURL(file);
+    imageInput.value = '';
+  });
+
   const gui = new DAT.GUI();
 
   const guiControllers = [
+    gui.add(controls, 'mode', ['Noise', 'Image']).onFinishChange(restart),
+
+    gui.add(controls, 'edgeThreshold', 0.005, 0.3).step(0.005).onFinishChange(restart),
+
     gui.add(controls, 'field', ['Curl', 'Perlin']).onFinishChange(restart),
 
     gui.add(controls, 'seed', 0, 1000).step(1).onFinishChange(restart),
@@ -117,14 +155,13 @@ function main() {
 
     gui.add(controls, 'paused'),
   ];
+  gui.add(controls, 'Load Image');
   gui.add(controls, 'Clear');
   gui.add(controls, 'New Seed');
   gui.add(controls, 'Save PNG');
   gui.add(controls, 'Reset');
 
-
-
-
+  
   const lineProg = new ShaderProgram([
     new Shader(gl.VERTEX_SHADER, lineVertSrc),
     new Shader(gl.FRAGMENT_SHADER, lineFragSrc),
