@@ -96,10 +96,14 @@ fn gravityNaive(
 
         let other = inputBodies[j];
         let r = other.position - body.position;
+        let distanceSquared = dot(r, r);
+        let radiusSum = body.radius + other.radius;
 
-        let inverseDistance = inverseSqrt(
-            dot(r, r) + softeningSquared
-        );
+        if (distanceSquared <= radiusSum * radiusSum) {
+            continue;
+        }
+
+        let inverseDistance = inverseSqrt(distanceSquared + softeningSquared);
 
         acceleration += other.mass
             * r
