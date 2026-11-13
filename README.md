@@ -61,3 +61,38 @@ Interactive landscape
 **Nov 5 to 11:** Implement procedural terrain, flower geometry, and basic folding.  
 **Nov 12 to 23:** Add exploration interaction, controls, paper shading, and finish core features.  
 **Nov 24 to 30:** Polish lighting, animation, final visuals, and presentation.
+
+## Milestone #1
+
+Terrain, flower geometry, and basic folding all work. Shading is a placeholder for now.
+
+* The terrain is a sheet of triangles. A few seeded ridges follow the grid lines, so every slope is a flat facet.
+* Each flower is a Yoshimura bloom pattern, a center polygon with a pinwheel of split rhombi around it. Petal count and ring count are sliders.
+* The pattern would not fold by rotating faces one at a time, so folding uses the bar and hinge solver from Origami Simulator. It runs once per flower type, and the fold slider blends between the saved poses.
+* The seed also scatters the flowers on flat ground.
+
+Run it with `npm install` and then `npm run dev`.
+
+Next up are flowers that open when the camera gets close and the paper shader.
+
+Stretch goals: a camera that walks through the landscape, ridges that fold up as it gets close, a day and night cycle where the flowers close at night, a paper sky with a sun and clouds, more flower variety and trees, and a tilt shift blur.
+
+### Output
+
+![Default scene with the controls panel](assets/m1_app.png)
+
+Example seeds.
+
+![Three landscapes from three seeds](assets/m1_seeds.png)
+
+Fold slider from 0 to 1.
+
+![A flower folding from a flat sheet](assets/m1_fold.png)
+
+Different petal and ring counts.
+
+![Four flowers with different petal and ring counts](assets/m1_flowers.png)
+
+Same seed, different parameters.
+
+![The same seed with different parameters](assets/m1_params.png)
