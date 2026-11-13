@@ -37,11 +37,18 @@ export const constants = {
     lightRadius: 2,
     maxLightsPerCluster: 200,
 
+    // Light cluster grid dimensions
     gridDimX: 16,
     gridDimY: 9,
     gridDimZ: 24,
+
     farPlane: Camera.farPlane,
-    nearPlane: Camera.nearPlane
+    nearPlane: Camera.nearPlane,
+
+    // Volume froxel dimensions
+    froxelGridDimX: 240,
+    froxelGridDimY: 135,
+    froxelGridDimZ: 64
 };
 
 // =================================

@@ -64,14 +64,18 @@ I already have a WebGPU implementation of a Forward+ renderer, so I plan to buil
 
 **NCHORTEK NOTE:** I am using my final late day of the semester and will commit/push my Milestone 1 work on 11/12.
 
-Begin implementing your engine! Don't worry too much about polish or parameter tuning -- this week is about getting together the bulk of your generator implemented. By the end of the week, even if your visuals are crude, the majority of your generator's functionality should be done.
+So far I have:
+- Copied over the WebGPU renderer that I will be building on for this project
+- Familiarized myself with the volumetric rendering approach presented in Strand's blog post and the Frostbite slides
+- Mapped out a set of design/implementation decisions required to complete the originally planned goals for Milestone 1 (see `planning-docs/`)
+- Created a WIP Volumetrics class that will manage the 3 compute passes needed to procedurally generate volume data and then process it for rendering
+- Relocated some spatial transformation helper functions into common.wgsl so the planned volumetric compute shaders can access them 
+ 
+I am definitely behind what I initially planned for Milestone 1, primarily due to underestimating how long it would take 
+to wrap my head around the lower-level design/implementation details that aren't immediately obvious from a first pass
+over the reference materials. Looking ahead, I think that the temporal integration could be something to cut if I find
+myself struggling to make-up lost ground as I work towards the next milestone deliverable.
 
-Put all your code in your forked repository.
-
-Submission: Add a new section to your README titled: Milestone #1, which should include
-- written description of progress on your project goals. If you haven't hit all your goals, what's giving you trouble?
-- Examples of your generators output so far
-We'll check your repository for updates. No need to create a new pull request.
 ## Milestone 2: Implementation part 2 (due 11/23)
 We're over halfway there! This week should be about fixing bugs and extending the core of your generator. Make sure by the end of this week _your generator works and is feature complete._ Any core engine features that don't make it in this week should be cut! Don't worry if you haven't managed to exactly hit your goals. We're more interested in seeing proof of your development effort than knowing your planned everything perfectly. 
 
