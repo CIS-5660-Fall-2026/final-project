@@ -1,117 +1,90 @@
-# Final Project!
+# CosmicChaos
 
-This is it! The culmination of your procedural graphics experience this semester. For your final project, we'd like to give you the time and space to explore a topic of your choosing. You may choose any topic you please, so long as you vet the topic and scope with an instructor or TA. We've provided some suggestions below. The scope of your project should be roughly 1.5 homework assignments). To help structure your time, we're breaking down the project into 4 milestones:
+*A tiny universe with a questionable life expectancy.*
 
-## Project planning: Design Doc (due 11/4)
-Before submitting your first milestone, _you must get your project idea and scope approved by Rachel, Adam or a TA._
+[Live Demo](https://jamesliu12.github.io/cosmic-chaos/)
 
-### Design Doc
-Start off by forking this repository. In your README, write a design doc to outline your project goals and implementation plan. It must include the following sections:
+## Introduction
 
-#### Introduction
-- What motivates your project?
+I love the visual chaos of celestial bodies pulling each other in, growing, and blowing apart. I also enjoy GPU programming, so this project is a chance to build a tiny universe while exploring parallel simulation and performance optimization!
 
-#### Goal
-- What do you intend to achieve with this project?
+## Goal
 
-#### Inspiration/reference:
-- You must have some form of reference material for your final project. Your reference may be a research paper, a blog post, some artwork, a video, another class at Penn, etc.  
-- Include in your design doc links to and images of your reference material.
+Build a 3D gravity sandbox in WebGPU where bodies attract each other, collide, merge, and eventually explode into smaller fragments. A tiny universe with plenty of opportunities for chaos!
 
-#### Specification:
-- Outline the main features of your project.
+## Inspiration / Reference
 
-#### Techniques:
-- What are the main technical/algorithmic tools you’ll be using? Give an overview, citing specific papers/articles.
+**[Collider — Robert Hodgin](https://roberthodgin.com/project/collider)** is my main visual and behavioral reference. I like its cycle of attraction, growth, ignition, and explosion, especially how glowing bodies stand out among smaller particles.
 
-#### Design:
-- How will your program fit together? Make a simple free-body diagram illustrating the pieces.
+![Collider by Robert Hodgin](https://roberthodgin.com/v2/wp-content/uploads/2020/05/collider_screen_shot_02.png)
 
-#### Timeline:
-- Create a week-by-week set of milestones for each person in your group. Make sure you explicitly outline what each group member's duties will be.
+*Reference image: Robert Hodgin, Collider.*
 
-Submit your Design doc as usual via pull request against this repository.
-## Milestone 1: Implementation part 1 (due 11/11)
-Begin implementing your engine! Don't worry too much about polish or parameter tuning -- this week is about getting together the bulk of your generator implemented. By the end of the week, even if your visuals are crude, the majority of your generator's functionality should be done.
+**[Fast N-Body Simulation with CUDA — GPU Gems 3, Chapter 31](https://developer.nvidia.com/gpugems/gpugems3/part-v-physics-simulation/chapter-31-fast-n-body-simulation-cuda)** by Lars Nyland, Mark Harris, and Jan Prins is my main technical reference. I'll adapt its gravitational softening and tiled shared-memory computation to WGSL.
 
-Put all your code in your forked repository.
+![Tiled N-body computation](https://developer.download.nvidia.com/books/gpugems3/31fig02.jpg)
 
-Submission: Add a new section to your README titled: Milestone #1, which should include
-- written description of progress on your project goals. If you haven't hit all your goals, what's giving you trouble?
-- Examples of your generators output so far
-We'll check your repository for updates. No need to create a new pull request.
-## Milestone 2: Implementation part 2 (due 11/23)
-We're over halfway there! This week should be about fixing bugs and extending the core of your generator. Make sure by the end of this week _your generator works and is feature complete._ Any core engine features that don't make it in this week should be cut! Don't worry if you haven't managed to exactly hit your goals. We're more interested in seeing proof of your development effort than knowing your planned everything perfectly. 
+*Reference diagram: GPU Gems 3, Figure 31-2.*
 
-Put all your code in your forked repository.
+## Specification
 
-Submission: Add a new section to your README titled: Milestone #3, which should include
-- written description of progress on your project goals. If you haven't hit all your goals, what did you have to cut and why? 
-- Detailed output from your generator, images, video, etc.
-We'll check your repository for updates. No need to create a new pull request.
+The core simulation features are mutual gravity, collisions, merging, and explosions. I’m aiming for around 10k+ planets and stars, depending on performance. I’ll compare a naive all-pairs solver with a tiled solver that reuses data in workgroup memory.
 
-Come to class on the due date with a WORKING COPY of your project. We'll be spending time in class critiquing and reviewing your work so far.
+Planets and stars will have procedurally generated appearances inspired by real celestial bodies, with varied colors, surface patterns, and glowing effects.
 
-## Final submission (due 11/30)
-Time to polish! Spen this last week of your project using your generator to produce beautiful output. Add textures, tune parameters, play with colors, play with camera animation. Take the feedback from class critques and use it to take your project to the next level.
+### Presentation
 
-Submission:
-- Push all your code / files to your repository
-- Come to class ready to present your finished project
-- Update your README with two sections 
-  - final results with images and a live demo if possible
-  - post mortem: how did your project go overall? Did you accomplish your goals? Did you have to pivot?
+The final product will run in a web browser, allowing users to explore the tiny universe with a movable camera. Controls will adjust simulation speed, gravity strength, the explosion threshold, and the initial number of bodies.
 
-## Topic Suggestions
+If time allows, I’ll add interactions such as clicking a body to trigger an explosion or using the mouse to apply an external force.
 
-### Create a generator in Houdini
+### Visual Assets
 
-### A CLASSIC 4K DEMO
-- In the spirit of the demo scene, create an animation that fits into a 4k executable that runs in real-time. Feel free to take inspiration from the many existing demos. Focus on efficiency and elegance in your implementation.
-- Example: 
-  - [cdak by Quite & orange](https://www.youtube.com/watch?v=RCh3Q08HMfs&list=PLA5E2FF8E143DA58C)
+No external visual assets are needed. Planets and stars will be generated procedurally using mass, color, and a random seed. Noise-based shaders will create surface patterns and variation.
 
-### A RE-IMPLEMENTATION
-- Take an academic paper or other pre-existing project and implement it, or a portion of it.
-- Examples:
-  - [2D Wavefunction Collapse Pokémon Town](https://gurtd.github.io/566-final-project/)
-  - [3D Wavefunction Collapse Dungeon Generator](https://github.com/whaoran0718/3dDungeonGeneration)
-  - [Reaction Diffusion](https://github.com/charlesliwang/Reaction-Diffusion)
-  - [WebGL Erosion](https://github.com/LanLou123/Webgl-Erosion)
-  - [Particle Waterfall](https://github.com/chloele33/particle-waterfall)
-  - [Voxelized Bread](https://github.com/ChiantiYZY/566-final)
+## Techniques
 
-### A FORGERY
-Taking inspiration from a particular natural phenomenon or distinctive set of visuals, implement a detailed, procedural recreation of that aesthetic. This includes modeling, texturing and object placement within your scene. Does not need to be real-time. Focus on detail and visual accuracy in your implementation.
-- Examples:
-  - [The Shrines](https://github.com/byumjin/The-Shrines)
-  - [Watercolor Shader](https://github.com/gracelgilbert/watercolor-stylization)
-  - [Sunset Beach](https://github.com/HanmingZhang/homework-final)
-  - [Sky Whales](https://github.com/WanruZhao/CIS566FinalProject)
-  - [Snail](https://www.shadertoy.com/view/ld3Gz2)
-  - [Journey](https://www.shadertoy.com/view/ldlcRf)
-  - [Big Hero 6 Wormhole](https://2.bp.blogspot.com/-R-6AN2cWjwg/VTyIzIQSQfI/AAAAAAAABLA/GC0yzzz4wHw/s1600/big-hero-6-disneyscreencaps.com-10092.jpg)
+- **Gravity and integration:** Use softened Newtonian gravity and fixed-timestep leapfrog integration, following the GPU Gems chapter linked above.
+- **Parallel computation:** Compare naive all-pairs gravity with a tiled version that loads body data into WGSL workgroup memory for reuse.
+- **Collisions and merging:** Detect overlapping spheres, select non-conflicting pairs, and apply merges in separate compute passes.
+- **Explosions:** Split bodies above a mass threshold into fragments, distributing the parent's mass and reusing inactive slots in a fixed-capacity GPU pool.
+- **Rendering:** Read body data directly from GPU buffers for instanced rendering. Noise-based surface patterns, emission, and bloom will give planets and stars their appearance.
 
-### A GAME LEVEL
-- Like generations of game makers before us, create a game which generates an navigable environment (eg. a roguelike dungeon, platforms) and some sort of goal or conflict (eg. enemy agents to avoid or items to collect). Aim to create an experience that will challenge players and vary noticeably in different playthroughs, whether that means procedural dungeon generation, careful resource management or an interesting AI model. Focus on designing a system that is capable of generating complex challenges and goals.
-- Examples:
-  - [Rhythm-based Mario Platformer](https://github.com/sgalban/platformer-gen-2D)
-  - [Pokémon Ice Puzzle Generator](https://github.com/jwang5675/Ice-Puzzle-Generator)
-  - [Abstract Exploratory Game](https://github.com/MauKMu/procedural-final-project)
-  - [Tiny Wings](https://github.com/irovira/TinyWings)
-  - Spore
-  - Dwarf Fortress
-  - Minecraft
-  - Rogue
+## Design
 
-### AN ANIMATED ENVIRONMENT / MUSIC VISUALIZER
-- Create an environment full of interactive procedural animation. The goal of this project is to create an environment that feels responsive and alive. Whether or not animations are musically-driven, sound should be an important component. Focus on user interactions, motion design and experimental interfaces.
-- Examples:
-  - [The Darkside](https://github.com/morganherrmann/thedarkside)
-  - [Music Visualizer](https://yuruwang.github.io/MusicVisualizer/)
-  - [Abstract Mesh Animation](https://github.com/mgriley/cis566_finalproj)
-  - [Panoramical](https://www.youtube.com/watch?v=gBTTMNFXHTk)
-  - [Bound](https://www.youtube.com/watch?v=aE37l6RvF-c)
+Compute passes update the body state on the GPU. The rendering pipeline reads the updated buffers directly to draw the bodies and apply bloom.
 
-### YOUR OWN PROPOSAL
-- You are of course welcome to propose your own topic . Regardless of what you choose, you and your team must research your topic and relevant techniques and come up with a detailed plan of execution. You will meet with some subset of the procedural staff before starting implementation for approval.
+![Program Structure](program-structure.svg)
+
+## Timeline
+
+This is a solo project, so I'll handle simulation, rendering, interaction, and performance testing.
+
+- **Week 1 — by Nov 11:** Set up WebGPU, camera controls, and procedural body generation. Implement the naive gravity solver, motion integration, and basic collision detection.
+- **Week 2 — by Nov 18:** Implement merging, explosions, and fragment recycling. Add the tiled gravity solver and compare its performance with the naive version.
+- **Week 3 — by Nov 23:** Finish procedural surfaces, glow, and simulation controls. Test larger body counts, fix simulation issues, and finalize the core features.
+- **Week 4 — by Nov 30:** Polish the visuals and scene presets, add optional interactions if time permits, and prepare the browser demo, video, and final writeup.
+
+## Milestone #1
+
+I hit all my Milestone #1 goals! The WebGPU sandbox has a fly-around camera, seeded body generation, and a first pass at rocky surfaces.
+
+The simulation uses a fixed-step leapfrog integrator. Bodies move half a step, get a velocity update from softened all-pairs gravity, then move the remaining half step. 
+
+A separate GPU pass checks for overlaps, which I can highlight in the debug view. 
+
+The renderer draws straight from the simulation’s GPU buffer, so body positions never need to make a round trip through the CPU.
+
+### Generator examples
+
+<img width="1267" height="728" alt="Default scene with 500 rocky bodies" src="https://github.com/user-attachments/assets/e02f0d8e-2c34-47a5-9281-1387aea0e8e7" />
+
+*Seed 0, 500 bodies. The default scene starts with a cloud of spinning rocks of different sizes.*
+
+<img width="1266" height="725" alt="Sparse scene with 50 bodies in debug mode" src="https://github.com/user-attachments/assets/4ff5c361-02c3-4471-8d4e-a058e58f6ca3" />
+
+*Seed 42, 50 bodies. The debug mode highlights collision candidates.*
+
+Please check out the [live demo](https://jamesliu12.github.io/cosmic-chaos/) and try a seed of your own!
+
+Next up are merging, explosions, and a faster gravity solver.
