@@ -1,117 +1,98 @@
-# Final Project!
+# Paperworld: A Procedural Origami Landscape
 
-This is it! The culmination of your procedural graphics experience this semester. For your final project, we'd like to give you the time and space to explore a topic of your choosing. You may choose any topic you please, so long as you vet the topic and scope with an instructor or TA. We've provided some suggestions below. The scope of your project should be roughly 1.5 homework assignments). To help structure your time, we're breaking down the project into 4 milestones:
+**CIS 5660 Final Project Design Doc**  
+**Ximing Luo**
 
-## Project planning: Design Doc (due 11/4)
-Before submitting your first milestone, _you must get your project idea and scope approved by Rachel, Adam or a TA._
+## Introduction
 
-### Design Doc
-Start off by forking this repository. In your README, write a design doc to outline your project goals and implementation plan. It must include the following sections:
+I want to explore a landscape that appears to fold itself out of paper as the viewer moves through it. The focus is generating the geometry and folding motion procedurally rather than relying on premade models.
 
-#### Introduction
-- What motivates your project?
+## Goal
 
-#### Goal
-- What do you intend to achieve with this project?
+Build an interactive 3D paper world with faceted terrain and origami flowers that unfold as the camera approaches. Different seeds and parameters should produce visibly different scenes.
 
-#### Inspiration/reference:
-- You must have some form of reference material for your final project. Your reference may be a research paper, a blog post, some artwork, a video, another class at Penn, etc.  
-- Include in your design doc links to and images of your reference material.
+## Inspiration and Reference
 
-#### Specification:
-- Outline the main features of your project.
+**Bloom patterns by Zhongyuan Wang, Robert J. Lang, and Larry L. Howell.** A family of origami patterns that open like blooming flowers. This is kind of the look and motion I want for the flowers. [BYU article](https://news.byu.edu/intellect/the-next-chapter-in-byus-origami-engineering-student-discovered-patterns-unfold-like-blooming-flowers-have-major-applications)
 
-#### Techniques:
-- What are the main technical/algorithmic tools you’ll be using? Give an overview, citing specific papers/articles.
+<img src="assets/ref_bloom_patterns.jpg" alt="A table of white folded paper bloom patterns" width="560">
 
-#### Design:
-- How will your program fit together? Make a simple free-body diagram illustrating the pieces.
+*Image: BYU Photo.*
 
-#### Timeline:
-- Create a week-by-week set of milestones for each person in your group. Make sure you explicitly outline what each group member's duties will be.
+Papers:
 
-Submit your Design doc as usual via pull request against this repository.
-## Milestone 1: Implementation part 1 (due 11/11)
-Begin implementing your engine! Don't worry too much about polish or parameter tuning -- this week is about getting together the bulk of your generator implemented. By the end of the week, even if your visuals are crude, the majority of your generator's functionality should be done.
+* [Bloom Patterns](https://doi.org/10.1098/rspa.2025.0299) (Wang, Lang, Howell 2025): flower crease patterns
+* [Origami Simulator](https://erikdemaine.org/papers/OrigamiSimulator_Origami7/) (Ghassaei, Demaine, Gershenfeld 2018): interactive folding
+* [Freeform Variations of Origami](https://tsg.ne.jp/TT/cg/TachiFreeformOrigami2010.pdf) (Tachi 2010): faceted paper surfaces
+* [Real Time Approximations to Subsurface Scattering](https://developer.nvidia.com/gpugems/gpugems/part-iii-materials/chapter-16-real-time-approximations-subsurface-scattering) (GPU Gems 2004): light through thin paper
 
-Put all your code in your forked repository.
+## Specification
 
-Submission: Add a new section to your README titled: Milestone #1, which should include
-- written description of progress on your project goals. If you haven't hit all your goals, what's giving you trouble?
-- Examples of your generators output so far
-We'll check your repository for updates. No need to create a new pull request.
-## Milestone 2: Implementation part 2 (due 11/23)
-We're over halfway there! This week should be about fixing bugs and extending the core of your generator. Make sure by the end of this week _your generator works and is feature complete._ Any core engine features that don't make it in this week should be cut! Don't worry if you haven't managed to exactly hit your goals. We're more interested in seeing proof of your development effort than knowing your planned everything perfectly. 
+1. Generate a small landscape with seeded ridges and flat paper facets.
+2. Procedurally generate one origami flower family with adjustable petal count and fold depth.
+3. Animate flowers opening when the camera approaches, with a manual fold slider.
+4. Render paper with custom crease shading, subtle texture, and light passing through thin surfaces.
 
-Put all your code in your forked repository.
+The core project uses a bounded scene and one object family. Trees, towers, and arbitrary 3D model conversion are stretch goals.
 
-Submission: Add a new section to your README titled: Milestone #3, which should include
-- written description of progress on your project goals. If you haven't hit all your goals, what did you have to cut and why? 
-- Detailed output from your generator, images, video, etc.
-We'll check your repository for updates. No need to create a new pull request.
+## Techniques
 
-Come to class on the due date with a WORKING COPY of your project. We'll be spending time in class critiquing and reviewing your work so far.
+1. **Procedural geometry:** Build terrain and flower meshes from vertices, faces, random seeds, and simple crease patterns.
+2. **Folding animation:** Transform connected faces around defined fold lines. I will use a restricted pattern instead of a general folding solver.
+3. **Rendering:** Use Three.js and custom GLSL shaders for faceted lighting, crease darkening, and approximate paper translucency.
 
-## Final submission (due 11/30)
-Time to polish! Spen this last week of your project using your generator to produce beautiful output. Add textures, tune parameters, play with colors, play with camera animation. Take the feedback from class critques and use it to take your project to the next level.
+## Design
 
-Submission:
-- Push all your code / files to your repository
-- Come to class ready to present your finished project
-- Update your README with two sections 
-  - final results with images and a live demo if possible
-  - post mortem: how did your project go overall? Did you accomplish your goals? Did you have to pivot?
+```text
+Seed and controls
+       ↓
+Terrain and flower generators
+       ↓
+Meshes and folding animation
+       ↓
+Paper shader and camera
+       ↓
+Interactive landscape
+```
 
-## Topic Suggestions
+## Timeline
 
-### Create a generator in Houdini
+**Nov 4:** Finalize the proposal and get scope approval.  
+**Nov 5 to 11:** Implement procedural terrain, flower geometry, and basic folding.  
+**Nov 12 to 23:** Add exploration interaction, controls, paper shading, and finish core features.  
+**Nov 24 to 30:** Polish lighting, animation, final visuals, and presentation.
 
-### A CLASSIC 4K DEMO
-- In the spirit of the demo scene, create an animation that fits into a 4k executable that runs in real-time. Feel free to take inspiration from the many existing demos. Focus on efficiency and elegance in your implementation.
-- Example: 
-  - [cdak by Quite & orange](https://www.youtube.com/watch?v=RCh3Q08HMfs&list=PLA5E2FF8E143DA58C)
+## Milestone #1
 
-### A RE-IMPLEMENTATION
-- Take an academic paper or other pre-existing project and implement it, or a portion of it.
-- Examples:
-  - [2D Wavefunction Collapse Pokémon Town](https://gurtd.github.io/566-final-project/)
-  - [3D Wavefunction Collapse Dungeon Generator](https://github.com/whaoran0718/3dDungeonGeneration)
-  - [Reaction Diffusion](https://github.com/charlesliwang/Reaction-Diffusion)
-  - [WebGL Erosion](https://github.com/LanLou123/Webgl-Erosion)
-  - [Particle Waterfall](https://github.com/chloele33/particle-waterfall)
-  - [Voxelized Bread](https://github.com/ChiantiYZY/566-final)
+Terrain, flower geometry, and basic folding all work. Shading is a placeholder for now.
 
-### A FORGERY
-Taking inspiration from a particular natural phenomenon or distinctive set of visuals, implement a detailed, procedural recreation of that aesthetic. This includes modeling, texturing and object placement within your scene. Does not need to be real-time. Focus on detail and visual accuracy in your implementation.
-- Examples:
-  - [The Shrines](https://github.com/byumjin/The-Shrines)
-  - [Watercolor Shader](https://github.com/gracelgilbert/watercolor-stylization)
-  - [Sunset Beach](https://github.com/HanmingZhang/homework-final)
-  - [Sky Whales](https://github.com/WanruZhao/CIS566FinalProject)
-  - [Snail](https://www.shadertoy.com/view/ld3Gz2)
-  - [Journey](https://www.shadertoy.com/view/ldlcRf)
-  - [Big Hero 6 Wormhole](https://2.bp.blogspot.com/-R-6AN2cWjwg/VTyIzIQSQfI/AAAAAAAABLA/GC0yzzz4wHw/s1600/big-hero-6-disneyscreencaps.com-10092.jpg)
+* The terrain is a sheet of triangles. A few seeded ridges follow the grid lines, so every slope is a flat facet.
+* Each flower is a Yoshimura bloom pattern, a center polygon with a pinwheel of split rhombi around it. Petal count and ring count are sliders.
+* The pattern would not fold by rotating faces one at a time, so folding uses the bar and hinge solver from Origami Simulator. It runs once per flower type, and the fold slider blends between the saved poses.
+* The seed also scatters the flowers on flat ground.
 
-### A GAME LEVEL
-- Like generations of game makers before us, create a game which generates an navigable environment (eg. a roguelike dungeon, platforms) and some sort of goal or conflict (eg. enemy agents to avoid or items to collect). Aim to create an experience that will challenge players and vary noticeably in different playthroughs, whether that means procedural dungeon generation, careful resource management or an interesting AI model. Focus on designing a system that is capable of generating complex challenges and goals.
-- Examples:
-  - [Rhythm-based Mario Platformer](https://github.com/sgalban/platformer-gen-2D)
-  - [Pokémon Ice Puzzle Generator](https://github.com/jwang5675/Ice-Puzzle-Generator)
-  - [Abstract Exploratory Game](https://github.com/MauKMu/procedural-final-project)
-  - [Tiny Wings](https://github.com/irovira/TinyWings)
-  - Spore
-  - Dwarf Fortress
-  - Minecraft
-  - Rogue
+Run it with `npm install` and then `npm run dev`.
 
-### AN ANIMATED ENVIRONMENT / MUSIC VISUALIZER
-- Create an environment full of interactive procedural animation. The goal of this project is to create an environment that feels responsive and alive. Whether or not animations are musically-driven, sound should be an important component. Focus on user interactions, motion design and experimental interfaces.
-- Examples:
-  - [The Darkside](https://github.com/morganherrmann/thedarkside)
-  - [Music Visualizer](https://yuruwang.github.io/MusicVisualizer/)
-  - [Abstract Mesh Animation](https://github.com/mgriley/cis566_finalproj)
-  - [Panoramical](https://www.youtube.com/watch?v=gBTTMNFXHTk)
-  - [Bound](https://www.youtube.com/watch?v=aE37l6RvF-c)
+Next up are flowers that open when the camera gets close and the paper shader.
 
-### YOUR OWN PROPOSAL
-- You are of course welcome to propose your own topic . Regardless of what you choose, you and your team must research your topic and relevant techniques and come up with a detailed plan of execution. You will meet with some subset of the procedural staff before starting implementation for approval.
+Stretch goals: a camera that walks through the landscape, ridges that fold up as it gets close, a day and night cycle where the flowers close at night, a paper sky with a sun and clouds, more flower variety and trees, and a tilt shift blur.
+
+### Output
+
+![Default scene with the controls panel](assets/m1_app.png)
+
+Example seeds.
+
+![Three landscapes from three seeds](assets/m1_seeds.png)
+
+Fold slider from 0 to 1.
+
+![A flower folding from a flat sheet](assets/m1_fold.png)
+
+Different petal and ring counts.
+
+![Four flowers with different petal and ring counts](assets/m1_flowers.png)
+
+Same seed, different parameters.
+
+![The same seed with different parameters](assets/m1_params.png)
