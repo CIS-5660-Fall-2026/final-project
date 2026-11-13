@@ -6,40 +6,76 @@ This is it! The culmination of your procedural graphics experience this semester
 Before submitting your first milestone, _you must get your project idea and scope approved by Rachel, Adam or a TA._
 
 ### Design Doc
-Start off by forking this repository. In your README, write a design doc to outline your project goals and implementation plan. It must include the following sections:
 
-#### Introduction
-- What motivates your project?
-
-#### Goal
-- What do you intend to achieve with this project?
+#### Introduction & Goal
+- I would like to blend physically based rendering techniques with procedurally generated volumetric data (participating media properties).
+- I plan to use animated 3D noise to procedurally generate volumetric material properties. This data will then be stored as froxels (frustum-aligned voxels) so it can be efficiently rendered in real-time using scattering, absorption, and emission PBR models for volumes.
+- I want to model smoke, clouds, and fog using a single rendering architecture (i.e. the only change needed to visualize different types of volumes is tweaking of the animated noise).
 
 #### Inspiration/reference:
-- You must have some form of reference material for your final project. Your reference may be a research paper, a blog post, some artwork, a video, another class at Penn, etc.  
-- Include in your design doc links to and images of your reference material.
 
-#### Specification:
-- Outline the main features of your project.
+**Froxel-based Smoke Rendering in Battlefield 6:**
 
-#### Techniques:
-- What are the main technical/algorithmic tools you’ll be using? Give an overview, citing specific papers/articles.
+https://github.com/user-attachments/assets/671911ed-a612-42ec-a1ee-6a1fcdc4ebc5
+
+**Raymarching Volumetric Effects (mainly interested in the use of noise for defining volumes):**
+
+- https://www.shadertoy.com/view/XslGRr
+- https://blog.maximeheckel.com/posts/real-time-cloudscapes-with-volumetric-raymarching/
+- https://blog.maximeheckel.com/posts/shaping-light-volumetric-lighting-with-post-processing-and-raymarching/
+
+**PBR and Froxel-based Volumetric Fog:**
+
+- https://www.mattiasstrand.com/posts/volumetric-fog/
+- https://www.slideshare.net/slideshow/physically-based-and-unified-volumetric-rendering-in-frostbite/51840934
+
+#### Specification & Techniques:
+
+I plan to follow Mattias Strand's blog post, as well as the Frostbite slides it is based on. This includes the following techniques:
+- Forward+ (clustered) rendering
+- Approximation of the volumetric rendering equation
+- Compute passes for 1) populating each froxel with participating media data, 2) calculating how much light is scattered toward the camera at each froxel, and 3) raymarching through the cluster Z-slices to accumulate scattered light and transmittance
+- Animated 3D noise (likely FBM) for querying participating media data at a given world-space location
+- Temporal integration: jitter sample positions and combine the current frame's data with the previous frame to hide slicing artifacts
+- Stretch goal: Volumetric shadow maps (per-light), to allow objects to cast shadows through the volume
+
+I already have a WebGPU implementation of a Forward+ renderer, so I plan to build the volumetric rendering/shadows on top of that base code.
 
 #### Design:
-- How will your program fit together? Make a simple free-body diagram illustrating the pieces.
+
+![](img/froxel_fog_pass_graph_forward_plus.png)
 
 #### Timeline:
-- Create a week-by-week set of milestones for each person in your group. Make sure you explicitly outline what each group member's duties will be.
 
-Submit your Design doc as usual via pull request against this repository.
+**Milestone 1:**
+- Static participating media properties via simple 3D FBM
+- Render the volume end-to-end with transmittance but no light scattering
+
+**Milestone 2:**
+- Iterate over point lights and compute light scattering throughout the froxel grid
+- Implement temporal integration and sample jittering
+
+**Final Submission:**
+- Animate the 3D noise to mimic different types of participating media (e.g. billowing smoke, slow-moving clouds, fog, etc.)
+- Add GUI sliders for controlling the volumetric properties
+- Stretch goal: Volumetric shadow maps (per-light), to allow objects to cast shadows through the volume
+
 ## Milestone 1: Implementation part 1 (due 11/11)
-Begin implementing your engine! Don't worry too much about polish or parameter tuning -- this week is about getting together the bulk of your generator implemented. By the end of the week, even if your visuals are crude, the majority of your generator's functionality should be done.
 
-Put all your code in your forked repository.
+**NCHORTEK NOTE:** I am using my final late day of the semester and will commit/push my Milestone 1 work on 11/12.
 
-Submission: Add a new section to your README titled: Milestone #1, which should include
-- written description of progress on your project goals. If you haven't hit all your goals, what's giving you trouble?
-- Examples of your generators output so far
-We'll check your repository for updates. No need to create a new pull request.
+So far I have:
+- Copied over the WebGPU renderer that I will be building on for this project
+- Familiarized myself with the volumetric rendering approach presented in Strand's blog post and the Frostbite slides
+- Mapped out a set of design/implementation decisions required to complete the originally planned goals for Milestone 1 (see `planning-docs/`)
+- Created a WIP Volumetrics class that will manage the 3 compute passes needed to procedurally generate volume data and then process it for rendering
+- Relocated some spatial transformation helper functions into common.wgsl so the planned volumetric compute shaders can access them 
+ 
+I am definitely behind what I initially planned for Milestone 1, primarily due to underestimating how long it would take 
+to wrap my head around the lower-level design/implementation details that aren't immediately obvious from a first pass
+over the reference materials. Looking ahead, I think that the temporal integration could be something to cut if I find
+myself struggling to make-up lost ground as I work towards the next milestone deliverable.
+
 ## Milestone 2: Implementation part 2 (due 11/23)
 We're over halfway there! This week should be about fixing bugs and extending the core of your generator. Make sure by the end of this week _your generator works and is feature complete._ Any core engine features that don't make it in this week should be cut! Don't worry if you haven't managed to exactly hit your goals. We're more interested in seeing proof of your development effort than knowing your planned everything perfectly. 
 
