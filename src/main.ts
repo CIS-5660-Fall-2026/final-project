@@ -1,129 +1,115 @@
 import * as THREE from 'three';
-import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import {Line2} from 'three/examples/jsm/lines/Line2.js';
 import {LineMaterial} from 'three/examples/jsm/lines/LineMaterial.js';
 import {LineGeometry} from 'three/examples/jsm/lines/LineGeometry.js';
-import Stats from 'stats-js';
-import GUI from 'lil-gui';
 
-// NOTE: three's ShaderMaterial auto-declares these, so rename them in your GLSL:
-//   vs_Pos -> position (vec3), vs_Nor -> normal, u_Model -> modelMatrix,
-//   u_ViewProj -> projectionMatrix * viewMatrix, u_ModelInvTr -> normalMatrix (mat3)
-import lambertVert from './shaders/lambert-vert.glsl?raw';
-import lambertFrag from './shaders/lambert-frag.glsl?raw';
+const SNAKE_SEGMENTS = 14;
+const SEGMENT_SPACING = 0.55;
+const VIEW_HEIGHT = 10; // world units visible vertically
 
-const SNAKE_SEGMENTS = 12;
-const SEGMENT_RADIUS = 0.3;
-const SEGMENT_SPACING = 0.7;
-const RIBBON_POINTS = 40;
+/** Concave 5-point star, counter-clockwise, as [x, y] pairs. */
+function starPoints(tips: number, outer: number, inner: number): [number, number][] {
+  const pts: [number, number][] = [];
+  for (let i = 0; i < tips * 2; i++) {
+    const r = i % 2 === 0 ? outer : inner;
+    const a = Math.PI / 2 + (i * Math.PI) / tips;
+    pts.push([Math.cos(a) * r, Math.sin(a) * r]);
+  }
+  return pts;
+}
 
-// ---- renderer, camera, stats -------------------------------------------
+/** Head eases toward the target; every other segment stays `spacing` behind the one in front. */
+function followChain(segs: THREE.Object3D[], target: THREE.Vector3, spacing: number, dt: number) {
+  const head = segs[0].position;
+  const k = 1 - Math.exp(-8 * dt);
+  head.x += (target.x - head.x) * k;
+  head.y += (target.y - head.y) * k;
+
+  for (let i = 1; i < segs.length; i++) {
+    const p = segs[i].position, q = segs[i - 1].position;
+    const dx = p.x - q.x, dy = p.y - q.y;
+    const d = Math.hypot(dx, dy);
+    if (d > spacing) {
+      p.x = q.x + (dx / d) * spacing;
+      p.y = q.y + (dy / d) * spacing;
+    }
+  }
+}
+
 const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 const renderer = new THREE.WebGLRenderer({canvas, antialias: true});
 renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setClearColor(0x333333);
+renderer.setClearColor(0x1a1c1f);
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
-camera.position.set(0, 6, 10);
-const orbit = new OrbitControls(camera, canvas); // replaces your Camera.update()
 
-const stats = Stats();
-stats.setMode(0);
-stats.domElement.style.position = 'absolute';
-document.body.appendChild(stats.domElement);
+// Orthographic camera: depth, culling and winding are already set up by three
+const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
+camera.position.z = 10; // looks down -Z; larger z is closer to the camera
 
-// ---- uniforms: same idea as your Uniform classes ------------------------
-// Plain {value} objects. Share the same object between materials and a change
-// shows up everywhere; mutate `.value` and three uploads it for you.
-const shared = {
-  u_Wobble: {value: 0.045},
-  u_Noise: {value: 1},
-  u_Time: {value: 0},
-};
+// Flat color needs no shader: MeshBasicMaterial
+const flat = (color: THREE.ColorRepresentation) => new THREE.MeshBasicMaterial({color});
 
-const makeMaterial = (r: number, g: number, b: number) =>
-  new THREE.ShaderMaterial({
-    uniforms: {...shared, u_Color: {value: new THREE.Vector4(r, g, b, 1)}},
-    vertexShader: lambertVert,
-    fragmentShader: lambertFrag,
-  });
+// Background
+const bg = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), flat(0x262b33));
+scene.add(bg);
 
-// ---- ground plane --------------------------------------------------------
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), makeMaterial(0.3, 0.5, 0.3));
-ground.rotation.x = -Math.PI / 2; // PlaneGeometry faces +Z, so lay it flat
-scene.add(ground);
+// Closed polygon: filled star + thick outline sharing the same points
+const star = starPoints(5, 2, 0.85);
 
-// ---- chain of circles (one geometry shared by every mesh) ----------------
-const circleGeo = new THREE.CircleGeometry(1, 32);
-const snakeMat = makeMaterial(1, 0, 0);
-for (let i = 0; i < SNAKE_SEGMENTS; i++) {
-  const seg = new THREE.Mesh(circleGeo, snakeMat);
-  seg.scale.set(SEGMENT_RADIUS, SEGMENT_RADIUS, 1);
-  seg.position.set((i - SNAKE_SEGMENTS / 2) * SEGMENT_SPACING, SEGMENT_RADIUS, 0);
-  scene.add(seg);
-}
+// Shape triangulates for you (and accepts holes via shape.holes)
+const starFill = new THREE.Mesh(
+  new THREE.ShapeGeometry(new THREE.Shape(star.map(([x, y]) => new THREE.Vector2(x, y)))),
+  flat(0xf2991f));
+starFill.position.set(-4, 2, 0.1);
+scene.add(starFill);
 
-// ---- ribbon: dynamic BufferGeometry --------------------------------------
-const ribbonPos = new Float32Array(RIBBON_POINTS * 2 * 3);
-const ribbonNor = new Float32Array(RIBBON_POINTS * 2 * 3).map((_, i) => (i % 3 === 2 ? 1 : 0));
-const ribbonIdx: number[] = [];
-for (let i = 0; i < RIBBON_POINTS - 1; i++) {
-  const a = 2 * i, b = 2 * i + 1, c = 2 * i + 2, d = 2 * i + 3;
-  ribbonIdx.push(b, d, c, b, c, a);
-}
-const ribbonGeo = new THREE.BufferGeometry();
-ribbonGeo.setAttribute('position', new THREE.BufferAttribute(ribbonPos, 3).setUsage(THREE.DynamicDrawUsage));
-ribbonGeo.setAttribute('normal', new THREE.BufferAttribute(ribbonNor, 3));
-ribbonGeo.setIndex(ribbonIdx);
+const lineMat = new LineMaterial({color: 0xffffff, linewidth: 0.12, worldUnits: true});
+const outlineGeo = new LineGeometry();
+outlineGeo.setPositions([...star, star[0]].flatMap(([x, y]) => [x, y, 0])); // repeat first point to close
+const starStroke = new Line2(outlineGeo, lineMat);
+starStroke.position.set(-4, 2, 0.2);
+scene.add(starStroke);
 
-const ribbon = new THREE.Mesh(ribbonGeo, makeMaterial(0.9, 0.7, 0.2));
-ribbon.position.set(0, 1.5, -1);
-ribbon.frustumCulled = false; // bounds are stale while the vertices move
-scene.add(ribbon);
-
-function updateRibbon(t: number) {
-  for (let i = 0; i < RIBBON_POINTS; i++) {
-    const f = i / (RIBBON_POINTS - 1);
-    const x = -4 + 8 * f;
-    const y = 0.5 * Math.sin(x * 1.5 - t * 3);
-    // Tangent from the analytic derivative; for an arbitrary path, average the neighbors instead
-    const dx = 1, dy = 0.75 * Math.cos(x * 1.5 - t * 3);
-    const len = Math.hypot(dx, dy);
-    const half = 0.25 * (1 - 0.85 * f); // half-width with taper
-    const nx = (-dy / len) * half, ny = (dx / len) * half;
-    ribbonPos.set([x + nx, y + ny, 0, x - nx, y - ny, 0], i * 6);
-  }
-  ribbonGeo.attributes.position.needsUpdate = true;
-}
-
-// ---- thick line: Line2 from the examples folder --------------------------
+// Thick line
 const lineGeo = new LineGeometry();
-lineGeo.setPositions([-4, 3, 0, 4, 3, 0]);
-const lineMat = new LineMaterial({color: 0xffffff, linewidth: 0.08, worldUnits: true});
-lineMat.resolution.set(window.innerWidth, window.innerHeight);
-scene.add(new Line2(lineGeo, lineMat));
+lineGeo.setPositions([2, 3, 0.15, 6, 1, 0.15]);
+scene.add(new Line2(lineGeo, new LineMaterial({color: 0xccddff, linewidth: 0.08, worldUnits: true})));
 
-// ---- GUI ------------------------------------------------------------------
-const gui = new GUI();
-gui.add(shared.u_Wobble, 'value', 0, 0.5).name('wobble');
-gui.add(shared.u_Noise, 'value', {Voronoi: 1, Worley: 2, Misc: 3}).name('noise');
+// Snake: a chain of circles that follows the mouse (one shared geometry)
+const circleGeo = new THREE.CircleGeometry(1, 32);
+const snake: THREE.Mesh[] = [];
+for (let i = 0; i < SNAKE_SEGMENTS; i++) {
+  const f = i / (SNAKE_SEGMENTS - 1);
+  const r = 0.5 * (1 - 0.6 * f);
+  const seg = new THREE.Mesh(circleGeo, flat(new THREE.Color(0.2 + 0.6 * f, 0.9 - 0.5 * f, 0.3)));
+  seg.scale.set(r, r, 1);
+  seg.position.set(0, 0, 0.3 - i * 0.01); // head drawn on top
+  scene.add(seg);
+  snake.push(seg);
+}
 
-// ---- loop + resize ----------------------------------------------------------
-const clock = new THREE.Clock();
-renderer.setAnimationLoop(() => {
-  stats.begin();
-  shared.u_Time.value += clock.getDelta();
-  updateRibbon(shared.u_Time.value);
-  orbit.update();
-  renderer.render(scene, camera);
-  stats.end();
+const mouse = new THREE.Vector3();
+canvas.addEventListener('mousemove', (e) => {
+  mouse.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1, 0)
+       .unproject(camera);
 });
 
-window.addEventListener('resize', () => {
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  camera.aspect = window.innerWidth / window.innerHeight;
+function resize() {
+  const aspect = window.innerWidth / window.innerHeight;
+  camera.left = (-VIEW_HEIGHT * aspect) / 2;
+  camera.right = (VIEW_HEIGHT * aspect) / 2;
+  camera.top = VIEW_HEIGHT / 2;
+  camera.bottom = -VIEW_HEIGHT / 2;
   camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
   lineMat.resolution.set(window.innerWidth, window.innerHeight);
+}
+window.addEventListener('resize', resize);
+resize();
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  followChain(snake, mouse, SEGMENT_SPACING, clock.getDelta());
+  renderer.render(scene, camera);
 });
