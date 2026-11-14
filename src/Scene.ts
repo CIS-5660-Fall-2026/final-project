@@ -39,11 +39,17 @@ export default class Scene {
         range(min[0] + radius, max[0] - radius),
         range(min[1] + radius, max[1] - radius),
         range(min[2] + radius, max[2] - radius)
-      )
+      );
+
+      const velocity = vec3.fromValues(
+        range(-10, 10),
+        range(-10, 10),
+        range(-10, 10)
+      );
 
       bodies.push({
         position, 
-        velocity: vec3.create(), 
+        velocity,
         mass, 
         radius,
         orientation: quat.identity(),

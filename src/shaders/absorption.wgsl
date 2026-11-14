@@ -10,14 +10,19 @@ var<storage, read> collisionCandidates: array<u32>;
 @group(0) @binding(3)
 var<uniform> params: SimulationUniforms;
 
-const MASS_PER_DISTANCE: f32 = 1.0;
+const MASS_PER_DISTANCE: f32 = 0.5;
+const MIN_ABSORPTION_RATE: f32 = 0.5;
+const MAX_ABSORPTION_RATE: f32 = 4.0;
 
 fn transferredMass(donor: Body, receiver: Body) -> f32 {
     let relativeSpeed = length(donor.velocity - receiver.velocity);
-    return min(
-        donor.mass,
-        MASS_PER_DISTANCE * relativeSpeed * params.fixedDt
+    let rate = clamp(
+        MASS_PER_DISTANCE * relativeSpeed,
+        MIN_ABSORPTION_RATE,
+        MAX_ABSORPTION_RATE
     );
+
+    return min(donor.mass, rate * params.fixedDt);
 }
 
 @compute @workgroup_size(64)
