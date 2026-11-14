@@ -14,6 +14,8 @@ fn main(input: FragmentInput) -> @location(0) vec4f
     let u_DotScale = 10.0;
     let u_ColorHighlight = vec3f(0.9020, 0.9961, 0.9961);
     let u_ColorShadow = vec3f(0.204, 0.196, 0.106);
+    //let u_ColorHighlight = vec3f(1.0, 0.0, 0.0);
+    //let u_ColorShadow = vec3f(0.0, 0.0, 1.0);
 
     // lighting
     let diffuseTerm = dot(normalize(input.fs_Nor), normalize(input.fs_LightVec));

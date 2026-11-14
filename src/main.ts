@@ -2,6 +2,7 @@ import Stats from 'stats.js';
 
 import { initWebGPU, Renderer } from './renderer';
 import { DitherRenderer } from './renderers/dither';
+import { CloudsRenderer } from './renderers/clouds';
 
 import { setupLoaders, Scene } from './stage/scene';
 import { Lights } from './stage/lights';
@@ -12,7 +13,7 @@ await initWebGPU();
 setupLoaders();
 
 let scene = new Scene();
-await scene.loadGltf('./scenes/sponza/Sponza.gltf');
+//await scene.loadGltf('./scenes/sponza/Sponza.gltf');
 
 const camera = new Camera();
 const lights = new Lights(camera);
@@ -27,7 +28,7 @@ var renderer: Renderer | undefined;
 
 function setRenderer() {
     renderer?.stop();
-    renderer = new DitherRenderer(stage);
+    renderer = new CloudsRenderer(stage);
 }
 
 setRenderer();

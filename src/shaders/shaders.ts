@@ -6,6 +6,8 @@ import commonRaw from './common.wgsl?raw';
 
 import ditherVertRaw from './dither.vs.wgsl?raw';
 import ditherFragRaw from './dither.fs.wgsl?raw';
+import cloudsVertRaw from './clouds.vs.wgsl?raw';
+import cloudsFragRaw from './clouds.fs.wgsl?raw';
 
 import moveLightsComputeRaw from './move_lights.cs.wgsl?raw';
 import clusteringComputeRaw from './clustering.cs.wgsl?raw';
@@ -65,5 +67,8 @@ function processShaderRaw(raw: string) {
 
 export const ditherVertSrc: string = processShaderRaw(ditherVertRaw);
 export const ditherFragSrc: string = processShaderRaw(ditherFragRaw);
+export const cloudsVertSrc: string = processShaderRaw(cloudsVertRaw);
+export const cloudsFragSrc: string = processShaderRaw(cloudsFragRaw);
+
 export const moveLightsComputeSrc: string = processShaderRaw(moveLightsComputeRaw);
 export const clusteringComputeSrc: string = processShaderRaw(clusteringComputeRaw);
