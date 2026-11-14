@@ -40,7 +40,6 @@ const simulation = new Simulation(gpuContext.device, scene);
 const renderer = new Renderer(
   gpuContext, 
   simulation.bodiesBuffer, 
-  scene.initialBodies.length,
   simulation.collisionCandidatesBuffer
 );
 
@@ -58,7 +57,6 @@ createControlPanel(
     const newScene = new Scene(options);
 
     simulation.reset(newScene);
-    renderer.setBodyCount(newScene.initialBodies.length);
 
     accTime = 0;
     previousTime = undefined;
@@ -84,7 +82,7 @@ const frame = (time: number): void => {
   cameraController.update(dt);
 
   renderer.onFrame();
-  renderer.encode(encoder);
+  renderer.encode(encoder, simulation.simulationParamsBuffer);
 
   device.queue.submit([encoder.finish()]);
   

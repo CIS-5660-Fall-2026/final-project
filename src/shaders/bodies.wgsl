@@ -25,11 +25,6 @@ fn vertMain(
     let body = bodies[instanceIndex];
     var output: VertexOutput;
 
-    if (body.mass == 0.0) {
-        output.position = vec4<f32>(2.0, 0.0, 0.0, 1.0);
-        return output;
-    }
-
     let rotatedPosition = rotateVector(body.orientation, localPosition);
     let worldPosition = body.position + rotatedPosition * body.radius;
 

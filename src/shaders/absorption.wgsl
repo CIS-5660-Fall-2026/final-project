@@ -33,10 +33,6 @@ fn applyAbsorption(@builtin(global_invocation_id) id: vec3<u32>) {
     }
 
     let body = inputBodies[i];
-    if (body.mass == 0.0) {
-        outputBodies[i] = body;
-        return;
-    }
 
     let candidate = collisionCandidates[i];
 

@@ -1,7 +1,7 @@
 import { BODY_STRIDE, packBodies } from "./Body";
 import type Scene from "./Scene";
 import { SimulationUniforms } from "./Scene";
-import { absorptionWgsl, collisionWgsl, gravityWgsl } from "./shaders";
+import { absorptionWgsl, collisionWgsl, compactWgsl, gravityWgsl } from "./shaders";
 
 export default class Simulation {
   private readonly device: GPUDevice;
@@ -13,16 +13,19 @@ export default class Simulation {
   private readonly bodiesB: GPUBuffer;
   private readonly paramsBuffer: GPUBuffer;
   private readonly collisionCandidates: GPUBuffer;
+  private readonly oldToNew: GPUBuffer;
 
   private readonly driftPipeline: GPUComputePipeline;
   private readonly gravityPipeline: GPUComputePipeline;
   private readonly collisionPipeline: GPUComputePipeline;
   private readonly absorptionPipeline: GPUComputePipeline;
+  private readonly compactPipeline: GPUComputePipeline;
 
   private readonly driftBindGroup: GPUBindGroup;
   private readonly gravityBindGroup: GPUBindGroup;
   private readonly collisionBindGroup: GPUBindGroup;
   private readonly absorptionBindGroup: GPUBindGroup;
+  private readonly compactBindGroup: GPUBindGroup;
 
   constructor(device: GPUDevice, scene: Scene) {
     this.device = device;
@@ -38,22 +41,27 @@ export default class Simulation {
     this.bodiesB = device.createBuffer({
       label: "simulation bodies B",
       size: config.capacity * BODY_STRIDE,
-      usage:
-        GPUBufferUsage.STORAGE |
-        GPUBufferUsage.COPY_DST |
-        GPUBufferUsage.COPY_SRC,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
 
     this.paramsBuffer = device.createBuffer({
       label: "simulation params",
       size: 48,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      usage:
+        GPUBufferUsage.UNIFORM | GPUBufferUsage.STORAGE |
+        GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
     });
 
     this.collisionCandidates = device.createBuffer({
       label: "collision candidates",
       size: config.capacity * Uint32Array.BYTES_PER_ELEMENT,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+
+    this.oldToNew = device.createBuffer({
+      label: "compaction slot mapping",
+      size: config.capacity * Uint32Array.BYTES_PER_ELEMENT,
+      usage: GPUBufferUsage.STORAGE,
     });
 
     this.uniforms.fixedDt = config.fixedDt;
@@ -152,6 +160,29 @@ export default class Simulation {
       ],
     });
 
+    this.compactPipeline = device.createComputePipeline({
+      label: "compaction pipeline",
+      layout: "auto",
+      compute: {
+        module: device.createShaderModule({
+          label: "compaction shader",
+          code: compactWgsl,
+        }),
+        entryPoint: "compactBodies",
+      },
+    });
+
+    this.compactBindGroup = device.createBindGroup({
+      layout: this.compactPipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: this.bodiesB } },
+        { binding: 1, resource: { buffer: this.bodiesA } },
+        { binding: 2, resource: { buffer: this.collisionCandidates } },
+        { binding: 3, resource: { buffer: this.paramsBuffer } },
+        { binding: 4, resource: { buffer: this.oldToNew } },
+      ],
+    });
+
     this.reset(scene);
   }
 
@@ -161,6 +192,10 @@ export default class Simulation {
   
   public get collisionCandidatesBuffer(): GPUBuffer {
     return this.collisionCandidates;
+  }
+
+  public get simulationParamsBuffer(): GPUBuffer {
+    return this.paramsBuffer;
   }
 
   public encodeStep(encoder: GPUCommandEncoder): void {
@@ -204,15 +239,14 @@ export default class Simulation {
     absorptionPass.dispatchWorkgroups(this.workgroupCount);
     absorptionPass.end();
 
-    encoder.copyBufferToBuffer(
-      this.bodiesB,
-      0,
-      this.bodiesA,
-      0,
-      this.bodyCount * BODY_STRIDE,
-    );
+    const compactPass = encoder.beginComputePass({
+      label: "compaction pass",
+    });
 
-    absorptionPass.end();
+    compactPass.setPipeline(this.compactPipeline);
+    compactPass.setBindGroup(0, this.compactBindGroup);
+    compactPass.dispatchWorkgroups(1);
+    compactPass.end();
   }
 
   public reset(scene: Scene): void {
@@ -250,7 +284,11 @@ export default class Simulation {
     this.uniforms.softeningLength = softeningLength;
 
     this.device.queue.writeBuffer(
-      this.paramsBuffer, 0, this.uniforms.buffer,
+      this.paramsBuffer,
+      4,
+      this.uniforms.buffer,
+      4,
+      8,
     );
   }
 
@@ -259,5 +297,6 @@ export default class Simulation {
     this.bodiesB.destroy();
     this.paramsBuffer.destroy();
     this.collisionCandidates.destroy();
+    this.oldToNew.destroy();
   }
 }

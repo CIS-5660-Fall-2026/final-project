@@ -27,7 +27,6 @@ export default class Renderer {
   constructor(
     gpuContext: WebGpuContext, 
     bodiesBuffer: GPUBuffer, 
-    bodyCount: number,
     collisionCandidatesBuffer: GPUBuffer
   ) {
     this.gpuContext = gpuContext;
@@ -68,7 +67,6 @@ export default class Renderer {
     device.queue.writeBuffer(this.indirectBuffer, 0,
       new Uint32Array([
         mesh.indices.length,
-        bodyCount,
         0,
         0,
         0,
@@ -182,7 +180,18 @@ export default class Renderer {
     device.queue.writeBuffer(this.cameraBuffer, 0, this.camera.uniforms.buffer);
   }
 
-  public encode(encoder: GPUCommandEncoder): void {
+  public encode(
+    encoder: GPUCommandEncoder,
+    simulationParamsBuffer: GPUBuffer,
+  ): void {
+    encoder.copyBufferToBuffer(
+      simulationParamsBuffer,
+      12, // bodyCount
+      this.indirectBuffer,
+      4,
+      4,
+    );
+
     const renderPass = encoder.beginRenderPass({
       colorAttachments: [{
         view: this.gpuContext.context.getCurrentTexture().createView(),
@@ -204,13 +213,5 @@ export default class Renderer {
     renderPass.setIndexBuffer(this.sphereIndexBuffer, "uint16");
     renderPass.drawIndexedIndirect(this.indirectBuffer, 0);
     renderPass.end();
-  }
-
-  public setBodyCount(bodyCount: number): void {
-    this.gpuContext.device.queue.writeBuffer(
-      this.indirectBuffer,
-      4,
-      new Uint32Array([bodyCount]),
-    );
   }
 }
