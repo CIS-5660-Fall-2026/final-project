@@ -18,6 +18,12 @@ fn detectCollisions(
     }
 
     let body = bodies[i];
+
+    if (body.mass == 0.0) {
+        collisionCandidates[i] = i;
+        return;
+    }
+
     var candidate = i;
     var candidateMass = body.mass;
 

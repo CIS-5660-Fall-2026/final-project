@@ -1,12 +1,13 @@
 import { BODY_STRIDE, packBodies } from "./Body";
 import type Scene from "./Scene";
 import { SimulationUniforms } from "./Scene";
-import { collisionWgsl, gravityWgsl } from "./shaders";
+import { absorptionWgsl, collisionWgsl, gravityWgsl } from "./shaders";
 
 export default class Simulation {
   private readonly device: GPUDevice;
   private workgroupCount = 0;
   private readonly uniforms = new SimulationUniforms();
+  private bodyCount = 0;
 
   private readonly bodiesA: GPUBuffer;
   private readonly bodiesB: GPUBuffer;
@@ -16,10 +17,12 @@ export default class Simulation {
   private readonly driftPipeline: GPUComputePipeline;
   private readonly gravityPipeline: GPUComputePipeline;
   private readonly collisionPipeline: GPUComputePipeline;
+  private readonly absorptionPipeline: GPUComputePipeline;
 
   private readonly driftBindGroup: GPUBindGroup;
   private readonly gravityBindGroup: GPUBindGroup;
   private readonly collisionBindGroup: GPUBindGroup;
+  private readonly absorptionBindGroup: GPUBindGroup;
 
   constructor(device: GPUDevice, scene: Scene) {
     this.device = device;
@@ -35,7 +38,10 @@ export default class Simulation {
     this.bodiesB = device.createBuffer({
       label: "simulation bodies B",
       size: config.capacity * BODY_STRIDE,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+      usage:
+        GPUBufferUsage.STORAGE |
+        GPUBufferUsage.COPY_DST |
+        GPUBufferUsage.COPY_SRC,
     });
 
     this.paramsBuffer = device.createBuffer({
@@ -123,6 +129,29 @@ export default class Simulation {
       ],
     });
 
+    this.absorptionPipeline = device.createComputePipeline({
+      label: "absorption pipeline",
+      layout: "auto",
+      compute: {
+        module: device.createShaderModule({
+          label: "absorption shader",
+          code: absorptionWgsl,
+        }),
+        entryPoint: "applyAbsorption",
+      },
+    });
+
+    this.absorptionBindGroup = device.createBindGroup({
+      label: "absorption bind group",
+      layout: this.absorptionPipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: this.bodiesA } },
+        { binding: 1, resource: { buffer: this.bodiesB } },
+        { binding: 2, resource: { buffer: this.collisionCandidates } },
+        { binding: 3, resource: { buffer: this.paramsBuffer } },
+      ],
+    });
+
     this.reset(scene);
   }
 
@@ -165,12 +194,32 @@ export default class Simulation {
     collisionPass.setBindGroup(0, this.collisionBindGroup);
     collisionPass.dispatchWorkgroups(this.workgroupCount);
     collisionPass.end();
+
+    const absorptionPass = encoder.beginComputePass({
+      label: "absorption pass",
+    });
+
+    absorptionPass.setPipeline(this.absorptionPipeline);
+    absorptionPass.setBindGroup(0, this.absorptionBindGroup);
+    absorptionPass.dispatchWorkgroups(this.workgroupCount);
+    absorptionPass.end();
+
+    encoder.copyBufferToBuffer(
+      this.bodiesB,
+      0,
+      this.bodiesA,
+      0,
+      this.bodyCount * BODY_STRIDE,
+    );
+
+    absorptionPass.end();
   }
 
   public reset(scene: Scene): void {
     const bodyCount = scene.initialBodies.length;
+    this.bodyCount = bodyCount;
+    
     const capacity = scene.simulationConfig.capacity;
-
     const workgroupSize = 64;
     this.workgroupCount = Math.ceil(bodyCount / workgroupSize);
     this.uniforms.bodyCount = bodyCount;

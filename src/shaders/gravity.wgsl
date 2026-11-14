@@ -29,6 +29,10 @@ fn advanceOrientation(
 }
 
 fn drift(body: Body, dt: f32) -> Body {
+    if (body.mass == 0.0) {
+        return body;
+    }
+
     var result = body;
     result.position += result.velocity * dt;
 
@@ -85,6 +89,12 @@ fn gravityNaive(
     }
 
     var body = inputBodies[i];
+
+    if (body.mass == 0.0) {
+        outputBodies[i] = body;
+        return;
+    }
+
     var acceleration = vec3<f32>(0.0);
 
     let softeningSquared = params.softeningLength * params.softeningLength;
@@ -95,6 +105,11 @@ fn gravityNaive(
         }
 
         let other = inputBodies[j];
+
+        if (other.mass == 0.0) {
+            continue;
+        }
+
         let r = other.position - body.position;
         let distanceSquared = dot(r, r);
         let radiusSum = body.radius + other.radius;

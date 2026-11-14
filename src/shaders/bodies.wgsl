@@ -23,6 +23,13 @@ fn vertMain(
     @builtin(instance_index) instanceIndex: u32
 ) -> VertexOutput {
     let body = bodies[instanceIndex];
+    var output: VertexOutput;
+
+    if (body.mass == 0.0) {
+        output.position = vec4<f32>(2.0, 0.0, 0.0, 1.0);
+        return output;
+    }
+
     let rotatedPosition = rotateVector(body.orientation, localPosition);
     let worldPosition = body.position + rotatedPosition * body.radius;
 
@@ -32,7 +39,6 @@ fn vertMain(
         random01(body.seed ^ 3u)
     );
 
-    var output: VertexOutput;
     output.position = camera.viewProjection * vec4<f32>(worldPosition, 1.0);
     output.normal = rotatedPosition;
     output.localPosition = localPosition;
