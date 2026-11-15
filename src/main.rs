@@ -15,6 +15,9 @@ use camera::CameraPlugin;
 mod input;
 use input::InputPlugin;
 
+mod wall;
+use wall::WallPlugin;
+
 fn main() {
     // PLUGINS
     App::new()
@@ -27,6 +30,7 @@ fn main() {
             TerrainPlugin,
             SplinePlugin,
             InputPlugin,
+            WallPlugin,
         ))
         .run();
 }

@@ -4,7 +4,8 @@ use noise_functions::*;
 
 use std::f32::consts::PI;
 
-#[derive(Component)] pub struct Ground;
+#[derive(Component)]
+pub struct Ground;
 
 #[derive(Resource)]
 pub struct Terrain {
@@ -83,12 +84,11 @@ fn draw_grid(mut gizmos: Gizmos) {
     );
 }
 
-pub fn ground_hit(
-    ray: Ray3d,
-    ray_cast: &mut MeshRayCast,
-    ground: Entity
-) -> Option<Vec3> {
+pub fn ground_hit(ray: Ray3d, ray_cast: &mut MeshRayCast, ground: Entity) -> Option<Vec3> {
     let filter = &|e: Entity| e == ground;
     let settings = MeshRayCastSettings::default().with_filter(filter);
-    ray_cast.cast_ray(ray, &settings).first().map(|(_, hit)| hit.point)
+    ray_cast
+        .cast_ray(ray, &settings)
+        .first()
+        .map(|(_, hit)| hit.point)
 }
