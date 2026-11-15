@@ -1,20 +1,25 @@
-import { fightCost, guard, makeFloor, SIZE, START_ATTACK } from "./game";
+import { directions, fightCost, guard, makeFloor, neighbor, SIZE, START_ATTACK } from "./game";
 import type { Tile } from "./game";
 import { solve } from "./solver";
 
 const demo = makeFloor([
-  "...#...#...",
+  ".M.#...#...",
   ".P.#.......",
-  "...#...#...",
+  "..W#...#...",
   "#D###.###.#",
   "SK.....#...",
   ".#####M#...",
-  "...........",
+  ".....M.....",
   "#D###.###G#",
-  "...#...#...",
+  ".K.#...#...",
   ".W.#...#.E.",
-  "...#...#...",
-].join("").split("") as Tile[], 12, 4);
+  ".P.#...#...",
+].join("").split("") as Tile[], 12, {
+  [SIZE + 1]: 4,
+  [2 * SIZE + 2]: 2,
+  [9 * SIZE + 1]: 1,
+  [10 * SIZE + 1]: 6,
+});
 const demoLevel = { floor: demo, solution: solve(demo)! };
 
 function seededRandom(seed: string) {
@@ -31,6 +36,7 @@ function seededRandom(seed: string) {
 
 type Random = ReturnType<typeof seededRandom>;
 type Opening = { a: number; b: number; position: number };
+const potionAmounts = [4, 5, 6, 7, 8, 9, 10];
 
 function divideRooms(random: Random) {
   const rooms = [{ x: 0, y: 0, width: SIZE, height: SIZE }];
@@ -82,6 +88,67 @@ function findOpenings(roomAt: number[]) {
     if (y > 0 && y < SIZE - 1) add(position, roomAt[position - SIZE], roomAt[position + SIZE]);
   }
   return openings;
+}
+
+function freeWalkingDistances(tiles: Tile[], start: number) {
+  const distances = tiles.map(() => -1);
+  const queue = [start];
+  distances[start] = 0;
+
+  for (const position of queue) {
+    for (const direction of directions) {
+      const next = neighbor(position, direction);
+      if (next === undefined || distances[next] !== -1 || "#DMG".includes(tiles[next])) continue;
+      distances[next] = distances[position] + 1;
+      queue.push(next);
+    }
+  }
+  return distances;
+}
+
+function addExtras(tiles: Tile[], spots: number[], start: number, values: Record<number, number>, random: Random) {
+  const corridors: number[] = [];
+  const nearPickups: number[] = [];
+
+  for (const position of spots) {
+    const adjacent = directions.map((direction) => {
+      const next = neighbor(position, direction);
+      return next === undefined ? "#" : tiles[next];
+    });
+    const [north, east, south, west] = adjacent.map((tile) => tile !== "#");
+    if ((north && south && !east && !west) || (east && west && !north && !south)) corridors.push(position);
+    if (adjacent.some((tile) => "KPW".includes(tile))) nearPickups.push(position);
+  }
+
+  const monsterSpots = [...new Set([...corridors, ...nearPickups])];
+  const monsterCount = 1 + random(4);
+  for (let i = 0; i < monsterCount; i++) {
+    const preferred = i % 2 === 0 ? corridors : nearPickups;
+    let options = preferred.filter((position) => tiles[position] === ".");
+    if (options.length === 0) options = monsterSpots.filter((position) => tiles[position] === ".");
+    if (options.length === 0) return false;
+    tiles[options[random(options.length)]] = "M";
+  }
+
+  const distances = freeWalkingDistances(tiles, start);
+  const bonuses: Tile[] = [];
+  if (random(2) === 1) bonuses.push("P");
+  if (random(2) === 1) bonuses.push("W");
+  const extraKeys = random(3);
+  for (let i = 0; i < extraKeys; i++) bonuses.push("K");
+
+  for (const tile of bonuses) {
+    // Even around a loop, an unreached tile requires opening a door or fighting.
+    const options = spots.filter((position) => tiles[position] === "." &&
+      (distances[position] === -1 || (tile === "K" && distances[position] >= 6)));
+    if (options.length === 0) return false;
+
+    const position = options[random(options.length)];
+    tiles[position] = tile;
+    if (tile === "P") values[position] = potionAmounts[random(potionAmounts.length)];
+    if (tile === "W") values[position] = 1 + random(2);
+  }
+  return true;
 }
 
 function makeCandidate(random: Random) {
@@ -155,24 +222,31 @@ function makeCandidate(random: Random) {
     const positions = roomTiles[room];
     const position = positions.splice(random(positions.length), 1)[0];
     tiles[position] = tile;
+    return position;
   }
 
   const entrances = [...roomTiles.keys()].filter((room) => !gated.has(room));
   const entrance = entrances[random(entrances.length)];
-  place(entrance, "S");
+  const start = place(entrance, "S");
   place(entrance, "K");
   place(exit, "E");
-  place(potion, "P");
-  place(sword, "W");
 
   const enemy = { ...guard, hp: 7 + random(3) };
   const guardCost = fightCost(START_ATTACK, enemy);
   const startingHp = guardCost - random(3);
-  const swordFinishHp = startingHp - fightCost(START_ATTACK + 1, enemy);
-  const potionFinishHp = swordFinishHp + (random(2) === 0 ? -2 : 2);
-  const potionHp = guardCost - startingHp + potionFinishHp;
+  const swordBonus = 1 + random(2);
+  const swordSavings = guardCost - fightCost(START_ATTACK + swordBonus, enemy);
+  const healingOptions = potionAmounts.filter((amount) => amount !== swordSavings);
+  const values = {
+    [place(potion, "P")]: healingOptions[random(healingOptions.length)],
+    [place(sword, "W")]: swordBonus,
+  };
 
-  return makeFloor(tiles, startingHp, potionHp, enemy);
+  const spots = [...tiles.keys()].filter((position) => tiles[position] === "." &&
+    roomAt[position] !== entrance && roomAt[position] !== exit);
+  if (!addExtras(tiles, spots, start, values, random)) return;
+
+  return makeFloor(tiles, startingHp, values, enemy);
 }
 
 export function generate(seed: string) {

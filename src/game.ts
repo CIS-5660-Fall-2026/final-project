@@ -23,7 +23,7 @@ export interface Floor {
   start: number;
   exit: number;
   startingHp: number;
-  potionHp: number;
+  pickupValues: Record<number, number>;
   guard: Monster;
 }
 
@@ -35,10 +35,10 @@ export interface GameState {
   cleared: number;
 }
 
-export function makeFloor(tiles: Tile[], startingHp: number, potionHp: number, enemy = guard): Floor {
+export function makeFloor(tiles: Tile[], startingHp: number, pickupValues: Record<number, number>, enemy = guard): Floor {
   let interaction = 0;
   const bits = tiles.map((tile) => "DKPWMG".includes(tile) ? 1 << interaction++ : 0);
-  return { tiles, bits, start: tiles.indexOf("S"), exit: tiles.indexOf("E"), startingHp, potionHp, guard: enemy };
+  return { tiles, bits, start: tiles.indexOf("S"), exit: tiles.indexOf("E"), startingHp, pickupValues, guard: enemy };
 }
 
 export function start(floor: Floor): GameState {
@@ -57,12 +57,16 @@ export function fightCost(attack: number, enemy: Monster): number {
   return (hits - 1) * Math.max(0, enemy.attack - DEFENSE);
 }
 
-export function move(floor: Floor, state: GameState, direction: Direction): GameState | undefined {
-  const x = state.position % SIZE + direction.dx;
-  const y = Math.floor(state.position / SIZE) + direction.dy;
+export function neighbor(position: number, direction: Direction): number | undefined {
+  const x = position % SIZE + direction.dx;
+  const y = Math.floor(position / SIZE) + direction.dy;
   if (x < 0 || x >= SIZE || y < 0 || y >= SIZE) return;
+  return y * SIZE + x;
+}
 
-  const position = y * SIZE + x;
+export function move(floor: Floor, state: GameState, direction: Direction): GameState | undefined {
+  const position = neighbor(state.position, direction);
+  if (position === undefined) return;
   const tile = tileAt(floor, state, position);
   if (tile === "#") return;
 
@@ -76,10 +80,10 @@ export function move(floor: Floor, state: GameState, direction: Direction): Game
       next.keys++;
       break;
     case "P":
-      next.hp += floor.potionHp;
+      next.hp += floor.pickupValues[position];
       break;
     case "W":
-      next.attack++;
+      next.attack += floor.pickupValues[position];
       break;
     case "M":
     case "G":

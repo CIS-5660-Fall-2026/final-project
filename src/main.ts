@@ -30,7 +30,14 @@ function render() {
     cell.textContent = isPlayer ? "@" : tile === "#" || tile === "." ? "" : tile;
     cell.title = isPlayer ? "Player" : names[tile];
 
-    if (tile === "P") cell.title = `Potion (+${floor.potionHp} HP)`;
+    if (tile === "P" || tile === "W") {
+      const amount = floor.pickupValues[position];
+      const stat = tile === "P" ? "HP" : "ATK";
+      cell.title = `${names[tile]} (+${amount} ${stat})`;
+      const bonus = document.createElement("small");
+      bonus.textContent = `+${amount}`;
+      cell.append(bonus);
+    }
     if (tile === "M" || tile === "G") {
       const cost = fightCost(state.attack, tile === "G" ? floor.guard : slime);
       const damage = document.createElement("small");
@@ -44,7 +51,7 @@ function render() {
 
 function restart() {
   state = start(floor);
-  status.textContent = "Find the key and choose a door. Monster tiles show the HP cost to fight.";
+  status.textContent = "Pick up a key to open a door. Monster tiles show the HP cost to fight.";
   render();
 }
 
