@@ -8,6 +8,8 @@ var<uniform> camera: CameraUniforms;
 @group(1) @binding(0)
 var<storage, read> bodies: array<Body>;
 
+const COLLAPSE_MIN_RADIUS_SCALE: f32 = 0.6;
+
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
     @location(0) normal: vec3<f32>,
@@ -26,7 +28,8 @@ fn vertMain(
     var output: VertexOutput;
 
     let rotatedPosition = rotateVector(body.orientation, localPosition);
-    let worldPosition = body.position + rotatedPosition * body.radius;
+    let radiusScale = mix(1.0, COLLAPSE_MIN_RADIUS_SCALE, body.collapseProgress);
+    let worldPosition = body.position + rotatedPosition * body.radius * radiusScale;
 
     let surfaceOffset = 64.0 * vec3<f32>(
         random01(body.seed ^ 1u),
@@ -45,7 +48,8 @@ fn vertMain(
 
 @fragment
 fn fragMain(input: VertexOutput) -> @location(0) vec4<f32> {
-    if (bodies[input.bodyIndex].mass >= STAR_MASS) {
+    let body = bodies[input.bodyIndex];
+    if (body.mass >= STAR_MASS || body.collapseProgress > 0.0) {
         return vec4<f32>(1.0, 1.0, 1.0, 1.0);
     }
 

@@ -7,6 +7,8 @@ var<storage, read_write> outputBodies: array<Body>;
 @group(0) @binding(2)
 var<uniform> params: SimulationUniforms;
 
+const LINEAR_DRAG_RATE: f32 = 1.0;
+
 fn advanceOrientation(
     orientation: vec4<f32>,
     angularVelocity: vec3<f32>,
@@ -112,6 +114,8 @@ fn gravityNaive(
     acceleration *= params.gravitationalConstant;
 
     body.velocity += acceleration * params.fixedDt;
+    let dragRate = LINEAR_DRAG_RATE * massResponse(body.mass);
+    body.velocity *= exp(-dragRate * params.fixedDt);
 
     body = drift(body, params.fixedDt * 0.5);
 

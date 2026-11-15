@@ -11,14 +11,76 @@ var<storage, read_write> params: SimulationUniforms;
 var<storage, read_write> dispatchArgs: array<u32, 3>;
 
 const EXPLOSION_MASS: f32 = 160.0;
-const MIN_FRAGMENT_PAIRS: u32 = 64u;
+const EXPLOSION_RATE: f32 = 0.5;
+
+const COLLAPSE_DURATION: f32 = 0.6; // Seconds
+const COLLAPSE_RANGE: f32 = 6.0;
+const COLLAPSE_SPEED: f32 = 14.0;
+const COLLAPSE_STRENGTH: f32 = 8.0; // Velocity response per second
+const SHOCK_RANGE: f32 = 9.0;
+const SHOCK_STRENGTH: f32 = 28.0; // Peak outward speed added at the center
+
+const MIN_FRAGMENTS: u32 = 128u;
 const TARGET_FRAGMENT_MASS: f32 = 8.0;
-const MIN_EJECTION_SPEED: f32 = 6.0;
+const MIN_EJECTION_SPEED: f32 = 24.0;
+const MAX_EJECTION_SPEED: f32 = 48.0;
+const FRAGMENT_AXIAL_SPREAD: f32 = 0.65; // Axial offset relative to radial offset
 const FRAGMENT_COOLDOWN: u32 = 120u;
 const PI: f32 = 3.14159265359;
 
-fn pairWeight(seed: u32) -> f32 {
-    return mix(0.8, 1.2, random01(seed));
+fn fragmentSeed(eventSeed: u32, index: u32) -> u32 {
+    return hashU32(eventSeed + index + 1u);
+}
+
+fn fragmentWeight(seed: u32) -> f32 {
+    return mix(0.55, 1.45, random01(seed));
+}
+
+fn pullNeighbors(parentIndex: u32, parent: Body, count: u32, dt: f32) {
+    for (var j = 0u; j < count; j++) {
+        if (j == parentIndex) {
+            continue;
+        }
+
+        let offset = bodies[j].position - parent.position;
+        let distance = length(offset);
+        if (distance >= COLLAPSE_RANGE) {
+            continue;
+        }
+
+        let falloff = 1.0 - smoothstep(0.0, COLLAPSE_RANGE, distance);
+        let inwardSpeed = COLLAPSE_SPEED * smoothstep(0.0, parent.radius, distance);
+        let direction = offset / max(distance, 0.0001);
+        let targetVelocity = parent.velocity - inwardSpeed * direction;
+        let response = massResponse(bodies[j].mass);
+        let blend = 1.0 - exp(-COLLAPSE_STRENGTH * falloff * response * dt);
+        bodies[j].velocity = mix(bodies[j].velocity, targetVelocity, blend);
+    }
+}
+
+fn pushNeighbors(parentIndex: u32, parent: Body, count: u32) {
+    for (var j = 0u; j < count; j++) {
+        if (j == parentIndex) {
+            continue;
+        }
+
+        let offset = bodies[j].position - parent.position;
+        let distance = length(offset);
+        if (distance >= SHOCK_RANGE) {
+            continue;
+        }
+
+        var direction = vec3<f32>(0.0, 1.0, 0.0);
+        if (distance > 0.0) {
+            direction = offset / distance;
+        }
+
+        let falloff = 1.0 - smoothstep(0.0, SHOCK_RANGE, distance);
+        let relativeSpeed = dot(bodies[j].velocity - parent.velocity, direction);
+        let response = massResponse(bodies[j].mass);
+        let speedChange = falloff * response * (SHOCK_STRENGTH - min(relativeSpeed, 0.0));
+        bodies[j].velocity += speedChange * direction;
+    }
 }
 
 @compute @workgroup_size(1)
@@ -30,34 +92,37 @@ fn explodeBodies() {
 
     for (var i = 0u; i < originalCount; i++) {
         let parent = bodies[i];
-        if (parent.mass < EXPLOSION_MASS) {
+        if (parent.collapseProgress == 0.0 && parent.mass < EXPLOSION_MASS) {
+            continue;
+        }
+
+        let desiredCount = max(MIN_FRAGMENTS, u32(ceil(parent.mass / TARGET_FRAGMENT_MASS)));
+        let fragmentCount = min(desiredCount, capacity - nextSlot + 1u);
+        if (fragmentCount < MIN_FRAGMENTS) {
             continue;
         }
 
         let eventSeed = hashU32(parent.seed ^ stepSeed);
-        let rate = 0.5 * parent.mass / EXPLOSION_MASS;
-        let probability = 1.0 - exp(-rate * params.fixedDt);
-        if (random01(eventSeed) >= probability) {
+        if (parent.collapseProgress == 0.0) {
+            let rate = EXPLOSION_RATE * parent.mass / EXPLOSION_MASS;
+            let probability = 1.0 - exp(-rate * params.fixedDt);
+            if (random01(eventSeed) >= probability) {
+                continue;
+            }
+        }
+
+        let progress = parent.collapseProgress + params.fixedDt / COLLAPSE_DURATION;
+        if (progress < 1.0) {
+            pullNeighbors(i, parent, nextSlot, params.fixedDt);
+            bodies[i].collapseProgress = progress;
             continue;
         }
 
-        let pairCount = max(
-            MIN_FRAGMENT_PAIRS,
-            u32(ceil(parent.mass / (2.0 * TARGET_FRAGMENT_MASS)))
-        );
-        let fragmentCount = 2u * pairCount;
-        let extraSlots = fragmentCount - 1u;
-        let minimumEnergy = 0.5 * parent.mass
-            * MIN_EJECTION_SPEED * MIN_EJECTION_SPEED;
-
-        if (extraSlots > capacity - nextSlot ||
-            parent.storedEnergy < minimumEnergy) {
-            continue;
-        }
+        pushNeighbors(i, parent, nextSlot);
 
         var totalWeight = 0.0;
-        for (var pair = 0u; pair < pairCount; pair++) {
-            totalWeight += pairWeight(hashU32(eventSeed + pair + 1u));
+        for (var j = 0u; j < fragmentCount; j++) {
+            totalWeight += fragmentWeight(fragmentSeed(eventSeed, j));
         }
 
         var axis = vec3<f32>(0.0, 1.0, 0.0);
@@ -73,27 +138,24 @@ fn explodeBodies() {
         let u = normalize(cross(axis, reference));
         let v = cross(axis, u);
         let phase = 2.0 * PI * random01(eventSeed ^ 0x1u);
-        let extraEnergyPerFragment =
-            (parent.storedEnergy - minimumEnergy) / f32(fragmentCount);
+        var cumulativeWeight = 0.0;
+        var assignedMass = 0.0;
 
-        for (var pair = 0u; pair < pairCount; pair++) {
-            let seed = hashU32(eventSeed + pair + 1u);
-            let fraction = pairWeight(seed) / (2.0 * totalWeight);
-            let mass = parent.mass * fraction;
+        for (var j = 0u; j < fragmentCount; j++) {
+            let seed = fragmentSeed(eventSeed, j);
+            cumulativeWeight += fragmentWeight(seed);
+            // Partition the parent mass between consecutive cumulative weights.
+            let cumulativeMass = parent.mass * (cumulativeWeight / totalWeight);
+            let mass = cumulativeMass - assignedMass;
+            assignedMass = cumulativeMass;
+            let fraction = mass / parent.mass;
             let radius = parent.radius * pow(fraction, 1.0 / 3.0);
-            let speed = sqrt(
-                MIN_EJECTION_SPEED * MIN_EJECTION_SPEED
-                + 2.0 * extraEnergyPerFragment / mass
-            );
-
             let jitter = random01(seed ^ 0x2u);
-            let angle = phase + PI * (f32(pair) + jitter) / f32(pairCount);
-            let direction = cos(angle) * u + sin(angle) * v;
-            let offset = 0.85 * (parent.radius - radius) * direction;
-            let velocityOffset = speed * direction;
-
-            let secondIndex = nextSlot + 2u * pair;
-            let firstIndex = select(secondIndex - 1u, i, pair == 0u);
+            let angle = phase + 2.0 * PI * (f32(j) + jitter) / f32(fragmentCount);
+            let radial = cos(angle) * u + sin(angle) * v;
+            let axialOffset = mix(-FRAGMENT_AXIAL_SPREAD, FRAGMENT_AXIAL_SPREAD, random01(seed ^ 0x3u));
+            let direction = normalize(radial + axialOffset * axis);
+            let speed = mix(MIN_EJECTION_SPEED, MAX_EJECTION_SPEED, random01(seed ^ 0x4u));
 
             var piece = Body();
             piece.mass = mass;
@@ -101,21 +163,18 @@ fn explodeBodies() {
             piece.orientation = vec4<f32>(0.0, 0.0, 0.0, 1.0);
             piece.angularVelocity = parent.angularVelocity;
             piece.absorptionCooldown = FRAGMENT_COOLDOWN;
+            piece.position = parent.position + 0.85 * (parent.radius - radius) * direction;
+            piece.velocity = parent.velocity + speed * direction;
+            piece.seed = hashU32(seed ^ 0x5u);
 
-            piece.position = parent.position + offset;
-            piece.velocity = parent.velocity + velocityOffset;
-            piece.seed = hashU32(seed ^ 0x3u);
-            bodies[firstIndex] = piece;
-            collisionCandidates[firstIndex] = firstIndex;
-
-            piece.position = parent.position - offset;
-            piece.velocity = parent.velocity - velocityOffset;
-            piece.seed = hashU32(seed ^ 0x4u);
-            bodies[secondIndex] = piece;
-            collisionCandidates[secondIndex] = secondIndex;
+            var slot = i;
+            if (j > 0u) {
+                slot = nextSlot;
+                nextSlot++;
+            }
+            bodies[slot] = piece;
+            collisionCandidates[slot] = slot;
         }
-
-        nextSlot += extraSlots;
     }
 
     if (nextSlot != originalCount) {

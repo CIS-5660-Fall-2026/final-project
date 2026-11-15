@@ -46,9 +46,6 @@ fn applyAbsorption(@builtin(global_invocation_id) id: vec3<u32>) {
 
     var gainedMass = 0.0;
     var radiusCubed = body.radius * body.radius * body.radius;
-    var positionMoment = vec3<f32>(0.0);
-    var momentumOffset = vec3<f32>(0.0);
-    var incomingEnergy = 0.0;
 
     for (var j = 0u; j < params.bodyCount; j++) {
         if (j == i || collisionCandidates[j] != i) {
@@ -61,11 +58,6 @@ fn applyAbsorption(@builtin(global_invocation_id) id: vec3<u32>) {
 
         gainedMass += amount;
         radiusCubed += donorRadiusCubed * (amount / donor.mass);
-        positionMoment += amount * (donor.position - body.position);
-        let relativeVelocity = donor.velocity - body.velocity;
-        momentumOffset += amount * relativeVelocity;
-        incomingEnergy += donor.storedEnergy * (amount / donor.mass)
-            + 0.5 * amount * dot(relativeVelocity, relativeVelocity);
     }
 
     var receiver = body;
@@ -74,12 +66,6 @@ fn applyAbsorption(@builtin(global_invocation_id) id: vec3<u32>) {
     if (acceptsTransfer) {
         receiver.mass = body.mass + gainedMass;
         receiver.radius = pow(radiusCubed, 1.0 / 3.0);
-        receiver.position = body.position + positionMoment / receiver.mass;
-        receiver.velocity = body.velocity + momentumOffset / receiver.mass;
-
-        let bulkEnergy = 0.5 * dot(momentumOffset, momentumOffset) / receiver.mass;
-        receiver.storedEnergy = body.storedEnergy
-            + max(0.0, incomingEnergy - bulkEnergy);
 
         if (params.boundaryEnabled != 0u) {
             let radius = vec3<f32>(receiver.radius);
@@ -122,7 +108,6 @@ fn applyAbsorption(@builtin(global_invocation_id) id: vec3<u32>) {
                 result.mass = donor.mass - amount;
                 let remainingFraction = result.mass / donor.mass;
                 result.radius = donor.radius * pow(remainingFraction, 1.0 / 3.0);
-                result.storedEnergy = donor.storedEnergy * remainingFraction;
             }
         }
 
