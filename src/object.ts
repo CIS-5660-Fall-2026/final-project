@@ -38,11 +38,15 @@ export class Snake{
         }
     }
 
-    followChain(target: THREE.Vector3, dt: number) {
+    followChain(target: THREE.Vector3, dt: number, speed : number = 8) {
         const head = this.snake[0].position;
-        const k = 1 - Math.exp(-8 * dt);
+        const k = 1 - Math.exp(-speed * dt);
         head.x += (target.x - head.x) * k;
         head.y += (target.y - head.y) * k;
+        if(speed < 0){
+            head.x = target.x;
+            head.y = target.y;
+        }
 
         for (let i = 1; i < this.snake.length; i++) {
             const p = this.snake[i].position, q = this.snake[i - 1].position;
@@ -56,6 +60,6 @@ export class Snake{
     }
 
     private update = (dt: number) => {
-        this.followChain(Engine.engine.mouse, dt);
+        this.followChain(Engine.engine.mouse, dt,0);
     };
 }
