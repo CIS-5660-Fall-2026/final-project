@@ -6,8 +6,10 @@ interface Solution {
   hp: number;
 }
 
-export function solve(floor: Floor): Solution | undefined {
+export function solve(floor: Floor, requiredPickup?: "P" | "W"): Solution | undefined {
   const visited = new Set<string>();
+  const pickupBits = floor.tiles.reduce((bits, tile, position) =>
+    tile === requiredPickup ? bits | floor.bits[position] : bits, 0);
 
   function search(state: GameState): Solution | undefined {
     const key = `${state.position},${state.hp},${state.attack},${state.keys},${state.cleared}`;
@@ -18,7 +20,12 @@ export function solve(floor: Floor): Solution | undefined {
     const seenTiles = new Set([state.position]);
 
     for (const step of reachable) {
-      if (step.state.position === floor.exit) return { moves: step.moves, hp: step.state.hp };
+      if (step.state.position === floor.exit) {
+        if (requiredPickup === undefined || (step.state.cleared & pickupBits) !== 0) {
+          return { moves: step.moves, hp: step.state.hp };
+        }
+        continue;
+      }
 
       for (const direction of directions) {
         const next = move(floor, step.state, direction);

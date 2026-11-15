@@ -4,21 +4,21 @@ import { solve } from "./solver";
 
 const demo = makeFloor([
   ".M.#...#...",
-  ".P.#.......",
+  ".P.....M...",
   "..W#...#...",
-  "#D###.###.#",
+  "#####D###M#",
   "SK.....#...",
   ".#####M#...",
-  ".....M.....",
-  "#D###.###G#",
+  ".......D...",
+  "#M###D###G#",
   ".K.#...#...",
-  ".W.#...#.E.",
-  ".P.#...#...",
+  ".W.#.P.#.E.",
+  "...#...#...",
 ].join("").split("") as Tile[], 12, {
   [SIZE + 1]: 4,
   [2 * SIZE + 2]: 2,
   [9 * SIZE + 1]: 1,
-  [10 * SIZE + 1]: 6,
+  [9 * SIZE + 5]: 6,
 });
 const demoLevel = { floor: demo, solution: solve(demo)! };
 
@@ -36,7 +36,6 @@ function seededRandom(seed: string) {
 
 type Random = ReturnType<typeof seededRandom>;
 type Opening = { a: number; b: number; position: number };
-const potionAmounts = [4, 5, 6, 7, 8, 9, 10];
 
 function divideRooms(random: Random) {
   const rooms = [{ x: 0, y: 0, width: SIZE, height: SIZE }];
@@ -106,11 +105,12 @@ function freeWalkingDistances(tiles: Tile[], start: number) {
   return distances;
 }
 
-function addExtras(tiles: Tile[], spots: number[], start: number, values: Record<number, number>, random: Random) {
+function addSlimesAndKeys(tiles: Tile[], spots: number[], start: number, random: Random) {
   const corridors: number[] = [];
   const nearPickups: number[] = [];
 
   for (const position of spots) {
+    if (tiles[position] !== ".") continue;
     const adjacent = directions.map((direction) => {
       const next = neighbor(position, direction);
       return next === undefined ? "#" : tiles[next];
@@ -130,23 +130,17 @@ function addExtras(tiles: Tile[], spots: number[], start: number, values: Record
     tiles[options[random(options.length)]] = "M";
   }
 
-  const distances = freeWalkingDistances(tiles, start);
-  const bonuses: Tile[] = [];
-  if (random(2) === 1) bonuses.push("P");
-  if (random(2) === 1) bonuses.push("W");
   const extraKeys = random(3);
-  for (let i = 0; i < extraKeys; i++) bonuses.push("K");
+  if (extraKeys === 0) return true;
 
-  for (const tile of bonuses) {
-    // Even around a loop, an unreached tile requires opening a door or fighting.
-    const options = spots.filter((position) => tiles[position] === "." &&
-      (distances[position] === -1 || (tile === "K" && distances[position] >= 6)));
-    if (options.length === 0) return false;
+  const distances = freeWalkingDistances(tiles, start);
+  const options = spots.filter((position) => tiles[position] === "." &&
+    (distances[position] === -1 || distances[position] >= 6));
+  if (options.length < extraKeys) return false;
 
-    const position = options[random(options.length)];
-    tiles[position] = tile;
-    if (tile === "P") values[position] = potionAmounts[random(potionAmounts.length)];
-    if (tile === "W") values[position] = 1 + random(2);
+  for (let i = 0; i < extraKeys; i++) {
+    const position = options.splice(random(options.length), 1)[0];
+    tiles[position] = "K";
   }
   return true;
 }
@@ -179,12 +173,7 @@ function makeCandidate(random: Random) {
   }
 
   const leaves = [...degree.keys()].filter((room) => degree[room] === 1);
-  if (leaves.length < 3) return;
-
-  const exit = leaves.splice(random(leaves.length), 1)[0];
-  const potion = leaves.splice(random(leaves.length), 1)[0];
-  const sword = leaves[random(leaves.length)];
-  const gated = new Set([exit, potion, sword]);
+  const exit = leaves[random(leaves.length)];
 
   function hasWallBetweenOpenings({ position }: Opening) {
     return passages.every(({ position: other }) => {
@@ -194,28 +183,30 @@ function makeCandidate(random: Random) {
     });
   }
 
-  // A slime guards a shortcut through the main area. The tree still gives a free way around it.
-  const slimeOptions = openings.filter(({ a, b }) => !gated.has(a) && !gated.has(b)).filter(hasWallBetweenOpenings);
-  if (slimeOptions.length === 0) return;
-  const slimePassage = slimeOptions[random(slimeOptions.length)];
-  passages.push(slimePassage);
-
-  const extraLoops = 1 + random(2);
+  const extraLoops = 2 + random(2);
   for (let i = 0; i < extraLoops; i++) {
-    const options = openings.filter(({ a, b }) => !gated.has(a) || !gated.has(b)).filter(hasWallBetweenOpenings);
+    const options = openings.filter(hasWallBetweenOpenings);
     if (options.length === 0) {
-      if (i === 0) return;
+      if (i < 2) return;
       break;
     }
     passages.push(options[random(options.length)]);
   }
 
   const tiles = roomAt.map<Tile>((room) => room < 0 ? "#" : ".");
-  for (const opening of passages) {
-    const { a, b, position } = opening;
+  const mainPassages: number[] = [];
+  for (const { a, b, position } of passages) {
     if (a === exit || b === exit) tiles[position] = "G";
-    else if (gated.has(a) || gated.has(b)) tiles[position] = "D";
-    else tiles[position] = opening === slimePassage ? "M" : ".";
+    else {
+      tiles[position] = ".";
+      mainPassages.push(position);
+    }
+  }
+
+  const costlyPassages = Math.round(mainPassages.length * 0.8);
+  for (let i = 0; i < costlyPassages; i++) {
+    const position = mainPassages.splice(random(mainPassages.length), 1)[0];
+    tiles[position] = i === 0 || random(3) === 0 ? "D" : "M";
   }
 
   function place(room: number, tile: Tile) {
@@ -225,27 +216,36 @@ function makeCandidate(random: Random) {
     return position;
   }
 
-  const entrances = [...roomTiles.keys()].filter((room) => !gated.has(room));
+  const entrances = [...roomTiles.keys()].filter((room) => room !== exit);
   const entrance = entrances[random(entrances.length)];
   const start = place(entrance, "S");
   place(entrance, "K");
   place(exit, "E");
 
+  const spots = [...tiles.keys()].filter((position) => {
+    const room = roomAt[position];
+    return tiles[position] === "." && room >= 0 && room !== entrance && room !== exit;
+  });
+  const distances = freeWalkingDistances(tiles, start);
+  const guarded = spots.filter((position) => distances[position] === -1);
+  const potionCount = 1 + random(2);
+  const swordCount = 1 + random(2);
+  if (guarded.length < potionCount + swordCount) return;
+
+  const values: Record<number, number> = {};
+  for (const [tile, count] of [["P", potionCount], ["W", swordCount]] as const) {
+    for (let i = 0; i < count; i++) {
+      const position = guarded.splice(random(guarded.length), 1)[0];
+      tiles[position] = tile;
+      values[position] = tile === "P" ? 4 + random(7) : 1 + random(2);
+    }
+  }
+
+  if (!addSlimesAndKeys(tiles, spots, start, random)) return;
+
   const enemy = { ...guard, hp: 7 + random(3) };
   const guardCost = fightCost(START_ATTACK, enemy);
   const startingHp = guardCost - random(3);
-  const swordBonus = 1 + random(2);
-  const swordSavings = guardCost - fightCost(START_ATTACK + swordBonus, enemy);
-  const healingOptions = potionAmounts.filter((amount) => amount !== swordSavings);
-  const values = {
-    [place(potion, "P")]: healingOptions[random(healingOptions.length)],
-    [place(sword, "W")]: swordBonus,
-  };
-
-  const spots = [...tiles.keys()].filter((position) => tiles[position] === "." &&
-    roomAt[position] !== entrance && roomAt[position] !== exit);
-  if (!addExtras(tiles, spots, start, values, random)) return;
-
   return makeFloor(tiles, startingHp, values, enemy);
 }
 
@@ -255,8 +255,8 @@ export function generate(seed: string) {
   const random = seededRandom(seed);
   for (let attempt = 0; attempt < 8; attempt++) {
     const floor = makeCandidate(random);
-    if (!floor) continue;
-    const solution = solve(floor);
+    if (!floor || !solve(floor, "P")) continue;
+    const solution = solve(floor, "W");
     if (solution) return { floor, solution };
   }
   return demoLevel;
