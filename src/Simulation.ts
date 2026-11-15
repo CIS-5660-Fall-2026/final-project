@@ -3,8 +3,6 @@ import type Scene from "./Scene";
 import { SimulationUniforms } from "./Scene";
 import { absorptionWgsl, collisionWgsl, compactWgsl, explosionWgsl, gravityWgsl } from "./shaders";
 
-const DISPATCH_ARGS_OFFSET = 48;
-
 export default class Simulation {
   private readonly device: GPUDevice;
   private readonly uniforms = new SimulationUniforms();
