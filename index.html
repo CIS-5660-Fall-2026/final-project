@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Magic Tower</title>
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Magic Tower</h1>
+      <p>Use the arrow keys to reach the stairs alive.</p>
+
+      <form id="floor-form">
+        <label for="seed">Seed</label>
+        <input id="seed" value="demo" required />
+        <button type="submit">Load floor</button>
+        <button id="restart" type="button">Restart</button>
+      </form>
+
+      <p id="stats"></p>
+      <div id="board" aria-label="Dungeon floor"></div>
+      <p id="status" role="status"></p>
+      <p class="legend">@ You · K Key · D Door · P Potion · W Sword · M Slime · G Guard · E Stairs</p>
+
+      <details id="solution">
+        <summary>Winning route</summary>
+        <p id="solution-moves"></p>
+      </details>
+    </main>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

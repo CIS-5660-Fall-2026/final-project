@@ -1,0 +1,87 @@
+:root {
+  color-scheme: dark;
+  font: 16px/1.5 system-ui, sans-serif;
+  color: #f0e9db;
+  background: #171616;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  max-width: 36rem;
+  margin: 2rem auto;
+  padding: 0 1rem 2rem;
+}
+
+h1 {
+  margin-bottom: 0;
+}
+
+h1 + p {
+  margin-top: 0.25rem;
+}
+
+form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+input, button {
+  font: inherit;
+  padding: 0.25rem 0.5rem;
+}
+
+input {
+  width: 7rem;
+}
+
+button, summary {
+  cursor: pointer;
+}
+
+#stats, #board, #solution-moves {
+  font-family: ui-monospace, monospace;
+}
+
+#board {
+  display: grid;
+  grid-template-columns: repeat(11, minmax(0, 1fr));
+  gap: 1px;
+  width: min(100%, 30rem);
+  background: #171616;
+  border: 1px solid #514a44;
+}
+
+#board span {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #292523;
+  font-weight: bold;
+  line-height: 1;
+}
+
+#board [data-tile="#"] { background: #514a44; }
+#board [data-tile="@"] { color: #faf2d7; background: #60513a; }
+#board [data-tile="K"], #board [data-tile="D"] { color: #f0c874; }
+#board [data-tile="P"], #board [data-tile="E"] { color: #9addb3; }
+#board [data-tile="W"] { color: #abcbf2; }
+
+#board small {
+  font-size: 0.7em;
+  margin-top: 0.12rem;
+}
+
+.lethal { color: #ff9b91; }
+.legend { color: #c9bfb0; font-size: 0.85rem; }
+
+#status {
+  min-height: 1.5em;
+  margin: 0.5rem 0;
+}
