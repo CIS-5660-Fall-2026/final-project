@@ -19,6 +19,11 @@ fn detectCollisions(
 
     let body = bodies[i];
 
+    if (body.absorptionCooldown > 0u) {
+        collisionCandidates[i] = i;
+        return;
+    }
+
     var candidate = i;
     var candidateMass = body.mass;
 
@@ -28,6 +33,10 @@ fn detectCollisions(
         }
 
         let other = bodies[j];
+
+        if (other.absorptionCooldown > 0u) {
+            continue;
+        }
 
         let higherPriority =
             other.mass > candidateMass ||

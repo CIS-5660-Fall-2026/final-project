@@ -1,17 +1,18 @@
 import { BODY_STRIDE, packBodies } from "./Body";
 import type Scene from "./Scene";
 import { SimulationUniforms } from "./Scene";
-import { absorptionWgsl, collisionWgsl, compactWgsl, gravityWgsl } from "./shaders";
+import { absorptionWgsl, collisionWgsl, compactWgsl, explosionWgsl, gravityWgsl } from "./shaders";
+
+const DISPATCH_ARGS_OFFSET = 48;
 
 export default class Simulation {
   private readonly device: GPUDevice;
-  private workgroupCount = 0;
   private readonly uniforms = new SimulationUniforms();
-  private bodyCount = 0;
 
   private readonly bodiesA: GPUBuffer;
   private readonly bodiesB: GPUBuffer;
   private readonly paramsBuffer: GPUBuffer;
+  private readonly dispatchArgsBuffer: GPUBuffer;
   private readonly collisionCandidates: GPUBuffer;
   private readonly oldToNew: GPUBuffer;
 
@@ -20,12 +21,14 @@ export default class Simulation {
   private readonly collisionPipeline: GPUComputePipeline;
   private readonly absorptionPipeline: GPUComputePipeline;
   private readonly compactPipeline: GPUComputePipeline;
+  private readonly explosionPipeline: GPUComputePipeline;
 
   private readonly driftBindGroup: GPUBindGroup;
   private readonly gravityBindGroup: GPUBindGroup;
   private readonly collisionBindGroup: GPUBindGroup;
   private readonly absorptionBindGroup: GPUBindGroup;
   private readonly compactBindGroup: GPUBindGroup;
+  private readonly explosionBindGroup: GPUBindGroup;
 
   constructor(device: GPUDevice, scene: Scene) {
     this.device = device;
@@ -46,10 +49,21 @@ export default class Simulation {
 
     this.paramsBuffer = device.createBuffer({
       label: "simulation params",
-      size: 48,
+      size: this.uniforms.buffer.byteLength,
       usage:
-        GPUBufferUsage.UNIFORM | GPUBufferUsage.STORAGE |
-        GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+        GPUBufferUsage.UNIFORM |
+        GPUBufferUsage.STORAGE |
+        GPUBufferUsage.COPY_DST |
+        GPUBufferUsage.COPY_SRC,
+    });
+
+    this.dispatchArgsBuffer = device.createBuffer({
+      label: "simulation dispatch args",
+      size: 12,
+      usage:
+        GPUBufferUsage.STORAGE |
+        GPUBufferUsage.INDIRECT |
+        GPUBufferUsage.COPY_DST,
     });
 
     this.collisionCandidates = device.createBuffer({
@@ -183,6 +197,25 @@ export default class Simulation {
       ],
     });
 
+    this.explosionPipeline = device.createComputePipeline({
+      label: "explosion pipeline",
+      layout: "auto",
+      compute: {
+        module: device.createShaderModule({ code: explosionWgsl }),
+        entryPoint: "explodeBodies",
+      },
+    });
+
+    this.explosionBindGroup = device.createBindGroup({
+      layout: this.explosionPipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: this.bodiesA } },
+        { binding: 1, resource: { buffer: this.collisionCandidates } },
+        { binding: 2, resource: { buffer: this.paramsBuffer } },
+        { binding: 3, resource: { buffer: this.dispatchArgsBuffer } },
+      ],
+    });
+
     this.reset(scene);
   }
 
@@ -199,17 +232,13 @@ export default class Simulation {
   }
 
   public encodeStep(encoder: GPUCommandEncoder): void {
-    if (this.workgroupCount === 0) {
-      return;
-    }
-
     const driftPass = encoder.beginComputePass({
       label: "drift half pass",
     });
 
     driftPass.setPipeline(this.driftPipeline);
     driftPass.setBindGroup(0, this.driftBindGroup);
-    driftPass.dispatchWorkgroups(this.workgroupCount);
+    driftPass.dispatchWorkgroupsIndirect(this.dispatchArgsBuffer, 0);
     driftPass.end();
 
     const gravityPass = encoder.beginComputePass({
@@ -218,7 +247,7 @@ export default class Simulation {
 
     gravityPass.setPipeline(this.gravityPipeline);
     gravityPass.setBindGroup(0, this.gravityBindGroup);
-    gravityPass.dispatchWorkgroups(this.workgroupCount);
+    gravityPass.dispatchWorkgroupsIndirect(this.dispatchArgsBuffer, 0);
     gravityPass.end();
 
     const collisionPass = encoder.beginComputePass({
@@ -227,7 +256,7 @@ export default class Simulation {
 
     collisionPass.setPipeline(this.collisionPipeline);
     collisionPass.setBindGroup(0, this.collisionBindGroup);
-    collisionPass.dispatchWorkgroups(this.workgroupCount);
+    collisionPass.dispatchWorkgroupsIndirect(this.dispatchArgsBuffer, 0);
     collisionPass.end();
 
     const absorptionPass = encoder.beginComputePass({
@@ -236,7 +265,7 @@ export default class Simulation {
 
     absorptionPass.setPipeline(this.absorptionPipeline);
     absorptionPass.setBindGroup(0, this.absorptionBindGroup);
-    absorptionPass.dispatchWorkgroups(this.workgroupCount);
+    absorptionPass.dispatchWorkgroupsIndirect(this.dispatchArgsBuffer, 0);
     absorptionPass.end();
 
     const compactPass = encoder.beginComputePass({
@@ -247,15 +276,18 @@ export default class Simulation {
     compactPass.setBindGroup(0, this.compactBindGroup);
     compactPass.dispatchWorkgroups(1);
     compactPass.end();
+
+    const explosionPass = encoder.beginComputePass({ label: "explosion pass" });
+    explosionPass.setPipeline(this.explosionPipeline);
+    explosionPass.setBindGroup(0, this.explosionBindGroup);
+    explosionPass.dispatchWorkgroups(1);
+    explosionPass.end();
   }
 
   public reset(scene: Scene): void {
     const bodyCount = scene.initialBodies.length;
-    this.bodyCount = bodyCount;
     
     const capacity = scene.simulationConfig.capacity;
-    const workgroupSize = 64;
-    this.workgroupCount = Math.ceil(bodyCount / workgroupSize);
     this.uniforms.bodyCount = bodyCount;
 
     const data = packBodies(scene.initialBodies, capacity);
@@ -263,6 +295,12 @@ export default class Simulation {
     this.device.queue.writeBuffer(this.bodiesB, 0, data);
     this.device.queue.writeBuffer(
       this.paramsBuffer, 0, this.uniforms.buffer,
+    );
+
+    this.device.queue.writeBuffer(
+      this.dispatchArgsBuffer,
+      0,
+      new Uint32Array([Math.ceil(bodyCount / 64), 1, 1]),
     );
 
     const candidates = new Uint32Array(capacity);

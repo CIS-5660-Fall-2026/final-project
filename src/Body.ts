@@ -10,7 +10,7 @@ export interface BodyInitialState {
   seed: number;
 }
 
-export const BODY_STRIDE = 64;
+export const BODY_STRIDE = 80;
 
 export function packBodies(
   bodies: readonly BodyInitialState[],
@@ -21,7 +21,7 @@ export function packBodies(
   const uintView = new Uint32Array(buffer);
 
   bodies.forEach((body, index) => {
-    const offset = index * 16;
+    const offset = index * (BODY_STRIDE / Float32Array.BYTES_PER_ELEMENT);
 
     floatView.set([
       body.position[0], body.position[1], body.position[2], body.mass, 
@@ -29,7 +29,7 @@ export function packBodies(
       body.orientation[0], body.orientation[1],
       body.orientation[2], body.orientation[3],
       body.angularVelocity[0], body.angularVelocity[1], body.angularVelocity[2],
-    ], index * 16);
+    ], offset);
 
     uintView[offset + 15] = body.seed;
   })

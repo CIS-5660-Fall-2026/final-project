@@ -6,6 +6,7 @@ import bodiesDebug from "./shaders/bodies_debug.wgsl?raw";
 import collision from "./shaders/collision.wgsl?raw";
 import absorption from "./shaders/absorption.wgsl?raw";
 import compact from "./shaders/compact.wgsl?raw";
+import explosion from "./shaders/explosion.wgsl?raw";
 
 export const gravityWgsl = `${common}\n${gravity}`;
 export const bodiesWgsl = `${common}\n${noise}\n${bodies}`;
@@ -13,3 +14,4 @@ export const bodiesDebugWgsl = `${common}\n${bodiesDebug}`;
 export const collisionWgsl = `${common}\n${collision}`;
 export const absorptionWgsl = `${common}\n${absorption}`;
 export const compactWgsl = `${common}\n${compact}`;
+export const explosionWgsl = `${common}\n${noise}\n${explosion}`;

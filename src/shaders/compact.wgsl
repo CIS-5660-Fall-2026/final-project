@@ -19,7 +19,16 @@ fn compactBodies() {
     var newCount = 0u;
 
     for (var oldIndex = 0u; oldIndex < oldCount; oldIndex++) {
-        let body = absorbedBodies[oldIndex];
+        var body = absorbedBodies[oldIndex];
+
+        if (body.mass == 0.0) {
+            oldToNew[oldIndex] = oldCount;
+            continue;
+        }
+
+        if (body.absorptionCooldown > 0u) {
+            body.absorptionCooldown -= 1u;
+        }
 
         oldToNew[oldIndex] = newCount;
         compactedBodies[newCount] = body;
@@ -28,9 +37,12 @@ fn compactBodies() {
     }
 
     for (var i = 0u; i < newCount; i++) {
-        let oldCandidate = collisionCandidates[i];
-        let newCandidate = oldToNew[oldCandidate];
-        collisionCandidates[i] = select(i, newCandidate, newCandidate != oldCount);
+        let candidate = oldToNew[collisionCandidates[i]];
+        collisionCandidates[i] = select(i, candidate, candidate != oldCount);
+    }
+
+    for (var i = newCount; i < oldCount; i++) {
+        compactedBodies[i] = Body();
     }
 
     params.bodyCount = newCount;

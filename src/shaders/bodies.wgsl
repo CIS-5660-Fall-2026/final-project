@@ -45,6 +45,10 @@ fn vertMain(
 
 @fragment
 fn fragMain(input: VertexOutput) -> @location(0) vec4<f32> {
+    if (bodies[input.bodyIndex].mass >= STAR_MASS) {
+        return vec4<f32>(1.0, 1.0, 1.0, 1.0);
+    }
+
     let p = normalize(input.localPosition);
     let detail = fbm(6.0 * p + input.surfaceOffset) / 1.875;
 

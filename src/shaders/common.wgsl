@@ -1,11 +1,17 @@
 struct Body {
     position: vec3<f32>,
     mass: f32,
+
     velocity: vec3<f32>,
     radius: f32,
+
     orientation: vec4<f32>,
+
     angularVelocity: vec3<f32>,
-    seed: u32
+    seed: u32,
+
+    absorptionCooldown: u32,
+    storedEnergy: f32
 }
 
 struct SimulationUniforms {
@@ -17,7 +23,8 @@ struct SimulationUniforms {
     boundaryMin: vec3<f32>,
     boundaryEnabled: u32,
 
-    boundaryMax: vec3<f32>
+    boundaryMax: vec3<f32>,
+    simulationStep: u32
 }
 
 fn multiplyQuaternion(
@@ -33,3 +40,5 @@ fn multiplyQuaternion(
 fn rotateVector(q: vec4<f32>, v: vec3<f32>) -> vec3<f32> {
     return v + 2.0 * cross(q.xyz, cross(q.xyz, v) + q.w * v);
 }
+
+const STAR_MASS: f32 = 80.0;

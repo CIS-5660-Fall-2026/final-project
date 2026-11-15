@@ -47,13 +47,19 @@ export default class Scene {
         range(-10, 10)
       );
 
+      const angularVelocity = vec3.fromValues(
+        range(-3, 3),
+        range(-3, 3),
+        range(-3, 3)
+      );
+
       bodies.push({
         position, 
         velocity,
         mass, 
         radius,
         orientation: quat.identity(),
-        angularVelocity: vec3.create(0, range(0.1, 1.0), 0),
+        angularVelocity,
         seed: surfaceRng.int32() >>> 0
       });
     }
@@ -93,6 +99,7 @@ export class SimulationUniforms {
 
   set bodyCount(value: number) {
     this.uintView[3] = value;
+    this.uintView[11] = 0; // simulationStep
   }
 
   set boundary(boundary: BoxBoundary) {
