@@ -2,10 +2,12 @@ import * as THREE from 'three';
 import {Line2} from 'three/addons/lines/Line2.js';
 import {LineMaterial} from 'three/addons/lines/LineMaterial.js';
 import {LineGeometry} from 'three/addons/lines/LineGeometry.js';
-import * as engine from './engine'
+import {Engine} from './engine'
 
 const SNAKE_SEGMENTS = 14;
 const SEGMENT_SPACING = 0.55;
+const engine = new Engine();
+engine.start();
 
 /** Concave 5-point star, counter-clockwise, as [x, y] pairs. */
 function starPoints(tips: number, outer: number, inner: number): [number, number][] {
@@ -79,3 +81,9 @@ for (let i = 0; i < SNAKE_SEGMENTS; i++) {
   engine.scene.add(seg);
   snake.push(seg);
 }
+
+
+function snakeTick(dt : number){
+followChain(snake, engine.mouse, SEGMENT_SPACING, dt);
+}
+engine.onUpdate(snakeTick);
