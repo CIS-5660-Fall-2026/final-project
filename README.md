@@ -57,3 +57,7 @@ flowchart TD
 | Nov 12–18 | Add the second puzzle pattern and difficulty checks. Test a beatable and unbeatable floors, as well as floors with shortcuts so I can check that the solver and filters behave as expected. |
 | Nov 19–23 (Milestone 2) | Finish the WebGPU tile rendering, damage previews, seed controls, and solution playback. |
 | Nov 24–30 (Final Submission) | Finish up anything I didn't get to complete, prepare the browser demo and presentation, and finish the README. |
+
+
+### Milestone 1
+https://ziqiu-wang.github.io/final-project/
