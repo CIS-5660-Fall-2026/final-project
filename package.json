@@ -14,6 +14,7 @@
     "vite": "^8.0.0"
   },
   "dependencies": {
+    "@dimforge/rapier2d-compat": "^0.21.0",
     "@math.gl/core": "^4.1.0",
     "3d-view-controls": "^2.2.2",
     "gl-matrix": "^3.4.3",

@@ -14,6 +14,10 @@ export class Engine {
   private updaters = new Set<UpdateFn>();
 
   constructor() {
+    if(Engine._instance){
+      throw new Error("Engine already exists");
+    }
+    Engine._instance = this;
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setClearColor(0x1a1c1f);
 
@@ -53,5 +57,13 @@ export class Engine {
       for (const fn of this.updaters) fn(dt);
       this.renderer.render(this.scene, this.camera);
     });
+  }
+
+  private static _instance: Engine;
+  public static get engine(): Engine {
+    if (!Engine._instance) {
+      Engine._instance = new Engine();
+    }
+    return Engine._instance;
   }
 }
