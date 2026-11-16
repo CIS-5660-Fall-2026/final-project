@@ -108,11 +108,39 @@ fn fragMain(input: VertexOutput) -> @location(0) vec4<f32> {
 
     let normal = normalize(input.normal);
     let skyWeight = normal.y * 0.5 + 0.5;
-    let ambient = mix(
+    let ambient = 0.2 * mix(
         vec3<f32>(0.020, 0.020, 0.030),
         vec3<f32>(0.060, 0.075, 0.095),
         skyWeight
     );
     let starLighting = evaluateStarLights(input.worldPosition, normal);
-    return vec4<f32>(baseColor * (ambient + starLighting), 1.0);
+    let litRock = baseColor * (ambient + starLighting);
+
+    let crackStartMass = 0.025 * STAR_MASS;
+    let heat = clamp(
+        (body.mass - crackStartMass) / (STAR_MASS - crackStartMass),
+        0.0,
+        1.0
+    );
+    if (heat == 0.0) {
+        return vec4<f32>(litRock, 1.0);
+    }
+
+    let crackField = noise3D(2.5 * p + input.surfaceOffset);
+    let bandDistance = abs(crackField);
+    let crackBand = 1.0 - smoothstep(0.02, 0.06, bandDistance);
+
+    let patchNoise = noise3D(
+        2.0 * p + input.surfaceOffset + vec3<f32>(17.0, 31.0, 11.0)
+    );
+    let crackMask = crackBand * smoothstep(-0.1, 0.1, patchNoise);
+
+    let crackColor = mix(
+        vec3<f32>(1.0, 0.025, 0.005),
+        vec3<f32>(1.0, 0.380, 0.045),
+        heat
+    );
+    let crackEmission = crackColor * (2.0 * heat * crackMask);
+
+    return vec4<f32>(litRock + crackEmission, 1.0);
 }
