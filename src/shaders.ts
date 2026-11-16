@@ -7,6 +7,7 @@ import collision from "./shaders/collision.wgsl?raw";
 import absorption from "./shaders/absorption.wgsl?raw";
 import compact from "./shaders/compact.wgsl?raw";
 import explosion from "./shaders/explosion.wgsl?raw";
+import composite from "./shaders/composite.wgsl?raw";
 
 export const gravityWgsl = `${common}\n${gravity}`;
 export const bodiesWgsl = `${common}\n${noise}\n${bodies}`;
@@ -15,3 +16,4 @@ export const collisionWgsl = `${common}\n${collision}`;
 export const absorptionWgsl = `${common}\n${absorption}`;
 export const compactWgsl = `${common}\n${compact}`;
 export const explosionWgsl = `${common}\n${noise}\n${explosion}`;
+export const compositeWgsl = `${common}\n${composite}`

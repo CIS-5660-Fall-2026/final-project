@@ -1,5 +1,5 @@
 import Camera from "./Camera";
-import { bodiesDebugWgsl, bodiesWgsl } from "./shaders";
+import { bodiesDebugWgsl, bodiesWgsl, compositeWgsl } from "./shaders";
 import { createSphereMesh } from "./Sphere";
 import type WebGpuContext from "./WebGpuContext";
 
@@ -13,16 +13,19 @@ export default class Renderer {
 
   private readonly surfacePipeline: GPURenderPipeline;
   private readonly debugPipeline: GPURenderPipeline;  
+  private readonly compositePipeline: GPURenderPipeline;
 
   private readonly cameraBindGroup: GPUBindGroup;
   private readonly bodiesBindGroup: GPUBindGroup;
+  private readonly compositeBindGroup: GPUBindGroup;
 
   private readonly sphereVertexBuffer: GPUBuffer;
   private readonly sphereIndexBuffer: GPUBuffer;
-
   private readonly indirectBuffer: GPUBuffer;
 
   private readonly depthTexture: GPUTexture;
+
+  private readonly hdrView: GPUTextureView;
 
   constructor(
     gpuContext: WebGpuContext, 
@@ -77,7 +80,15 @@ export default class Renderer {
       size: [canvas.width, canvas.height],
       format: "depth24plus",
       usage: GPUTextureUsage.RENDER_ATTACHMENT
-    })
+    });
+
+    const hdrFormat: GPUTextureFormat = "rgba16float";
+    this.hdrView = device.createTexture({
+      label: "HDR scene",
+      size: [canvas.width, canvas.height],
+      format: hdrFormat,
+      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
+    }).createView();
 
     const cameraLayout = device.createBindGroupLayout({
       label: "camera bind group layout",
@@ -114,7 +125,8 @@ export default class Renderer {
 
     const createPipeline = (
       label: string,
-      code: string
+      code: string,
+      colorFormat: GPUTextureFormat
     ): GPURenderPipeline => {
       const module = device.createShaderModule({ 
         label: `${label} module`, 
@@ -145,14 +157,38 @@ export default class Renderer {
           module,
           entryPoint: "fragMain",
           targets: [{
-            format: this.gpuContext.format
+            format: colorFormat
           }]
         }
       });
     };
 
-    this.surfacePipeline = createPipeline("surface pipeline", bodiesWgsl);
-    this.debugPipeline = createPipeline("debug pipeline", bodiesDebugWgsl); 
+    this.surfacePipeline = createPipeline(
+      "surface pipeline", bodiesWgsl, hdrFormat
+    );
+    this.debugPipeline = createPipeline(
+      "debug pipeline", bodiesDebugWgsl, this.gpuContext.format
+    ); 
+
+    const compositeModule = device.createShaderModule({
+      label: "HDR composite shader",
+      code: compositeWgsl
+    });
+    this.compositePipeline = device.createRenderPipeline({
+      label: "HDR composite pipeline",
+      layout: "auto",
+      vertex: { module: compositeModule, entryPoint: "vertMain" },
+      fragment: {
+        module: compositeModule,
+        entryPoint: "fragMain",
+        targets: [{ format: this.gpuContext.format }]
+      }
+    });
+    
+    this.compositeBindGroup = device.createBindGroup({
+      layout: this.compositePipeline.getBindGroupLayout(0),
+      entries: [{ binding: 0, resource: this.hdrView }]
+    });
 
     this.cameraBindGroup = device.createBindGroup({
       label: "camera bind group",
@@ -192,9 +228,12 @@ export default class Renderer {
       4,
     );
 
-    const renderPass = encoder.beginRenderPass({
+    const debug = this.mode === "debug";
+    const canvasView = this.gpuContext.context.getCurrentTexture().createView();
+
+    const scenePass = encoder.beginRenderPass({
       colorAttachments: [{
-        view: this.gpuContext.context.getCurrentTexture().createView(),
+        view: debug ? canvasView : this.hdrView,
         loadOp: "clear",
         storeOp: "store"
       }],
@@ -205,13 +244,27 @@ export default class Renderer {
         depthStoreOp: "store"
       }
     });
-    renderPass.setPipeline(this.mode === "debug" 
-      ? this.debugPipeline : this.surfacePipeline);
-    renderPass.setBindGroup(0, this.cameraBindGroup);
-    renderPass.setBindGroup(1, this.bodiesBindGroup);
-    renderPass.setVertexBuffer(0, this.sphereVertexBuffer);
-    renderPass.setIndexBuffer(this.sphereIndexBuffer, "uint16");
-    renderPass.drawIndexedIndirect(this.indirectBuffer, 0);
-    renderPass.end();
+
+    scenePass.setPipeline(debug ? this.debugPipeline : this.surfacePipeline);
+    scenePass.setBindGroup(0, this.cameraBindGroup);
+    scenePass.setBindGroup(1, this.bodiesBindGroup);
+    scenePass.setVertexBuffer(0, this.sphereVertexBuffer);
+    scenePass.setIndexBuffer(this.sphereIndexBuffer, "uint16");
+    scenePass.drawIndexedIndirect(this.indirectBuffer, 0);
+    scenePass.end();
+
+    if (debug) return;
+
+    const compositePass = encoder.beginRenderPass({
+      colorAttachments: [{
+        view: canvasView,
+        loadOp: "clear",
+        storeOp: "store"
+      }]
+    });
+    compositePass.setPipeline(this.compositePipeline);
+    compositePass.setBindGroup(0, this.compositeBindGroup);
+    compositePass.draw(3);
+    compositePass.end();
   }
 }

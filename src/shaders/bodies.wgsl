@@ -65,13 +65,12 @@ fn fragMain(input: VertexOutput) -> @location(0) vec4<f32> {
         * (0.95 + 0.10 * smoothstep(-0.25, 0.25, detail));
 
     let normal = normalize(input.normal);
+    let skyWeight = normal.y * 0.5 + 0.5;
+    let ambient = mix(
+        vec3<f32>(0.020, 0.020, 0.030),
+        vec3<f32>(0.060, 0.075, 0.095),
+        skyWeight
+    );
 
-    let lightDirection = normalize(vec3<f32>(1.0, 1.0, 1.0));
-    let lightColor = vec3<f32>(1.0, 0.95, 0.90);
-    let lightIntensity = 1.0;
-
-    let diffuse = max(dot(normal, lightDirection), 0.0);
-    let lighting = lightColor * lightIntensity * diffuse;
-
-    return vec4<f32>(baseColor * lighting, 1.0);
+    return vec4<f32>(baseColor * ambient, 1.0);
 }
