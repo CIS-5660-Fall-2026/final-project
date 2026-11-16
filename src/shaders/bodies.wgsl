@@ -2,11 +2,19 @@ struct CameraUniforms {
     viewProjection: mat4x4<f32>,
 }
 
+struct ReadableStarLights {
+    count: u32,
+    lights: array<StarLight>,
+}
+
 @group(0) @binding(0)
 var<uniform> camera: CameraUniforms;
 
 @group(1) @binding(0)
 var<storage, read> bodies: array<Body>;
+
+@group(1) @binding(2)
+var<storage, read> starLights: ReadableStarLights;
 
 const COLLAPSE_MIN_RADIUS_SCALE: f32 = 0.6;
 
@@ -17,6 +25,30 @@ struct VertexOutput {
     @location(2) @interpolate(flat) bodyIndex: u32,
     @location(3) @interpolate(flat) surfaceOffset: vec3<f32>,
     @location(4) @interpolate(flat) paletteMix: f32,
+    @location(5) worldPosition: vec3<f32>,
+}
+
+fn evaluateStarLights(position: vec3<f32>, normal: vec3<f32>) -> vec3<f32> {
+    var lighting = vec3<f32>(0.0);
+    let lightCount = starLights.count;
+
+    for (var i = 0u; i < lightCount; i++) {
+        let light = starLights.lights[i];
+        let offset = light.position - position;
+        let distanceSquared = dot(offset, offset);
+        let radiusSquared = light.radius * light.radius;
+        let softenedDistanceSquared = max(distanceSquared, radiusSquared);
+
+        let diffuse = max(
+            dot(normal, offset) * inverseSqrt(softenedDistanceSquared),
+            0.0
+        );
+        lighting += light.color * (
+            light.strength * diffuse / softenedDistanceSquared
+        );
+    }
+
+    return lighting;
 }
 
 @vertex
@@ -43,19 +75,22 @@ fn vertMain(
     output.bodyIndex = instanceIndex;
     output.surfaceOffset = surfaceOffset;
     output.paletteMix = random01(body.seed ^ 4u);
+    output.worldPosition = worldPosition;
     return output;
 }
 
 @fragment
 fn fragMain(input: VertexOutput) -> @location(0) vec4<f32> {
     let body = bodies[input.bodyIndex];
-    if (body.mass >= STAR_MASS || body.collapseProgress > 0.0) {
-        return vec4<f32>(1.0, 1.0, 1.0, 1.0);
+    let p = normalize(input.localPosition);
+
+    if (isStar(body)) {
+        let grain = noise3D(9.0 * p + input.surfaceOffset);
+        let emission = 1.5 + 0.15 * grain;
+        return vec4<f32>(starColor(body) * emission, 1.0);
     }
 
-    let p = normalize(input.localPosition);
     let detail = fbm(6.0 * p + input.surfaceOffset) / 1.875;
-
     let rockColor = mix(
         vec3<f32>(0.30, 0.32, 0.34),
         vec3<f32>(0.34, 0.32, 0.29),
@@ -71,6 +106,6 @@ fn fragMain(input: VertexOutput) -> @location(0) vec4<f32> {
         vec3<f32>(0.060, 0.075, 0.095),
         skyWeight
     );
-
-    return vec4<f32>(baseColor * ambient, 1.0);
+    let starLighting = evaluateStarLights(input.worldPosition, normal);
+    return vec4<f32>(baseColor * (ambient + starLighting), 1.0);
 }

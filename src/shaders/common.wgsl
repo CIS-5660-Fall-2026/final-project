@@ -43,6 +43,7 @@ fn rotateVector(q: vec4<f32>, v: vec3<f32>) -> vec3<f32> {
 
 const STAR_MASS: f32 = 80.0;
 const MASS_RESPONSE_REFERENCE: f32 = 16.0;
+const EXPLOSION_MASS: f32 = 160.0;
 
 fn massResponse(mass: f32) -> f32 {
     return MASS_RESPONSE_REFERENCE / (MASS_RESPONSE_REFERENCE + mass);

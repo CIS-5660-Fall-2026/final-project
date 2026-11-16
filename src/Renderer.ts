@@ -1,5 +1,6 @@
+import { BODY_STRIDE } from "./Body";
 import Camera from "./Camera";
-import { bodiesDebugWgsl, bodiesWgsl, compositeWgsl } from "./shaders";
+import { bodiesDebugWgsl, bodiesWgsl, collectStarLightsWgsl, compositeWgsl } from "./shaders";
 import { createSphereMesh } from "./Sphere";
 import type WebGpuContext from "./WebGpuContext";
 
@@ -15,13 +16,19 @@ export default class Renderer {
   private readonly debugPipeline: GPURenderPipeline;  
   private readonly compositePipeline: GPURenderPipeline;
 
+  private readonly collectStarLightsPipeline: GPUComputePipeline;
+
   private readonly cameraBindGroup: GPUBindGroup;
   private readonly bodiesBindGroup: GPUBindGroup;
   private readonly compositeBindGroup: GPUBindGroup;
+  private readonly collectStarLightsBindGroup: GPUBindGroup;
 
   private readonly sphereVertexBuffer: GPUBuffer;
   private readonly sphereIndexBuffer: GPUBuffer;
   private readonly indirectBuffer: GPUBuffer;
+  private readonly simulationParamsBuffer: GPUBuffer;
+  private readonly simulationDispatchArgsBuffer: GPUBuffer;
+  private readonly starLightsBuffer: GPUBuffer;
 
   private readonly depthTexture: GPUTexture;
 
@@ -30,7 +37,9 @@ export default class Renderer {
   constructor(
     gpuContext: WebGpuContext, 
     bodiesBuffer: GPUBuffer, 
-    collisionCandidatesBuffer: GPUBuffer
+    collisionCandidatesBuffer: GPUBuffer,
+    simulationParamsBuffer: GPUBuffer,
+    simulationDispatchArgsBuffer: GPUBuffer
   ) {
     this.gpuContext = gpuContext;
     
@@ -90,6 +99,34 @@ export default class Renderer {
       usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
     }).createView();
 
+    this.simulationParamsBuffer = simulationParamsBuffer;
+    this.simulationDispatchArgsBuffer = simulationDispatchArgsBuffer;
+
+    const bodyCapacity = bodiesBuffer.size / BODY_STRIDE;
+    this.starLightsBuffer = device.createBuffer({
+      label: "star lights",
+      size: 16 + 32 * bodyCapacity,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+    });
+
+    this.collectStarLightsPipeline = device.createComputePipeline({
+      label: "collect star lights pipeline",
+      layout: "auto",
+      compute: {
+        module: device.createShaderModule({ code: collectStarLightsWgsl }),
+        entryPoint: "collectStarLights"
+      }
+    });
+
+    this.collectStarLightsBindGroup = device.createBindGroup({
+      layout: this.collectStarLightsPipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: bodiesBuffer } },
+        { binding: 1, resource: { buffer: simulationParamsBuffer } },
+        { binding: 2, resource: { buffer: this.starLightsBuffer } }
+      ]
+    });
+
     const cameraLayout = device.createBindGroupLayout({
       label: "camera bind group layout",
       entries: [{
@@ -109,6 +146,11 @@ export default class Renderer {
         },
         {
           binding: 1,
+          visibility: GPUShaderStage.FRAGMENT,
+          buffer: { type: "read-only-storage" }
+        },
+        {
+          binding: 2,
           visibility: GPUShaderStage.FRAGMENT,
           buffer: { type: "read-only-storage" }
         }
@@ -203,7 +245,8 @@ export default class Renderer {
       layout: bodiesLayout,
       entries: [
         { binding: 0, resource: { buffer: bodiesBuffer } },
-        { binding: 1, resource: { buffer: collisionCandidatesBuffer } }
+        { binding: 1, resource: { buffer: collisionCandidatesBuffer } },
+        { binding: 2, resource: { buffer: this.starLightsBuffer } }
       ]
     });
   }
@@ -216,12 +259,9 @@ export default class Renderer {
     device.queue.writeBuffer(this.cameraBuffer, 0, this.camera.uniforms.buffer);
   }
 
-  public encode(
-    encoder: GPUCommandEncoder,
-    simulationParamsBuffer: GPUBuffer,
-  ): void {
+  public encode(encoder: GPUCommandEncoder): void {
     encoder.copyBufferToBuffer(
-      simulationParamsBuffer,
+      this.simulationParamsBuffer,
       12, // bodyCount
       this.indirectBuffer,
       4,
@@ -229,6 +269,17 @@ export default class Renderer {
     );
 
     const debug = this.mode === "debug";
+
+    if (!debug) {
+      encoder.clearBuffer(this.starLightsBuffer, 0, Uint32Array.BYTES_PER_ELEMENT);
+
+      const collectPass = encoder.beginComputePass({ label: "collect star lights" });
+      collectPass.setPipeline(this.collectStarLightsPipeline);
+      collectPass.setBindGroup(0, this.collectStarLightsBindGroup);
+      collectPass.dispatchWorkgroupsIndirect(this.simulationDispatchArgsBuffer, 0);
+      collectPass.end();
+    }
+
     const canvasView = this.gpuContext.context.getCurrentTexture().createView();
 
     const scenePass = encoder.beginRenderPass({

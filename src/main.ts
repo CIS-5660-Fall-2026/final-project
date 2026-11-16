@@ -40,7 +40,9 @@ const simulation = new Simulation(gpuContext.device, scene);
 const renderer = new Renderer(
   gpuContext, 
   simulation.bodiesBuffer, 
-  simulation.collisionCandidatesBuffer
+  simulation.collisionCandidatesBuffer,
+  simulation.simulationParamsBuffer,
+  simulation.simulationDispatchArgsBuffer
 );
 
 const cameraController = new CameraController(canvas, renderer.camera);
@@ -82,7 +84,7 @@ const frame = (time: number): void => {
   cameraController.update(dt);
 
   renderer.onFrame();
-  renderer.encode(encoder, simulation.simulationParamsBuffer);
+  renderer.encode(encoder);
 
   device.queue.submit([encoder.finish()]);
   

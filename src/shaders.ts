@@ -8,12 +8,15 @@ import absorption from "./shaders/absorption.wgsl?raw";
 import compact from "./shaders/compact.wgsl?raw";
 import explosion from "./shaders/explosion.wgsl?raw";
 import composite from "./shaders/composite.wgsl?raw";
+import stars from "./shaders/stars.wgsl?raw";
+import collectStarLights from "./shaders/collect_star_lights.wgsl?raw";
 
 export const gravityWgsl = `${common}\n${gravity}`;
-export const bodiesWgsl = `${common}\n${noise}\n${bodies}`;
+export const bodiesWgsl = `${common}\n${noise}\n${stars}\n${bodies}`;
 export const bodiesDebugWgsl = `${common}\n${bodiesDebug}`;
 export const collisionWgsl = `${common}\n${collision}`;
 export const absorptionWgsl = `${common}\n${absorption}`;
 export const compactWgsl = `${common}\n${compact}`;
 export const explosionWgsl = `${common}\n${noise}\n${explosion}`;
-export const compositeWgsl = `${common}\n${composite}`
+export const compositeWgsl = `${common}\n${composite}`;
+export const collectStarLightsWgsl = `${common}\n${noise}\n${stars}\n${collectStarLights}`;

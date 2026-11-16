@@ -229,6 +229,10 @@ export default class Simulation {
     return this.paramsBuffer;
   }
 
+  public get simulationDispatchArgsBuffer(): GPUBuffer {
+    return this.dispatchArgsBuffer;
+  }
+
   public encodeStep(encoder: GPUCommandEncoder): void {
     const driftPass = encoder.beginComputePass({
       label: "drift half pass",

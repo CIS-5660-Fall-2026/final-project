@@ -10,7 +10,6 @@ var<storage, read_write> params: SimulationUniforms;
 @group(0) @binding(3)
 var<storage, read_write> dispatchArgs: array<u32, 3>;
 
-const EXPLOSION_MASS: f32 = 160.0;
 const EXPLOSION_RATE: f32 = 0.5;
 
 const COLLAPSE_DURATION: f32 = 0.6; // Seconds
@@ -97,7 +96,7 @@ fn explodeBodies() {
         }
 
         let desiredCount = max(MIN_FRAGMENTS, u32(ceil(parent.mass / TARGET_FRAGMENT_MASS)));
-        let fragmentCount = min(desiredCount, capacity - nextSlot + 1u);
+        let fragmentCount = min(desiredCount, capacity - nextSlot + 10u);
         if (fragmentCount < MIN_FRAGMENTS) {
             continue;
         }
@@ -137,7 +136,7 @@ fn explodeBodies() {
         );
         let u = normalize(cross(axis, reference));
         let v = cross(axis, u);
-        let phase = 2.0 * PI * random01(eventSeed ^ 0x1u);
+        let phase = 2.0 * PI * random01(eventSeed ^ 5u);
         var cumulativeWeight = 0.0;
         var assignedMass = 0.0;
 
@@ -150,12 +149,12 @@ fn explodeBodies() {
             assignedMass = cumulativeMass;
             let fraction = mass / parent.mass;
             let radius = parent.radius * pow(fraction, 1.0 / 3.0);
-            let jitter = random01(seed ^ 0x2u);
+            let jitter = random01(seed ^ 6u);
             let angle = phase + 2.0 * PI * (f32(j) + jitter) / f32(fragmentCount);
             let radial = cos(angle) * u + sin(angle) * v;
-            let axialOffset = mix(-FRAGMENT_AXIAL_SPREAD, FRAGMENT_AXIAL_SPREAD, random01(seed ^ 0x3u));
+            let axialOffset = mix(-FRAGMENT_AXIAL_SPREAD, FRAGMENT_AXIAL_SPREAD, random01(seed ^ 7u));
             let direction = normalize(radial + axialOffset * axis);
-            let speed = mix(MIN_EJECTION_SPEED, MAX_EJECTION_SPEED, random01(seed ^ 0x4u));
+            let speed = mix(MIN_EJECTION_SPEED, MAX_EJECTION_SPEED, random01(seed ^ 8u));
 
             var piece = Body();
             piece.mass = mass;
@@ -165,7 +164,7 @@ fn explodeBodies() {
             piece.absorptionCooldown = FRAGMENT_COOLDOWN;
             piece.position = parent.position + 0.85 * (parent.radius - radius) * direction;
             piece.velocity = parent.velocity + speed * direction;
-            piece.seed = hashU32(seed ^ 0x5u);
+            piece.seed = hashU32(seed ^ 9u);
 
             var slot = i;
             if (j > 0u) {
