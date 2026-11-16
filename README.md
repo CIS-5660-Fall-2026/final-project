@@ -37,3 +37,6 @@ To shade the clouds, I will get the 3D representation of the clouds by volumetri
 I successfully implemented the object-space dithering shader on a 3D object. I originally wrote the shader in WebGL, and then used the base code from a [previous project](https://github.com/anya0402/Project4-WebGPU-Forward-Plus-and-Clustered-Deferred) and ported the shader and texture generation files to WebGPU. I followed the video fairly closely in terms of the dithering techniques. This involved writing a dithering shader in GLSL/WGSL and a texture maker in Typescript to create the Bayer matrix textures that the shader can sample from. Moving around in the scene keeps the ditherng effect tied to the object, and zooming in and out adds/removes dots to keep the overall look stable. There are moiré patterns that appear especially when I have the dot scale be small, so for Milestone 2 I may try addressing that.
 
 ---
+## Milestone #2
+<img width="600" src="img/clouds1-m2.png" />
+<img width="600" src="img/clouds2-m2.png" />

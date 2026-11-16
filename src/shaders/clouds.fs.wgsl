@@ -14,10 +14,13 @@ const ABSORPTION: f32 = 0.2;
 const SCATTERING: f32 = 0.1;
 const EXTINCTION: f32 = ABSORPTION + SCATTERING;
 
-const BB_MIN: vec3f = vec3f(-62.5, -3.75, -62.5);
+const BB_MIN: vec3f = vec3f(-62.5, -50.75, -62.5);
 const BB_MAX: vec3f = vec3f(12.5, 8.75, 12.5);
 const CLOUD_CENTER: vec3f = vec3f(-25.0, 2.5, -25.0);
 const CLOUD_SCALE: f32 = 0.5;
+
+const SURFACE_THRESHOLD = 0.02;
+const NUM_BISECT_STEPS = 6;
 
 const LIGHT_VEC: vec3f = normalize(vec3f(1.0, 1.0, 1.0));
 const HIGHLIGHT_COLOR: vec3f = vec3f(0.9020, 0.9961, 0.9961);
@@ -25,7 +28,7 @@ const SHADOW_COLOR: vec3f = vec3f(0.204, 0.196, 0.106);
 
 struct March {
     opacity: f32,
-    tMean: f32,
+    tSurface: f32,
 }
 
 // -----------------------------------
@@ -143,8 +146,13 @@ fn rayMarchClouds(ro: vec3f, rd: vec3f) -> March {
 
     // get step size
     let stepSize = (tEnd - tStart) / f32(NUM_STEPS);
+
+    // set initial values
     var weightSum = 0.0;
     var tWeighted = 0.0;
+    var tHit = 0.0;
+    var tPrev = 0.0;
+    var hit = false;
 
     var finalColor = vec3(0.0, 0.0, 0.0);
     var finalT = 1.0;
@@ -156,6 +164,27 @@ fn rayMarchClouds(ro: vec3f, rd: vec3f) -> March {
 
         // sample cloud for parameters
         let density = cloudDensity(p);
+
+        if (!hit && density > SURFACE_THRESHOLD) {
+            // get inside isosurface -> bisect to find exact point
+            var first = tPrev;
+            var second = t;
+            for (var j = 0; j < NUM_BISECT_STEPS; j++) {
+                let middle = 0.5 * (first + second);
+                let newDensity = cloudDensity(ro + rd * middle);
+                if (newDensity > SURFACE_THRESHOLD) {
+                    // still in isosurface so go back
+                    second = middle;
+                }
+                else {
+                    first = middle;
+                }
+            }
+            tHit = second;
+            hit = true;
+        }
+        tPrev = t;
+
         if (density < 0.01) {
             // check if ray has exited the cloud volume
             continue;
@@ -164,11 +193,9 @@ fn rayMarchClouds(ro: vec3f, rd: vec3f) -> March {
         // accumulate final values
         let deltaT = exp(-density * stepSize * EXTINCTION);   // beer-lambert transmission
         let alpha = 1.0 - deltaT;   // light that doesn't survive
-
         let weight = alpha * finalT;
         tWeighted += weight * t;    // running sum of depth and weight at that depth
         weightSum += weight;
-
         finalT *= deltaT;
         if (finalT < 0.01) {
             // cloud is too thick
@@ -177,7 +204,8 @@ fn rayMarchClouds(ro: vec3f, rd: vec3f) -> March {
     }
 
     finalMarch.opacity = 1.0 - finalT;
-    finalMarch.tMean = select(tStart, tWeighted / weightSum, weightSum > 1e-6);     // to get estimate of cloud surface point
+    let tMean = select(tStart, tWeighted / weightSum, weightSum > 1e-6);     // to get estimate of cloud surface point
+    finalMarch.tSurface = select(tMean, tHit, hit);     // only use mean if we never reach the isosurface (aka no hit)
     return finalMarch;
 }
 
@@ -204,17 +232,10 @@ fn fs_main(in: FragmentInput) -> @location(0) vec4f
     let march = rayMarchClouds(ro, rd);
 
     // get uv
-    let pos = ro + rd * march.tMean;  // approx position on cloud based on ray marcher
+    let pos = ro + rd * march.tSurface;  // approx position on cloud based on ray marcher
     let normal = cloudNormal(pos, rd);
     let nor = abs(normal);
-    var uv0: vec2f;
-    if (nor.x > nor.y && nor.x > nor.z) {
-        uv0 = pos.yz;
-    } else if (nor.y > nor.z) {
-        uv0 = pos.xz;
-    } else {
-        uv0 = pos.xy;
-    }
+    let uv0 = projectUV(pos, nor);
 
     // lighting and radiance
     let diffuseTerm =  dot(normal, LIGHT_VEC);
@@ -223,11 +244,24 @@ fn fs_main(in: FragmentInput) -> @location(0) vec4f
     let cloudOpacity = smoothstep(0.05, 0.95, march.opacity);
     let brightness = lightIntensity * cloudOpacity;
 
-    // size of pixel at approx cloud surface point -- replaces SVD calculatino
-    let pixelAngle = 0.5 * (length(dpdx(rd)) + length(dpdy(rd)));
-    var spacing = march.tMean * pixelAngle;
+    // (new) estimate derivatives of cloud uv -> assume a flat plane around point
+    let rdx = rd + dpdx(rd);
+    let rdy = rd + dpdy(rd);
+    let dnx = dot(rdx, normal);
+    let dny = dot(rdy, normal);
+    let tx = dot(pos - ro, normal) / select(dnx, 1e-4, abs(dnx) < 1e-4);
+    let ty = dot(pos - ro, normal) / select(dny, 1e-4, abs(dny) < 1e-4);
+    let dx = projectUV(ro + rdx * tx, nor) - uv0;
+    let dy = projectUV(ro + rdy * ty, nor) - uv0;
+
+    // SVD uv freq - from Rune's implementation
+    let Q = dot(dx, dx) + dot(dy, dy);
+    let R = dx.x * dy.y - dx.y * dy.x;
+    let discriminant = sqrt(max(0.0, Q * Q - 4.0 * R * R));
+    let freq = sqrt(max(vec2f(Q + discriminant, Q - discriminant) * 0.5, vec2f(0.0)));
+    var spacing = freq.y; // dot spacing
     spacing *= DOT_SCALE;
-    spacing /= max(sqrt(brightness), 0.001);
+    spacing /= max(sqrt(lightIntensity), 0.001);
 
     // get fractal level
     let spacingLog = log2(max(spacing, 1e-5));
@@ -249,4 +283,5 @@ fn fs_main(in: FragmentInput) -> @location(0) vec4f
 
     var alpha = select(0.0, 1.0, march.opacity > 0.02);
     return vec4f(color, alpha);
+    //return vec4f(vec3f((level + 6.0) / 12.0), 1.0);
 }
