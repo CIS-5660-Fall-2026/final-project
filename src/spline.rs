@@ -2,8 +2,9 @@ use bevy::prelude::*;
 
 use crate::wall::Wall;
 
-const SPLINE_SAMPLES: usize = 100;
+const SPLINE_SAMPLES_PER_POINT: usize = 4;
 const SPLINE_COLOR: Color = Color::srgb(1., 0., 0.);
+const POINT_COLOR: Color = Color::srgba(1., 1., 1., 0.2);
 
 pub struct SplinePlugin;
 
@@ -19,20 +20,26 @@ fn build_curve(points: &[Vec3]) -> Option<CubicCurve<Vec3>> {
         .ok()
 }
 
+fn wall_color(id: u32) -> Color {
+    let hue = (id as f32 * 0.618304).fract() * 360.; 
+    Color::hsl(hue, 0.5, 0.5)
+}
+
 fn draw_spline(walls: Query<&Wall>, mut gizmos: Gizmos) {
     for wall in &walls {
         // Draw points
         for p in &wall.control_points {
             gizmos.sphere(
-                Isometry3d::new(p + Dir3::Y * 0.1, Quat::default()),
-                0.2,
-                Color::WHITE,
+                Isometry3d::new(*p, Quat::default()),
+                0.05,
+                POINT_COLOR,
             );
         }
 
         // Draw curve
         if let Some(curve) = build_curve(&wall.control_points) {
-            gizmos.linestrip(curve.iter_positions(SPLINE_SAMPLES), SPLINE_COLOR);
+            let sample_cnt = wall.control_points.len() * SPLINE_SAMPLES_PER_POINT;
+            gizmos.linestrip(curve.iter_positions(sample_cnt), wall_color(wall.id));
         }
     }
 }

@@ -1,9 +1,10 @@
 use bevy::prelude::*;
+use bevy_inspector_egui::bevy_egui::input::EguiWantsInput;
 
 use crate::terrain::{Ground, ground_hit};
 use crate::wall::{ActiveWall, DEFAULT_WALL_HEIGHT, NextWallId, Wall};
 
-const MIN_WALL_STEP: f32 = 0.25;
+const MIN_WALL_STEP: f32 = 1.;
 
 pub struct InputPlugin;
 
@@ -34,7 +35,11 @@ fn start_wall(
     mut ray_cast: MeshRayCast,
     mut next_wall_id: ResMut<NextWallId>,
     mut active_wall: ResMut<ActiveWall>,
+    egui: Res<EguiWantsInput>
 ) {
+    // Early out if using GUI
+    if egui.wants_any_pointer_input() {return;};
+
     // Get click position
     if mouse.just_pressed(MouseButton::Left) {
         let (cam, cam_transform) = *camera_query;
@@ -71,7 +76,7 @@ fn extend_wall(
     mut walls: Query<&mut Wall>,
 ) {
     if mouse.just_released(MouseButton::Left) {
-        //...
+        // TODO- Resample polyline to simplify?
         active_wall.id = None;
         return;
     }
