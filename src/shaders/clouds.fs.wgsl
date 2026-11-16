@@ -8,20 +8,25 @@ struct FragmentInput {
     @location(0) ndc: vec2f
 }
 
-const NUM_STEPS: u32 = 100;
+const NUM_STEPS: u32 = 64;
 const DOT_SCALE: f32 = 10.0;
-const EXTINCTION: f32 = 0.1;
+const ABSORPTION: f32 = 0.2;
+const SCATTERING: f32 = 0.1;
+const EXTINCTION: f32 = ABSORPTION + SCATTERING;
 
 const BB_MIN: vec3f = vec3f(-62.5, -3.75, -62.5);
 const BB_MAX: vec3f = vec3f(12.5, 8.75, 12.5);
-
 const CLOUD_CENTER: vec3f = vec3f(-25.0, 2.5, -25.0);
 const CLOUD_SCALE: f32 = 0.5;
 
-const LIGHT_DIR: vec3f = normalize(vec3f(-1.0, -1.0, -1.0));
-const HIGHLIGHT_COLOR: vec3f = vec3f(1.0, 1.0, 1.0);
-const SHADOW_COLOR: vec3f = vec3f(0.2, 0.2, 0.2);
+const LIGHT_VEC: vec3f = normalize(vec3f(1.0, 1.0, 1.0));
+const HIGHLIGHT_COLOR: vec3f = vec3f(0.9020, 0.9961, 0.9961);
+const SHADOW_COLOR: vec3f = vec3f(0.204, 0.196, 0.106);
 
+struct March {
+    opacity: f32,
+    tMean: f32,
+}
 
 // -----------------------------------
 // CLOUD GENERATION FUNCTIONS
@@ -76,71 +81,36 @@ fn fbm(p: vec3f) -> f32 {
 // CLOUD PARAMETER FUNCTIONS
 // -----------------------------------
 
-fn cloudDensityOG(p: vec3f) -> f32 {
-    let shape = fbm(p * 0.015);
-    let detail = fbm(p * 0.06);
-
-    let density = shape - detail * 0.25;
-
-    return smoothstep(0.3, 0.5, density);
-}
-
 fn cloudDensity(p: vec3f) -> f32 {
-    // Compress the cloud formation around its center.
     let noiseP = CLOUD_CENTER + (p - CLOUD_CENTER) / CLOUD_SCALE;
-
-    // Generate large-scale cloud shapes.
     let shape = fbm(noiseP * 0.035);
-
-    // Add smaller-scale details.
     let detail = fbm(noiseP * 0.12);
 
-    // Combine shape and detail.
     let density = shape - detail * 0.2;
-
     let cloudShape = smoothstep(0.42, 0.62, density);
 
-    // Fade density near the top and bottom of the volume.
     let height = (p.y - BB_MIN.y) / (BB_MAX.y - BB_MIN.y);
-
-    let heightShape =
-        smoothstep(0.0, 0.15, height) *
-        (1.0 - smoothstep(0.75, 1.0, height));
+    let heightShape = smoothstep(0.0, 0.15, height) *(1.0 - smoothstep(0.75, 1.0, height));
 
     return cloudShape * heightShape;
 }
 
-fn cloudNormal(p: vec3f) -> vec3f {
+fn cloudNormal(p: vec3f, rd: vec3f) -> vec3f {
     // take 6 samples of density around point to estimate gradient and approximate normal
-    let eps = 0.1;
+    let eps = 0.5;
     let dx = cloudDensity(p + vec3f(eps, 0.0, 0.0)) - cloudDensity(p - vec3f(eps, 0.0, 0.0));
     let dy = cloudDensity(p + vec3f(0.0, eps, 0.0)) - cloudDensity(p - vec3f(0.0, eps, 0.0));
     let dz = cloudDensity(p + vec3f(0.0, 0.0, eps)) - cloudDensity(p - vec3f(0.0, 0.0, eps));
     let gradient = vec3f(dx, dy, dz);
 
-    return -normalize(gradient); // negative to point outward
-}
-
-fn cloudDither(p: vec3f, normal: vec3f, lightIntensity: f32) -> vec3f {
-    // get uv
-    let nor = abs(normalize(normal));
-    var uv0: vec2f;
-    if (nor.x > nor.y && nor.x > nor.z) {
-        uv0 = p.yz;
-    } else if (nor.y > nor.z) {
-        uv0 = p.xz;
-    } else {
-        uv0 = p.xy;
+    let len_grad = length(gradient);
+    if (len_grad < 1e-6) {
+        // region is too flat - nan values
+        return -rd;
     }
-    let ditherUV = uv0 * DOT_SCALE;
-
-    // get value from 3D Bayer matrix texture
-    let threshold = textureSampleLevel(u_DitherTex, u_DitherSampler, vec3(ditherUV, 0.02), 0.0).r;
-    let dither = select(0.0, 1.0, threshold > lightIntensity);
-    let finalColor = mix(SHADOW_COLOR, HIGHLIGHT_COLOR, dither);
-    return finalColor;
+    return -gradient / len_grad; // negative to point outward
 }
-    
+
 // -----------------------------------
 
 // -----------------------------------
@@ -160,20 +130,24 @@ fn intersectBB(ro: vec3f, rd: vec3f) -> vec2f {
     return vec2f(tStart, tEnd);
 }
 
-fn rayMarchClouds(ro: vec3f, rd: vec3f) -> vec4f {
+fn rayMarchClouds(ro: vec3f, rd: vec3f) -> March {
+    var finalMarch = March(0.0, 0.0);
+
     // get start and end based on bounding box
     let startEndBB = intersectBB(ro, rd);
     let tStart = max(0.0, startEndBB.x);
     let tEnd = startEndBB.y;
     if (tEnd <= tStart) {
-        return vec4f(0.0);
+        return finalMarch;
     }
 
     // get step size
     let stepSize = (tEnd - tStart) / f32(NUM_STEPS);
+    var weightSum = 0.0;
+    var tWeighted = 0.0;
 
     var finalColor = vec3(0.0, 0.0, 0.0);
-    var finalTransmittance = 1.0;
+    var finalT = 1.0;
 
     for (var i = 0u; i < NUM_STEPS; i++) {
         // get sample
@@ -182,43 +156,97 @@ fn rayMarchClouds(ro: vec3f, rd: vec3f) -> vec4f {
 
         // sample cloud for parameters
         let density = cloudDensity(p);
-        //let density = cloudDensityTest(p);
         if (density < 0.01) {
             // check if ray has exited the cloud volume
             continue;
         }
-        let normal = cloudNormal(p);
-        let diffuse = max(dot(normal, LIGHT_DIR), 0.0);
-        let ambient = 0.1;
-        let lightIntensity = mix(ambient, 1.0, max(diffuse, 0.0));
-        let color = cloudDither(p, normal, lightIntensity);
-        //let color = vec3(1.0, 1.0, 1.0);
-        let alpha = 1.0 - exp(-density * stepSize * EXTINCTION);
 
-        // accumulate color and opacity
-        finalColor += color * alpha * finalTransmittance;
-        finalTransmittance *= 1.0 - alpha;
-        if (finalTransmittance < 0.01) {
+        // accumulate final values
+        let deltaT = exp(-density * stepSize * EXTINCTION);   // beer-lambert transmission
+        let alpha = 1.0 - deltaT;   // light that doesn't survive
+
+        let weight = alpha * finalT;
+        tWeighted += weight * t;    // running sum of depth and weight at that depth
+        weightSum += weight;
+
+        finalT *= deltaT;
+        if (finalT < 0.01) {
             // cloud is too thick
             break;
         }
     }
-    let finalAlpha = 1.0 - finalTransmittance;
-    return vec4(finalColor, finalAlpha);
+
+    finalMarch.opacity = 1.0 - finalT;
+    finalMarch.tMean = select(tStart, tWeighted / weightSum, weightSum > 1e-6);     // to get estimate of cloud surface point
+    return finalMarch;
+}
+
+fn projectUV(p: vec3f, nor: vec3f) -> vec2f {
+    if (nor.x > nor.y && nor.x > nor.z) { return p.yz; }
+    else if (nor.y > nor.z)             { return p.xz; }
+    return p.xy;
 }
 
 // -----------------------------------
 
 
-
 @fragment
 fn fs_main(in: FragmentInput) -> @location(0) vec4f
 {
+    // get ray origin and direction
     let ndc = vec2f(in.ndc.x, -in.ndc.y);
     let farPoint = cameraUniforms.invViewProjMat * vec4f(ndc, 1.0, 1.0);
     let worldFar = farPoint.xyz / farPoint.w;
-    let cameraPosition = (cameraUniforms.invViewMat * vec4f(0.0, 0.0, 0.0, 1.0)).xyz;
-    let rd = normalize(worldFar - cameraPosition);
+    let ro = (cameraUniforms.invViewMat * vec4f(0.0, 0.0, 0.0, 1.0)).xyz;
+    let rd = normalize(worldFar - ro);
 
-    return rayMarchClouds(cameraPosition, rd);
+    // ray march
+    let march = rayMarchClouds(ro, rd);
+
+    // get uv
+    let pos = ro + rd * march.tMean;  // approx position on cloud based on ray marcher
+    let normal = cloudNormal(pos, rd);
+    let nor = abs(normal);
+    var uv0: vec2f;
+    if (nor.x > nor.y && nor.x > nor.z) {
+        uv0 = pos.yz;
+    } else if (nor.y > nor.z) {
+        uv0 = pos.xz;
+    } else {
+        uv0 = pos.xy;
+    }
+
+    // lighting and radiance
+    let diffuseTerm =  dot(normal, LIGHT_VEC);
+    let ambientTerm = 0.1;
+    let lightIntensity = mix(ambientTerm, 1.0, max(diffuseTerm, 0.0));
+    let cloudOpacity = smoothstep(0.05, 0.95, march.opacity);
+    let brightness = lightIntensity * cloudOpacity;
+
+    // size of pixel at approx cloud surface point -- replaces SVD calculatino
+    let pixelAngle = 0.5 * (length(dpdx(rd)) + length(dpdy(rd)));
+    var spacing = march.tMean * pixelAngle;
+    spacing *= DOT_SCALE;
+    spacing /= max(sqrt(brightness), 0.001);
+
+    // get fractal level
+    let spacingLog = log2(max(spacing, 1e-5));
+    let level = floor(spacingLog);
+    let frac = fract(spacingLog); // percent to next level
+
+    // get sub-layer
+    let subLayer = mix(1.0, 4.0, 1.0 - frac); // blend between 1 and 4 dots
+    let layer = (subLayer - 1.0) * 8.0;
+    let w = (layer + 0.5) / 25.0;
+
+    // scale uv for current fractal level
+    let uv = uv0 / exp2(level);
+
+    // get threshold from 3D Bayer matrix texture
+    let threshold = textureSample(u_DitherTex, u_DitherSampler, vec3f(uv, w)).r;
+    let dither = select(0.0, 1.0, brightness > threshold);
+    let color = mix(SHADOW_COLOR, HIGHLIGHT_COLOR, dither);
+
+    var alpha = select(0.0, 1.0, march.opacity > 0.02);
+    return vec4f(color, alpha);
 }
