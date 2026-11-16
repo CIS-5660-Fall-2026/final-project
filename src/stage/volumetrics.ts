@@ -90,6 +90,7 @@ export class Volumetrics {
     constructor(camera: Camera) {
         this.camera = camera;
 
+        // Create all the buffers/textures we need
         this.uniformsBuffer = device.createBuffer({
             label: "volumetricsUniforms",
             size: this.uniforms.buffer.byteLength,
@@ -140,6 +141,177 @@ export class Volumetrics {
             addressModeW: "clamp-to-edge"
         });
 
+        // Create the bind group, bind group layout, and pipeline for
+        // our voxelization compute pass
+        this.voxelizationComputeBindGroupLayout = device.createBindGroupLayout({
+            label: "voxelization compute bind group layout",
+            entries: [
+                { // camera
+                    binding: 0,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "uniform" }
+                },
+                { // volumeUniforms
+                    binding: 1,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "uniform" }
+                },
+                { // scatteringExtinctionBuffer
+                    binding: 2,
+                    visibility: GPUShaderStage.COMPUTE,
+                    storageTexture: { access: "write-only", format: "rgba16float", viewDimension: "3d" }
+                }
+            ]
+        });
+
+        this.voxelizationComputeBindGroup = device.createBindGroup({
+            label: "voxelization compute bind group",
+            layout: this.voxelizationComputeBindGroupLayout,
+            entries: [
+                {
+                    binding: 0,
+                    resource: { buffer: this.camera.uniformsBuffer }
+                },
+                {
+                    binding: 1,
+                    resource: { buffer: this.uniformsBuffer }
+                },
+                {
+                    binding: 2,
+                    resource: this.scatteringExtinctionBufferView
+                }
+            ]
+        });
+
+        this.voxelizationComputePipeline = device.createComputePipeline({
+            label: "voxelization compute pipeline",
+            layout: device.createPipelineLayout({
+                label: "voxelization compute pipeline layout",
+                bindGroupLayouts: [this.voxelizationComputeBindGroupLayout]
+            }),
+            compute: {
+                module: device.createShaderModule({
+                    label: "voxelization compute shader",
+                    code: shaders.volumetricVoxelizationComputeSrc
+                }),
+                entryPoint: "populateParticipatingMediaProperties"
+            }
+        });
+
+        // Create the bind group, bind group layout, and pipeline for
+        // our volumetric lighting compute pass
+        this.lightingComputeBindGroupLayout = device.createBindGroupLayout({
+            label: "volumetric lighting compute bind group layout",
+            entries: [
+                { // volumeUniforms
+                    binding: 0,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "uniform" }
+                },
+                { // scatteringExtinctionBuffer
+                    binding: 1,
+                    visibility: GPUShaderStage.COMPUTE,
+                    texture: { sampleType: "float", viewDimension: "3d" }
+                },
+                { // lightingBuffer
+                    binding: 2,
+                    visibility: GPUShaderStage.COMPUTE,
+                    storageTexture: { access: "write-only", format: "rgba16float", viewDimension: "3d" }
+                }
+            ]
+        });
+
+        this.lightingComputeBindGroup = device.createBindGroup({
+            label: "volumetric lighting compute bind group",
+            layout: this.lightingComputeBindGroupLayout,
+            entries: [
+                {
+                    binding: 0,
+                    resource: { buffer: this.uniformsBuffer }
+                },
+                {
+                    binding: 1,
+                    resource: this.scatteringExtinctionBufferView
+                },
+                {
+                    binding: 2,
+                    resource: this.lightingBufferView
+                }
+            ]
+        });
+
+        this.lightingComputePipeline = device.createComputePipeline({
+            label: "volumetric lighting compute pipeline",
+            layout: device.createPipelineLayout({
+                label: "volumetric lighting compute pipeline layout",
+                bindGroupLayouts: [this.lightingComputeBindGroupLayout]
+            }),
+            compute: {
+                module: device.createShaderModule({
+                    label: "volumetric lighting compute shader",
+                    code: shaders.volumetricLightingComputeSrc
+                }),
+                entryPoint: "computeScatteredLight"
+            }
+        });
+
+        // Create the bind group, bind group layout, and pipeline for
+        // our integration compute pass
+        this.integrationComputeBindGroupLayout = device.createBindGroupLayout({
+            label: "integration compute bind group layout",
+            entries: [
+                { // volumeUniforms
+                    binding: 0,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "uniform" }
+                },
+                { // lightingVolume
+                    binding: 1,
+                    visibility: GPUShaderStage.COMPUTE,
+                    texture: { sampleType: "float", viewDimension: "3d" }
+                },
+                { // integrationBuffer
+                    binding: 2,
+                    visibility: GPUShaderStage.COMPUTE,
+                    storageTexture: { access: "write-only", format: "rgba16float", viewDimension: "3d" }
+                }
+            ]
+        });
+
+        this.integrationComputeBindGroup = device.createBindGroup({
+            label: "integration compute bind group",
+            layout: this.integrationComputeBindGroupLayout,
+            entries: [
+                {
+                    binding: 0,
+                    resource: { buffer: this.uniformsBuffer }
+                },
+                {
+                    binding: 1,
+                    resource: this.lightingBufferView
+                },
+                {
+                    binding: 2,
+                    resource: this.integrationBufferView
+                }
+            ]
+        });
+
+        this.integrationComputePipeline = device.createComputePipeline({
+            label: "integration compute pipeline",
+            layout: device.createPipelineLayout({
+                label: "integration compute pipeline layout",
+                bindGroupLayouts: [this.integrationComputeBindGroupLayout]
+            }),
+            compute: {
+                module: device.createShaderModule({
+                    label: "integration compute shader",
+                    code: shaders.volumetricIntegrationComputeSrc
+                }),
+                entryPoint: "integrateVolume"
+            }
+        });
+
         // Set our volume uniform values and write them to the GPU
         // NCHORTEK TODO: These can potentially be tied to GUI sliders
         this.uniforms.volumeNearZ = 0.5;
@@ -155,5 +327,27 @@ export class Volumetrics {
         this.uniforms.fogHeightFalloff = 0.3;
 
         device.queue.writeBuffer(this.uniformsBuffer, 0, this.uniforms.buffer);
+    }
+
+    computeVolumetrics(encoder: GPUCommandEncoder) {
+        const workgroupCountX = Math.ceil(shaders.constants.froxelGridDimX / shaders.constants.froxelWorkgroupSizeX);
+        const workgroupCountY = Math.ceil(shaders.constants.froxelGridDimY / shaders.constants.froxelWorkgroupSizeY);
+        const workgroupCountZ = Math.ceil(shaders.constants.froxelGridDimZ / shaders.constants.froxelWorkgroupSizeZ);
+
+        const computePass = encoder.beginComputePass();
+
+        computePass.setPipeline(this.voxelizationComputePipeline);
+        computePass.setBindGroup(shaders.constants.bindGroup_volumetric, this.voxelizationComputeBindGroup);
+        computePass.dispatchWorkgroups(workgroupCountX, workgroupCountY, workgroupCountZ);
+
+        computePass.setPipeline(this.lightingComputePipeline);
+        computePass.setBindGroup(shaders.constants.bindGroup_volumetric, this.lightingComputeBindGroup);
+        computePass.dispatchWorkgroups(workgroupCountX, workgroupCountY, workgroupCountZ);
+
+        computePass.setPipeline(this.integrationComputePipeline);
+        computePass.setBindGroup(shaders.constants.bindGroup_volumetric, this.integrationComputeBindGroup);
+        computePass.dispatchWorkgroups(workgroupCountX, workgroupCountY);
+
+        computePass.end();
     }
 }

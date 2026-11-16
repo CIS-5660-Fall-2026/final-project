@@ -4,7 +4,7 @@
 
 @compute
 @workgroup_size(${froxelWorkgroupSizeX}, ${froxelWorkgroupSizeY}, ${froxelWorkgroupSizeZ})
-fn main(@builtin(global_invocation_id) id: vec3u) {
+fn computeScatteredLight(@builtin(global_invocation_id) id: vec3u) {
     if (any(id >= textureDimensions(lightingBuffer))) {
         return;
     }

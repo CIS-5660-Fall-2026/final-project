@@ -4,7 +4,7 @@
 
 @compute
 @workgroup_size(${froxelWorkgroupSizeX}, ${froxelWorkgroupSizeY})
-fn main(@builtin(global_invocation_id) id: vec3u) {
+fn integrateVolume(@builtin(global_invocation_id) id: vec3u) {
     if (any(id.xy >= textureDimensions(integrationBuffer).xy)) {
         return;
     }

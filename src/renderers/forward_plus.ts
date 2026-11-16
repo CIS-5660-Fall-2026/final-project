@@ -107,6 +107,7 @@ export class ForwardPlusRenderer extends renderer.Renderer {
         const canvasTextureView = renderer.context.getCurrentTexture().createView();
 
         this.lights.doLightClustering(encoder);
+        this.volumetrics.computeVolumetrics(encoder);
 
         const renderPass = encoder.beginRenderPass({
             label: "forward plus render pass",
