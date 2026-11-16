@@ -9,7 +9,9 @@ fn computeScatteredLight(@builtin(global_invocation_id) id: vec3u) {
         return;
     }
 
+    let participatingMediaProperties: vec4f = textureLoad(scatteringExtinctionBuffer, id, 0);
+
     // NCHORTEK TODO: Write the radiance scattered toward the camera (plus the extinction coefficient)
     // for this froxel
-    textureStore(lightingBuffer, id, vec4f(0.0));
+    textureStore(lightingBuffer, id, vec4f(vec3f(0.0), participatingMediaProperties.a));
 }

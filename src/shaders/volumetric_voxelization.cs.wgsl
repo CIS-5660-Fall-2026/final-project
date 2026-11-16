@@ -9,6 +9,8 @@ fn populateParticipatingMediaProperties(@builtin(global_invocation_id) id: vec3u
         return;
     }
 
-    // NCHORTEK TODO: Write scattering and extinction coefficient data for this froxel
-    textureStore(scatteringExtinctionBuffer, id, vec4f(0.0));
+    // NCHORTEK TODO: Use noise to generate participating media properties for this froxel
+    textureStore(scatteringExtinctionBuffer,
+        id,
+        vec4f(vec3f(volume.scattering), volume.scattering + volume.absorption));
 }
