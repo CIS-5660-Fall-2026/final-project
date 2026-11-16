@@ -84,3 +84,16 @@ fn convertScreenToView(pScreen: vec4f, screenResolution: vec2f, invProjMat: mat4
             pScreen.w),
         invProjMat);
 }
+
+// Compute a froxel z-slice value that corresponds to a given view-space depth.
+// This is just the inversion of the froxelSlice -> viewZ mapping 
+fn getContinuousFroxelZSlice(numSlices: f32, viewZ: f32, volumeNearZ: f32, volumeFarZ: f32, distributionExponent: f32) -> f32 {
+    let clampedViewZ = max(viewZ, volumeNearZ);
+
+    let logFarNear = log(volumeFarZ / volumeNearZ);
+    let t = log(clampedViewZ / volumeNearZ) / logFarNear;
+
+    let unwarpedT = pow(t, 1.0 / distributionExponent);
+
+    return unwarpedT * numSlices;
+}

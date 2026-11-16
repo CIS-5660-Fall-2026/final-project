@@ -34,6 +34,21 @@ export class ForwardPlusRenderer extends renderer.Renderer {
                     binding: 2,
                     visibility: GPUShaderStage.FRAGMENT,
                     buffer: { type: "read-only-storage" }
+                },
+                { // integrationBuffer
+                    binding: 3,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    texture: { sampleType: "float", viewDimension: "3d" }
+                },
+                { // volumeSampler
+                    binding: 4,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    sampler: { type: "filtering" }
+                },
+                { // volumeUniforms
+                    binding: 5,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    buffer: { type: "uniform" }
                 }
             ]
         });
@@ -53,6 +68,18 @@ export class ForwardPlusRenderer extends renderer.Renderer {
                 {
                     binding: 2,
                     resource: { buffer: this.lights.clusterSetStorageBuffer }
+                },
+                {
+                    binding: 3,
+                    resource: this.volumetrics.integrationBufferView
+                },
+                {
+                    binding: 4,
+                    resource: this.volumetrics.volumeSampler
+                },
+                {
+                    binding: 5,
+                    resource: { buffer: this.volumetrics.uniformsBuffer }
                 }
             ]
         });
