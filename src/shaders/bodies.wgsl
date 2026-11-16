@@ -85,9 +85,16 @@ fn fragMain(input: VertexOutput) -> @location(0) vec4<f32> {
     let p = normalize(input.localPosition);
 
     if (isStar(body)) {
-        let grain = noise3D(9.0 * p + input.surfaceOffset);
-        let emission = 1.5 + 0.15 * grain;
-        return vec4<f32>(starColor(body) * emission, 1.0);
+        let broad = noise3D(4.0 * p + input.surfaceOffset);
+        let detail = noise3D(13.0 * p + input.surfaceOffset);
+        let field = 0.75 * broad + 0.25 * detail;
+
+        let averageHeat = starAverageHeat(body.mass);
+        let localHeat = clamp(averageHeat + 0.65 * field, 0.0, 1.0);
+
+        let color = starColor(body.seed, localHeat);
+        let emission = mix(0.5, 1.5, localHeat);
+        return vec4<f32>(color * emission, 1.0);
     }
 
     let detail = fbm(6.0 * p + input.surfaceOffset) / 1.875;

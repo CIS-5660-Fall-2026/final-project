@@ -18,8 +18,18 @@ fn isStar(body: Body) -> bool {
     return body.mass >= STAR_MASS || body.collapseProgress > 0.0;
 }
 
-fn starColor(body: Body) -> vec3<f32> {
-    let index = hashU32(body.seed ^ 11u) % 6u;
-    let whiten = smoothstep(STAR_MASS, EXPLOSION_MASS, body.mass);
-    return mix(STAR_COLORS[index], vec3<f32>(1.0), whiten);
+fn starAverageHeat(mass: f32) -> f32 {
+    let progress = clamp(
+        (mass - STAR_MASS) / (EXPLOSION_MASS - STAR_MASS),
+        0.0,
+        1.0
+    );
+
+    return mix(0.20, 0.85, smoothstep(0.35, 1.0, progress));
+}
+
+fn starColor(seed: u32, heat: f32) -> vec3<f32> {
+    let index = hashU32(seed ^ 11u) % 6u;
+    let whiteMix = 0.85 * smoothstep(0.4, 0.9, heat);
+    return mix(STAR_COLORS[index], vec3<f32>(1.0), whiteMix);
 }
