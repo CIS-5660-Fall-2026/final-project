@@ -1,6 +1,6 @@
 import { BODY_STRIDE } from "./Body";
 import Camera from "./Camera";
-import { bodiesDebugWgsl, bodiesWgsl, collectStarLightsWgsl, compositeWgsl } from "./shaders";
+import { bodiesDebugWgsl, bodiesWgsl, collectStarLightsWgsl, postProcessWgsl } from "./shaders";
 import { createSphereMesh } from "./Sphere";
 import type WebGpuContext from "./WebGpuContext";
 
@@ -15,6 +15,12 @@ export default class Renderer {
   private readonly surfacePipeline: GPURenderPipeline;
   private readonly debugPipeline: GPURenderPipeline;  
   private readonly compositePipeline: GPURenderPipeline;
+
+  private readonly bloomPasses: readonly {
+    view: GPUTextureView;
+    pipeline: GPURenderPipeline;
+    bindGroup: GPUBindGroup;
+  }[];
 
   private readonly collectStarLightsPipeline: GPUComputePipeline;
 
@@ -212,24 +218,74 @@ export default class Renderer {
       "debug pipeline", bodiesDebugWgsl, this.gpuContext.format
     ); 
 
-    const compositeModule = device.createShaderModule({
-      label: "HDR composite shader",
-      code: compositeWgsl
+    const bloomSize = [Math.ceil(canvas.width / 2), Math.ceil(canvas.height / 2)];
+    const bloomTextureDescriptor: GPUTextureDescriptor = {
+      size: bloomSize,
+      format: hdrFormat,
+      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
+    };
+    const horizontalView = device.createTexture(bloomTextureDescriptor).createView();
+    const bloomView = device.createTexture(bloomTextureDescriptor).createView();
+
+    const sampler = device.createSampler({
+      minFilter: "linear",
+      magFilter: "linear",
+      addressModeU: "clamp-to-edge",
+      addressModeV: "clamp-to-edge"
     });
+
+    const postProcessModule = device.createShaderModule({
+      label: "post process shader",
+      code: postProcessWgsl
+    });
+
+    const createBloomPass = (
+      entryPoint: string,
+      source: GPUTextureView,
+      view: GPUTextureView
+    ) => {
+      const pipeline = device.createRenderPipeline({
+        label: entryPoint,
+        layout: "auto",
+        vertex: { module: postProcessModule, entryPoint: "vertMain" },
+        fragment: {
+          module: postProcessModule,
+          entryPoint,
+          targets: [{ format: hdrFormat }]
+        }
+      });
+      const bindGroup = device.createBindGroup({
+        layout: pipeline.getBindGroupLayout(0),
+        entries: [
+          { binding: 0, resource: source },
+          { binding: 1, resource: sampler }
+        ]
+      });
+      return { view, pipeline, bindGroup };
+    };
+
+    this.bloomPasses = [
+      createBloomPass("bloomHorizontal", this.hdrView, horizontalView),
+      createBloomPass("bloomVertical", horizontalView, bloomView)
+    ];
+
     this.compositePipeline = device.createRenderPipeline({
       label: "HDR composite pipeline",
       layout: "auto",
-      vertex: { module: compositeModule, entryPoint: "vertMain" },
+      vertex: { module: postProcessModule, entryPoint: "vertMain" },
       fragment: {
-        module: compositeModule,
+        module: postProcessModule,
         entryPoint: "fragMain",
         targets: [{ format: this.gpuContext.format }]
       }
     });
-    
     this.compositeBindGroup = device.createBindGroup({
       layout: this.compositePipeline.getBindGroupLayout(0),
-      entries: [{ binding: 0, resource: this.hdrView }]
+      entries: [
+        { binding: 0, resource: this.hdrView },
+        { binding: 1, resource: sampler },
+        { binding: 2, resource: bloomView }
+      ]
     });
 
     this.cameraBindGroup = device.createBindGroup({
@@ -305,6 +361,20 @@ export default class Renderer {
     scenePass.end();
 
     if (debug) return;
+
+    for (const { view, pipeline, bindGroup } of this.bloomPasses) {
+      const pass = encoder.beginRenderPass({
+        colorAttachments: [{
+          view,
+          loadOp: "clear",
+          storeOp: "store"
+        }]
+      });
+      pass.setPipeline(pipeline);
+      pass.setBindGroup(0, bindGroup);
+      pass.draw(3);
+      pass.end();
+    }
 
     const compositePass = encoder.beginRenderPass({
       colorAttachments: [{

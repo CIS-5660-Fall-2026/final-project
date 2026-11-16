@@ -10,6 +10,7 @@ import explosion from "./shaders/explosion.wgsl?raw";
 import composite from "./shaders/composite.wgsl?raw";
 import stars from "./shaders/stars.wgsl?raw";
 import collectStarLights from "./shaders/collect_star_lights.wgsl?raw";
+import bloom from "./shaders/bloom.wgsl?raw";
 
 export const gravityWgsl = `${common}\n${gravity}`;
 export const bodiesWgsl = `${common}\n${noise}\n${stars}\n${bodies}`;
@@ -18,5 +19,5 @@ export const collisionWgsl = `${common}\n${collision}`;
 export const absorptionWgsl = `${common}\n${absorption}`;
 export const compactWgsl = `${common}\n${compact}`;
 export const explosionWgsl = `${common}\n${noise}\n${explosion}`;
-export const compositeWgsl = `${common}\n${composite}`;
+export const postProcessWgsl = `${composite}\n${bloom}`;
 export const collectStarLightsWgsl = `${common}\n${noise}\n${stars}\n${collectStarLights}`;

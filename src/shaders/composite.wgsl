@@ -1,6 +1,13 @@
 @group(0) @binding(0)
-var hdrScene: texture_2d<f32>;
+var sourceImage: texture_2d<f32>;
 
+@group(0) @binding(1)
+var postSampler: sampler;
+
+@group(0) @binding(2)
+var bloomImage: texture_2d<f32>;
+
+const BLOOM_STRENGTH: f32 = 0.30;
 const EXPOSURE: f32 = 1.0;
 
 @vertex
@@ -27,8 +34,14 @@ fn linearToSrgb(color: vec3<f32>) -> vec3<f32> {
 }
 
 @fragment
-fn fragMain(@builtin(position) position: vec4<f32>) -> @location(0) vec4<f32> {
-    let hdrColor = textureLoad(hdrScene, vec2<i32>(position.xy), 0).rgb;
-    let displayColor = linearToSrgb(toneMap(hdrColor * EXPOSURE));
+fn fragMain(
+    @builtin(position) position: vec4<f32>
+) -> @location(0) vec4<f32> {
+    let hdrColor = textureLoad(sourceImage, vec2<i32>(position.xy), 0).rgb;
+    let uv = position.xy / vec2<f32>(textureDimensions(sourceImage));
+    let glow = textureSampleLevel(bloomImage, postSampler, uv, 0.0).rgb;
+
+    let combined = hdrColor + BLOOM_STRENGTH * glow;
+    let displayColor = linearToSrgb(toneMap(combined * EXPOSURE));
     return vec4<f32>(displayColor, 1.0);
 }
