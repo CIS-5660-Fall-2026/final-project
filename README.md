@@ -65,3 +65,37 @@ The still was rendered with Mantra. [Watch the eight-second Houdini viewport pre
 The glass dome initially obscured the rose. I corrected its material binding and isolated its opacity from the terrain and plants. The render still has visible noise, and the glass looks different in the viewport and Mantra. My next step is to refine the lighting and dome shading so the rose reads more clearly, then check the composition throughout the rotation.
 
 To try the generator, open [B612.hipnc](B612.hipnc) in Houdini and select `/obj/B612_PLANET`. Under **Planet Controls**, switch **Seed** between 12 and 47, adjust **Terrain Relief**, or set **Plant Density** to zero to inspect the bare terrain. Choose `storybook_camera` in the viewport and play frames 1–192 at 24 fps to see one full turn. The scene contains the generator code, and the editable source is included in [scripts](scripts/).
+
+## Milestone #2
+
+Milestone 1 already included the initial prop models, camera, lighting, and eight-second rotation. For this stage, I refined those models, added the Little Prince and a more visible star field, and checked the generator across seeds and parameter ranges. The core features in the proposal are implemented.
+
+| Planned work | Progress for this milestone |
+| --- | --- |
+| Rose and dome | Rebuilt the rose with five layers of curled petals, a bent stem, and wider leaves. Enlarged the glass cover and added a detailed brass base and small handle. Corrected the shell normals and transparent shadows so the rose receives light through the glass. |
+| Volcano | Enlarged the cone and broadened its base. Deepened the crater, broke up the rim with chipped rock, and added erosion grooves, ash-colored layers, and scree around the foot. Expanded the planting exclusion area to fit the larger mountain. |
+| Grass and flowers | Rebuilt the grass with shorter, finer curved blades and denser masked planting. The daisies have nine curved petals and rounded yellow centers. Expanded the landmark clearings to fit the larger models and added slope-based placement. |
+| Scene details | Added a static Little Prince with blond hair, a long green coat, boots, and a curved gold scarf. Reduced the default terrain relief for a rounder silhouette, added shallow craters to the exposed rock, and made warm four-point stars against a deeper blue sky. |
+| Camera and lighting | Kept the original wide camera for comparison, added a close-up camera, softened the key light, and increased Mantra sampling to reduce noise. |
+| Rotation and checks | Re-rendered the eight-second turn with the updated assets. Checked seed reproducibility, density and relief limits, landmark clearings, glass orientation, and the loop boundary. |
+
+![Milestone 2 render of A Rose on B-612](media/milestone2.png)
+
+The close-up shows the prince, curled rose petals, glass cover, decorated base, and crater rim.
+
+![Close-up of the prince, rose, and volcano](media/milestone2-detail.png)
+
+[Watch the updated eight-second viewport turntable](media/milestone2-turntable.mp4).
+
+The most difficult part was the glass. Its surface orientation and shadows initially made the rose appear dark. I corrected the inner and outer walls and enabled transparent shadows. The still uses Mantra refraction, while the video uses a lightweight viewport preview.
+
+I reopened the saved scene and checked seeds 0, 12, 47, and 255, the minimum and maximum density and relief values, and frames 1, 97, and 193. The checks can be repeated with `hython scripts/verify_scene.py`.
+
+For the class demonstration, open [B612.hipnc](B612.hipnc), select `/obj/B612_PLANET`, and use **Planet Controls**. Change **Seed** from 12 to 47, adjust **Terrain Relief**, and set **Plant Density** to zero to inspect the terrain. Select `storybook_camera` and play frames 1–192 at 24 fps for one turn, or choose `rose_detail_camera` for the close-up. For a new still, render frame 1 with `/out/STORYBOOK_RENDER`.
+
+Before the final submission on November 30, I will focus on the following.
+
+- Reduce the glass highlights that cover the rose petals, and refine the lighting, rock colors, and distribution of grass and flowers.
+- Apply feedback from the November 23 class critique and make targeted visual adjustments.
+- Select the final wide and close-up stills and prepare the eight-second video. I will test the render time of a few Mantra frames before deciding whether to upgrade the viewport video to a fully rendered animation.
+- Add Final Results and Post Mortem sections to the README, and prepare a short presentation showing how the seed, terrain relief, and plant density affect the scene.
