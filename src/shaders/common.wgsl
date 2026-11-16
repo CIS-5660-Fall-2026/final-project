@@ -38,6 +38,20 @@ struct CameraUniforms {
     // NCHORTEK TODO: Add additional uniforms needed for Forward+
 }
 
+struct VolumeUniforms {
+    volumeNearZ: f32,
+    volumeFarZ: f32,
+    distributionExponent: f32,
+    scattering: f32,
+    ambientLightColor: vec3f,
+    absorption: f32,
+    noiseFreq: f32,
+    octaveCount: u32,
+    densityScale: f32,
+    fogBaseHeight: f32,
+    fogHeightFalloff: f32
+}
+
 // CHECKITOUT: this special attenuation function ensures lights don't affect geometry outside the maximum light radius
 fn rangeAttenuation(distance: f32) -> f32 {
     return clamp(1.f - pow(distance / ${lightRadius}, 4.f), 0.f, 1.f) / (distance * distance);

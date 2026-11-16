@@ -16,6 +16,10 @@ import clusteredDeferredFullscreenFragRaw from './clustered_deferred_fullscreen.
 import moveLightsComputeRaw from './move_lights.cs.wgsl?raw';
 import clusteringComputeRaw from './clustering.cs.wgsl?raw';
 
+import volumetricVoxelizationComputeRaw from './volumetric_voxelization.cs.wgsl?raw';
+import volumetricLightingComputeRaw from './volumetric_lighting.cs.wgsl?raw';
+import volumetricIntegrationComputeRaw from './volumetric_integration.cs.wgsl?raw';
+
 // CONSTANTS (for use in shaders)
 // =================================
 
@@ -28,6 +32,7 @@ export const constants = {
     bindGroup_model: 1,
     bindGroup_material: 2,
     bindGroup_gBuffer: 1,
+    bindGroup_volumetric: 0,
 
     moveLightsWorkgroupSize: 128,
     clusteringWorkgroupSizeX: 4,
@@ -48,7 +53,12 @@ export const constants = {
     // Volume froxel dimensions
     froxelGridDimX: 240,
     froxelGridDimY: 135,
-    froxelGridDimZ: 64
+    froxelGridDimZ: 64,
+
+    // Volumetrics compute workgroup sizes
+    froxelWorkgroupSizeX: 8,
+    froxelWorkgroupSizeY: 8,
+    froxelWorkgroupSizeZ: 1
 };
 
 // =================================
@@ -74,3 +84,7 @@ export const clusteredDeferredFullscreenFragSrc: string = processShaderRaw(clust
 
 export const moveLightsComputeSrc: string = processShaderRaw(moveLightsComputeRaw);
 export const clusteringComputeSrc: string = processShaderRaw(clusteringComputeRaw);
+
+export const volumetricVoxelizationComputeSrc: string = processShaderRaw(volumetricVoxelizationComputeRaw);
+export const volumetricLightingComputeSrc: string = processShaderRaw(volumetricLightingComputeRaw);
+export const volumetricIntegrationComputeSrc: string = processShaderRaw(volumetricIntegrationComputeRaw);

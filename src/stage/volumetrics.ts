@@ -139,5 +139,21 @@ export class Volumetrics {
             addressModeV: "clamp-to-edge",
             addressModeW: "clamp-to-edge"
         });
+
+        // Set our volume uniform values and write them to the GPU
+        // NCHORTEK TODO: These can potentially be tied to GUI sliders
+        this.uniforms.volumeNearZ = 0.5;
+        this.uniforms.volumeFarZ = 40.0;
+        this.uniforms.distributionExponent = 1.0;
+        this.uniforms.scattering = 0.04;
+        this.uniforms.ambientLightColor = new Float32Array([0.15, 0.15, 0.15]);
+        this.uniforms.absorption = 0.01;
+        this.uniforms.noiseFreq = 0.3;
+        this.uniforms.octaveCount = 4;
+        this.uniforms.densityScale = 1.0;
+        this.uniforms.fogBaseHeight = -1.0;
+        this.uniforms.fogHeightFalloff = 0.3;
+
+        device.queue.writeBuffer(this.uniformsBuffer, 0, this.uniforms.buffer);
     }
 }
