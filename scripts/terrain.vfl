@@ -1,0 +1,35 @@
+// Surface functions use rest-space directions, so the pattern rotates with the planet.
+vector d = normalize(@P);
+int seed = chi("../seed");
+vector offset = set(seed*.732, seed*1.33, seed*.359);
+float hill = snoise(d*1.8+offset) + .34*snoise(d*5.2+offset) + .12*snoise(d*13+offset);
+vector rose = normalize(set(-.30,.80,.52));
+vector vent = normalize(set(.49,.85,.20));
+vector prince=normalize(set(.10,.82,.57));
+float keep = smooth(.30,.42,distance(d,rose))*smooth(.52,.62,distance(d,vent))*smooth(.13,.23,distance(d,prince));
+// Rounded depressions and raised rims break up the exposed lower hemisphere.
+float craters=0;
+for(int i=0;i<7;i++){
+    float angle=6.283185*rand(seed*17.31+i*4.27);
+    float y=fit01(rand(seed*.91+i*3.1),-.85,.18);
+    float radius=sqrt(1-y*y);
+    vector center=set(radius*cos(angle),y,radius*sin(angle));
+    float width=fit01(rand(i*2.91+seed),.13,.20);
+    float distance_ratio=distance(d,center)/width;
+    craters += -.70*exp(-pow(distance_ratio/.73,4))
+              +.19*exp(-pow((distance_ratio-1)/.18,2));
+}
+float relief = chf("../relief") * (hill+craters) * keep;
+@P = d*(2.0+relief);
+float patch = .44 + .34*d.y + .59*snoise(d*3.4+offset+17) + .11*snoise(d*11+offset);
+f@meadow = smooth(.22,.69,patch)*keep*smooth(-.45,-.10,craters);
+float mineral = clamp(.50+.48*snoise(d*7.4+offset)+.13*sin(31*d.y+4*hill),0,1);
+vector rock = lerp(set(.19,.215,.20),set(.53,.45,.32),mineral);
+float strata = smooth(.36,.91,cos(48*d.y+7*hill+3*snoise(d*4+offset)));
+rock = lerp(rock,set(.69,.52,.31),strata*.22);
+f@Alpha = 1.0;
+vector moss = lerp(set(.09,.25,.06),set(.29,.43,.10),clamp(.45+.6*snoise(d*6-offset),0,1));
+@Cd = lerp(rock,moss,smooth(.36,.79,patch));
+
+float clearing=1-smooth(.24,.36,distance(d,rose));
+@Cd=lerp(@Cd,set(.50,.37,.20),clearing);
