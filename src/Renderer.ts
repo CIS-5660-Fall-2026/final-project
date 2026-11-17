@@ -4,6 +4,24 @@ import { bodiesDebugWgsl, bodiesWgsl, collectStarLightsWgsl, postProcessWgsl } f
 import { createSphereMesh } from "./Sphere";
 import type WebGpuContext from "./WebGpuContext";
 
+const HDR_FORMAT: GPUTextureFormat = "rgba16float";
+
+type BloomTarget = {
+  texture: GPUTexture;
+  view: GPUTextureView;
+  bindGroup: GPUBindGroup;
+};
+
+type RenderTargets = {
+  depthTexture: GPUTexture;
+  depthView: GPUTextureView;
+  hdrTexture: GPUTexture;
+  hdrView: GPUTextureView;
+  bloomHorizontal: BloomTarget;
+  bloomVertical: BloomTarget;
+  compositeBindGroup: GPUBindGroup;
+};
+
 export default class Renderer {
   private readonly gpuContext: WebGpuContext;
   
@@ -15,18 +33,14 @@ export default class Renderer {
   private readonly surfacePipeline: GPURenderPipeline;
   private readonly debugPipeline: GPURenderPipeline;  
   private readonly compositePipeline: GPURenderPipeline;
-
-  private readonly bloomPasses: readonly {
-    view: GPUTextureView;
-    pipeline: GPURenderPipeline;
-    bindGroup: GPUBindGroup;
-  }[];
+  private readonly bloomHorizontalPipeline: GPURenderPipeline;
+  private readonly bloomVerticalPipeline: GPURenderPipeline;
+  private readonly sampler: GPUSampler;
 
   private readonly collectStarLightsPipeline: GPUComputePipeline;
 
   private readonly cameraBindGroup: GPUBindGroup;
   private readonly bodiesBindGroup: GPUBindGroup;
-  private readonly compositeBindGroup: GPUBindGroup;
   private readonly collectStarLightsBindGroup: GPUBindGroup;
 
   private readonly sphereVertexBuffer: GPUBuffer;
@@ -36,9 +50,7 @@ export default class Renderer {
   private readonly simulationDispatchArgsBuffer: GPUBuffer;
   private readonly starLightsBuffer: GPUBuffer;
 
-  private readonly depthTexture: GPUTexture;
-
-  private readonly hdrView: GPUTextureView;
+  private renderTargets: RenderTargets;
 
   constructor(
     gpuContext: WebGpuContext, 
@@ -50,10 +62,6 @@ export default class Renderer {
     this.gpuContext = gpuContext;
     
     const device = this.gpuContext.device;
-    const canvas = this.gpuContext.context.canvas;
-
-    this.camera.aspect = canvas.width / canvas.height;
-    this.camera.updateProjection();
 
     this.cameraBuffer = device.createBuffer({
       label: "camera buffer",
@@ -90,20 +98,6 @@ export default class Renderer {
         0,
       ])
     );
-
-    this.depthTexture = device.createTexture({
-      size: [canvas.width, canvas.height],
-      format: "depth24plus",
-      usage: GPUTextureUsage.RENDER_ATTACHMENT
-    });
-
-    const hdrFormat: GPUTextureFormat = "rgba16float";
-    this.hdrView = device.createTexture({
-      label: "HDR scene",
-      size: [canvas.width, canvas.height],
-      format: hdrFormat,
-      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
-    }).createView();
 
     this.simulationParamsBuffer = simulationParamsBuffer;
     this.simulationDispatchArgsBuffer = simulationDispatchArgsBuffer;
@@ -212,22 +206,13 @@ export default class Renderer {
     };
 
     this.surfacePipeline = createPipeline(
-      "surface pipeline", bodiesWgsl, hdrFormat
+      "surface pipeline", bodiesWgsl, HDR_FORMAT
     );
     this.debugPipeline = createPipeline(
       "debug pipeline", bodiesDebugWgsl, this.gpuContext.format
     ); 
 
-    const bloomSize = [Math.ceil(canvas.width / 2), Math.ceil(canvas.height / 2)];
-    const bloomTextureDescriptor: GPUTextureDescriptor = {
-      size: bloomSize,
-      format: hdrFormat,
-      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
-    };
-    const horizontalView = device.createTexture(bloomTextureDescriptor).createView();
-    const bloomView = device.createTexture(bloomTextureDescriptor).createView();
-
-    const sampler = device.createSampler({
+    this.sampler = device.createSampler({
       minFilter: "linear",
       magFilter: "linear",
       addressModeU: "clamp-to-edge",
@@ -239,35 +224,21 @@ export default class Renderer {
       code: postProcessWgsl
     });
 
-    const createBloomPass = (
-      entryPoint: string,
-      source: GPUTextureView,
-      view: GPUTextureView
-    ) => {
-      const pipeline = device.createRenderPipeline({
+    const createBloomPipeline = (entryPoint: string): GPURenderPipeline => {
+      return device.createRenderPipeline({
         label: entryPoint,
         layout: "auto",
         vertex: { module: postProcessModule, entryPoint: "vertMain" },
         fragment: {
           module: postProcessModule,
           entryPoint,
-          targets: [{ format: hdrFormat }]
+          targets: [{ format: HDR_FORMAT }]
         }
       });
-      const bindGroup = device.createBindGroup({
-        layout: pipeline.getBindGroupLayout(0),
-        entries: [
-          { binding: 0, resource: source },
-          { binding: 1, resource: sampler }
-        ]
-      });
-      return { view, pipeline, bindGroup };
     };
 
-    this.bloomPasses = [
-      createBloomPass("bloomHorizontal", this.hdrView, horizontalView),
-      createBloomPass("bloomVertical", horizontalView, bloomView)
-    ];
+    this.bloomHorizontalPipeline = createBloomPipeline("bloomHorizontal");
+    this.bloomVerticalPipeline = createBloomPipeline("bloomVertical");
 
     this.compositePipeline = device.createRenderPipeline({
       label: "HDR composite pipeline",
@@ -278,14 +249,6 @@ export default class Renderer {
         entryPoint: "fragMain",
         targets: [{ format: this.gpuContext.format }]
       }
-    });
-    this.compositeBindGroup = device.createBindGroup({
-      layout: this.compositePipeline.getBindGroupLayout(0),
-      entries: [
-        { binding: 0, resource: this.hdrView },
-        { binding: 1, resource: sampler },
-        { binding: 2, resource: bloomView }
-      ]
     });
 
     this.cameraBindGroup = device.createBindGroup({
@@ -305,14 +268,117 @@ export default class Renderer {
         { binding: 2, resource: { buffer: this.starLightsBuffer } }
       ]
     });
+
+    this.renderTargets = this.resize();
+    this.camera.updateProjection();
+  }
+
+  private resize(targets?: RenderTargets): RenderTargets {
+    const device = this.gpuContext.device;
+    const canvas = this.gpuContext.context.canvas as HTMLCanvasElement;
+    const pixelRatio = window.devicePixelRatio;
+    const maxSize = device.limits.maxTextureDimension2D;
+    const width = Math.max(1, Math.min(maxSize, Math.round(canvas.clientWidth * pixelRatio)));
+    const height = Math.max(1, Math.min(maxSize, Math.round(canvas.clientHeight * pixelRatio)));
+
+    if (canvas.width !== width) canvas.width = width;
+    if (canvas.height !== height) canvas.height = height;
+
+    if (targets?.depthTexture.width === width && targets.depthTexture.height === height) return targets;
+
+    if (targets) {
+      targets.depthTexture.destroy();
+      targets.hdrTexture.destroy();
+      targets.bloomHorizontal.texture.destroy();
+      targets.bloomVertical.texture.destroy();
+    }
+
+    this.camera.aspect = width / height;
+
+    const depthTexture = device.createTexture({
+      size: [width, height],
+      format: "depth24plus",
+      usage: GPUTextureUsage.RENDER_ATTACHMENT
+    });
+    const depthView = depthTexture.createView();
+
+    const hdrTexture = device.createTexture({
+      label: "HDR scene",
+      size: [width, height],
+      format: HDR_FORMAT,
+      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
+    });
+    const hdrView = hdrTexture.createView();
+
+    const bloomTextureDescriptor: GPUTextureDescriptor = {
+      size: [Math.ceil(width / 2), Math.ceil(height / 2)],
+      format: HDR_FORMAT,
+      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
+    };
+    const createBloomTarget = (
+      pipeline: GPURenderPipeline,
+      source: GPUTextureView
+    ): BloomTarget => {
+      const texture = device.createTexture(bloomTextureDescriptor);
+      const view = texture.createView();
+      const bindGroup = device.createBindGroup({
+        layout: pipeline.getBindGroupLayout(0),
+        entries: [
+          { binding: 0, resource: source },
+          { binding: 1, resource: this.sampler }
+        ]
+      });
+      return { texture, view, bindGroup };
+    };
+
+    const bloomHorizontal = createBloomTarget(this.bloomHorizontalPipeline, hdrView);
+    const bloomVertical = createBloomTarget(this.bloomVerticalPipeline, bloomHorizontal.view);
+
+    const compositeBindGroup = device.createBindGroup({
+      layout: this.compositePipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: hdrView },
+        { binding: 1, resource: this.sampler },
+        { binding: 2, resource: bloomVertical.view }
+      ]
+    });
+
+    return {
+      depthTexture,
+      depthView,
+      hdrTexture,
+      hdrView,
+      bloomHorizontal,
+      bloomVertical,
+      compositeBindGroup
+    };
   }
 
   public onFrame = (): void => {
     const device = this.gpuContext.device;
 
+    this.renderTargets = this.resize(this.renderTargets);
     this.camera.updateViewProjection();
     this.camera.onFrame();
     device.queue.writeBuffer(this.cameraBuffer, 0, this.camera.uniforms.buffer);
+  }
+
+  private encodeBloomPass(
+    encoder: GPUCommandEncoder,
+    pipeline: GPURenderPipeline,
+    { view, bindGroup }: BloomTarget
+  ): void {
+    const pass = encoder.beginRenderPass({
+      colorAttachments: [{
+        view,
+        loadOp: "clear",
+        storeOp: "store"
+      }]
+    });
+    pass.setPipeline(pipeline);
+    pass.setBindGroup(0, bindGroup);
+    pass.draw(3);
+    pass.end();
   }
 
   public encode(encoder: GPUCommandEncoder): void {
@@ -337,15 +403,16 @@ export default class Renderer {
     }
 
     const canvasView = this.gpuContext.context.getCurrentTexture().createView();
+    const { depthView, hdrView, bloomHorizontal, bloomVertical, compositeBindGroup } = this.renderTargets;
 
     const scenePass = encoder.beginRenderPass({
       colorAttachments: [{
-        view: debug ? canvasView : this.hdrView,
+        view: debug ? canvasView : hdrView,
         loadOp: "clear",
         storeOp: "store"
       }],
       depthStencilAttachment: {
-        view: this.depthTexture.createView(),
+        view: depthView,
         depthClearValue: 1,
         depthLoadOp: "clear",
         depthStoreOp: "store"
@@ -362,19 +429,8 @@ export default class Renderer {
 
     if (debug) return;
 
-    for (const { view, pipeline, bindGroup } of this.bloomPasses) {
-      const pass = encoder.beginRenderPass({
-        colorAttachments: [{
-          view,
-          loadOp: "clear",
-          storeOp: "store"
-        }]
-      });
-      pass.setPipeline(pipeline);
-      pass.setBindGroup(0, bindGroup);
-      pass.draw(3);
-      pass.end();
-    }
+    this.encodeBloomPass(encoder, this.bloomHorizontalPipeline, bloomHorizontal);
+    this.encodeBloomPass(encoder, this.bloomVerticalPipeline, bloomVertical);
 
     const compositePass = encoder.beginRenderPass({
       colorAttachments: [{
@@ -384,7 +440,7 @@ export default class Renderer {
       }]
     });
     compositePass.setPipeline(this.compositePipeline);
-    compositePass.setBindGroup(0, this.compositeBindGroup);
+    compositePass.setBindGroup(0, compositeBindGroup);
     compositePass.draw(3);
     compositePass.end();
   }

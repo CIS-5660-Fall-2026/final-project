@@ -13,9 +13,6 @@ if (!canvas) {
   throw new Error("Canvas #gpu-canvas was not found");
 }
 
-canvas.width = Math.round(canvas.clientWidth * window.devicePixelRatio);
-canvas.height = Math.round(canvas.clientHeight * window.devicePixelRatio);
-
 const gpuContext = await WebGpuContext.create(canvas);
 
 const sceneOptions: SceneOptions = {
