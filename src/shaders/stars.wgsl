@@ -14,13 +14,13 @@ const STAR_COLORS = array<vec3<f32>, 6>(
     vec3<f32>(0.025, 0.075, 1.000), // blue
 );
 
-fn isStar(body: Body) -> bool {
-    return body.mass >= STAR_MASS || body.collapseProgress > 0.0;
+fn isStar(body: Body, starMass: f32) -> bool {
+    return body.mass >= starMass || body.collapseProgress > 0.0;
 }
 
-fn starAverageHeat(mass: f32) -> f32 {
+fn starAverageHeat(mass: f32, starMass: f32, explosionMass: f32) -> f32 {
     let progress = clamp(
-        (mass - STAR_MASS) / (EXPLOSION_MASS - STAR_MASS),
+        (mass - starMass) / (explosionMass - starMass),
         0.0,
         1.0
     );

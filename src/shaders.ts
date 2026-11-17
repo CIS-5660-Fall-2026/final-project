@@ -19,5 +19,5 @@ export const collisionWgsl = `${common}\n${collision}`;
 export const absorptionWgsl = `${common}\n${absorption}`;
 export const compactWgsl = `${common}\n${compact}`;
 export const explosionWgsl = `${common}\n${noise}\n${explosion}`;
-export const postProcessWgsl = `${composite}\n${bloom}`;
+export const postProcessWgsl = `${common}\n${composite}\n${bloom}`;
 export const collectStarLightsWgsl = `${common}\n${noise}\n${stars}\n${collectStarLights}`;

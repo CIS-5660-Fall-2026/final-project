@@ -91,7 +91,7 @@ fn explodeBodies() {
 
     for (var i = 0u; i < originalCount; i++) {
         let parent = bodies[i];
-        if (parent.collapseProgress == 0.0 && parent.mass < EXPLOSION_MASS) {
+        if (parent.collapseProgress == 0.0 && parent.mass < params.explosionMass) {
             continue;
         }
 
@@ -103,7 +103,7 @@ fn explodeBodies() {
 
         let eventSeed = hashU32(parent.seed ^ stepSeed);
         if (parent.collapseProgress == 0.0) {
-            let rate = EXPLOSION_RATE * parent.mass / EXPLOSION_MASS;
+            let rate = EXPLOSION_RATE * parent.mass / params.explosionMass;
             let probability = 1.0 - exp(-rate * params.fixedDt);
             if (random01(eventSeed) >= probability) {
                 continue;

@@ -24,7 +24,18 @@ struct SimulationUniforms {
     boundaryEnabled: u32,
 
     boundaryMax: vec3<f32>,
-    simulationStep: u32
+    simulationStep: u32,
+
+    linearDragRate: f32,
+    starMass: f32,
+    explosionMass: f32
+}
+
+struct RenderParams {
+    bloomStrength: f32,
+    exposure: f32,
+    bloomThreshold: f32,
+    starLightStrength: f32,
 }
 
 fn multiplyQuaternion(
@@ -41,9 +52,7 @@ fn rotateVector(q: vec4<f32>, v: vec3<f32>) -> vec3<f32> {
     return v + 2.0 * cross(q.xyz, cross(q.xyz, v) + q.w * v);
 }
 
-const STAR_MASS: f32 = 80.0;
 const MASS_RESPONSE_REFERENCE: f32 = 16.0;
-const EXPLOSION_MASS: f32 = 160.0;
 
 fn massResponse(mass: f32) -> f32 {
     return MASS_RESPONSE_REFERENCE / (MASS_RESPONSE_REFERENCE + mass);

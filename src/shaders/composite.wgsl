@@ -7,8 +7,8 @@ var postSampler: sampler;
 @group(0) @binding(2)
 var bloomImage: texture_2d<f32>;
 
-const BLOOM_STRENGTH: f32 = 0.30;
-const EXPOSURE: f32 = 1.0;
+@group(0) @binding(3)
+var<uniform> renderParams: RenderParams;
 
 @vertex
 fn vertMain(@builtin(vertex_index) index: u32) -> @builtin(position) vec4<f32> {
@@ -41,7 +41,7 @@ fn fragMain(
     let uv = position.xy / vec2<f32>(textureDimensions(sourceImage));
     let glow = textureSampleLevel(bloomImage, postSampler, uv, 0.0).rgb;
 
-    let combined = hdrColor + BLOOM_STRENGTH * glow;
-    let displayColor = linearToSrgb(toneMap(combined * EXPOSURE));
+    let combined = hdrColor + renderParams.bloomStrength * glow;
+    let displayColor = linearToSrgb(toneMap(combined * renderParams.exposure));
     return vec4<f32>(displayColor, 1.0);
 }

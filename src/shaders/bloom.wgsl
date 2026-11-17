@@ -1,14 +1,14 @@
-const BLOOM_THRESHOLD: f32 = 0.25;
 const BLUR_RADIUS: i32 = 48;
 const BLUR_SIGMA: f32 = 15.0;
 
 fn brightPart(color: vec3<f32>) -> vec3<f32> {
     let peak = max(color.r, max(color.g, color.b));
-    if (peak <= BLOOM_THRESHOLD) {
+    let threshold = renderParams.bloomThreshold;
+    if (peak <= threshold) {
         return vec3<f32>(0.0);
     }
 
-    return color * ((peak - BLOOM_THRESHOLD) / peak);
+    return color * ((peak - threshold) / peak);
 }
 
 fn gaussianBlur(

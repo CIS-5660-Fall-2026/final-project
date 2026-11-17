@@ -77,12 +77,6 @@ export default class Simulation {
     });
 
     this.uniforms.fixedDt = config.fixedDt;
-    this.uniforms.gravitationalConstant = config.gravitationalConstant;
-    this.uniforms.softeningLength = config.softeningLength;
-
-    if (scene.boundary) {
-      this.uniforms.boundary = scene.boundary;
-    }
 
     const module = device.createShaderModule({
       label: "simulation shader",
@@ -289,8 +283,15 @@ export default class Simulation {
   public reset(scene: Scene): void {
     const bodyCount = scene.initialBodies.length;
     
-    const capacity = scene.simulationConfig.capacity;
+    const config = scene.simulationConfig;
+    const capacity = config.capacity;
     this.uniforms.bodyCount = bodyCount;
+    this.uniforms.boundary = scene.boundary;
+    this.uniforms.gravitationalConstant = config.gravitationalConstant;
+    this.uniforms.softeningLength = config.softeningLength;
+    this.uniforms.linearDragRate = config.linearDragRate;
+    this.uniforms.starMass = config.starMass;
+    this.uniforms.explosionMass = config.explosionMass;
 
     const data = packBodies(scene.initialBodies, capacity);
     this.device.queue.writeBuffer(this.bodiesA, 0, data);
@@ -319,9 +320,11 @@ export default class Simulation {
   public setPhysics(
     gravitationalConstant: number,
     softeningLength: number,
+    linearDragRate: number,
   ): void {
     this.uniforms.gravitationalConstant = gravitationalConstant;
     this.uniforms.softeningLength = softeningLength;
+    this.uniforms.linearDragRate = linearDragRate;
 
     this.device.queue.writeBuffer(
       this.paramsBuffer,
@@ -329,6 +332,13 @@ export default class Simulation {
       this.uniforms.buffer,
       4,
       8,
+    );
+    this.device.queue.writeBuffer(
+      this.paramsBuffer,
+      48,
+      this.uniforms.buffer,
+      48,
+      4,
     );
   }
 

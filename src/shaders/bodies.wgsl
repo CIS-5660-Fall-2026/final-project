@@ -16,6 +16,9 @@ var<storage, read> bodies: array<Body>;
 @group(1) @binding(2)
 var<storage, read> starLights: ReadableStarLights;
 
+@group(1) @binding(3)
+var<uniform> params: SimulationUniforms;
+
 const COLLAPSE_MIN_RADIUS_SCALE: f32 = 0.6;
 
 struct VertexOutput {
@@ -84,12 +87,12 @@ fn fragMain(input: VertexOutput) -> @location(0) vec4<f32> {
     let body = bodies[input.bodyIndex];
     let p = normalize(input.localPosition);
 
-    if (isStar(body)) {
+    if (isStar(body, params.starMass)) {
         let broad = noise3D(4.0 * p + input.surfaceOffset);
         let detail = noise3D(13.0 * p + input.surfaceOffset);
         let field = 0.75 * broad + 0.25 * detail;
 
-        let averageHeat = starAverageHeat(body.mass);
+        let averageHeat = starAverageHeat(body.mass, params.starMass, params.explosionMass);
         let localHeat = clamp(averageHeat + 0.65 * field, 0.0, 1.0);
 
         let color = starColor(body.seed, localHeat);
@@ -116,9 +119,9 @@ fn fragMain(input: VertexOutput) -> @location(0) vec4<f32> {
     let starLighting = evaluateStarLights(input.worldPosition, normal);
     let litRock = baseColor * (ambient + starLighting);
 
-    let crackStartMass = 0.025 * STAR_MASS;
+    let crackStartMass = 0.025 * params.starMass;
     let heat = clamp(
-        (body.mass - crackStartMass) / (STAR_MASS - crackStartMass),
+        (body.mass - crackStartMass) / (params.starMass - crackStartMass),
         0.0,
         1.0
     );

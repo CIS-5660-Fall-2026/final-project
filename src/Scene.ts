@@ -5,8 +5,9 @@ import seedrandom from "seedrandom";
 export interface SceneOptions {
   seed: number;
   initialBodyCount: number;
+  initialVelocityRange: number;
   simulationConfig: Readonly<SimulationConfig>;
-  boundary?: Readonly<BoxBoundary>;
+  boundary?: Readonly<BoxBoundary & { enabled: boolean }>;
 }
 
 export default class Scene {
@@ -18,7 +19,7 @@ export default class Scene {
   constructor(options: SceneOptions) {
     this.seed = options.seed;
     this.simulationConfig = { ...options.simulationConfig };
-    this.boundary = options.boundary;
+    this.boundary = options.boundary?.enabled ? options.boundary : undefined;
 
     const simulationRng = seedrandom(String(this.seed));
     const surfaceRng = seedrandom(`${this.seed}:surface`);
@@ -26,9 +27,10 @@ export default class Scene {
     const range = (min: number, max: number): number =>
       min + (max - min) * simulationRng();
 
-    const min = this.boundary?.min ?? vec3.create(-10, -10, -10);
-    const max = this.boundary?.max ?? vec3.create(10, 10, 10);
+    const min = options.boundary?.min ?? vec3.create(-10, -10, -10);
+    const max = options.boundary?.max ?? vec3.create(10, 10, 10);
     const bodies: BodyInitialState[] = [];
+    const velocityRange = options.initialVelocityRange;
 
     for (let i = 0; i < options.initialBodyCount; i++) {
       const mass = range(1, 20);
@@ -42,9 +44,9 @@ export default class Scene {
       );
 
       const velocity = vec3.fromValues(
-        range(-10, 10),
-        range(-10, 10),
-        range(-10, 10)
+        range(-velocityRange, velocityRange),
+        range(-velocityRange, velocityRange),
+        range(-velocityRange, velocityRange)
       );
 
       const angularVelocity = vec3.fromValues(
@@ -78,10 +80,13 @@ interface SimulationConfig {
   fixedDt: number;
   gravitationalConstant: number;
   softeningLength: number;
+  linearDragRate: number;
+  starMass: number;
+  explosionMass: number;
 }
 
 export class SimulationUniforms {
-  public readonly buffer = new ArrayBuffer(48);
+  public readonly buffer = new ArrayBuffer(64);
   private readonly floatView = new Float32Array(this.buffer);
   private readonly uintView = new Uint32Array(this.buffer);
 
@@ -102,9 +107,24 @@ export class SimulationUniforms {
     this.uintView[11] = 0; // simulationStep
   }
 
-  set boundary(boundary: BoxBoundary) {
-    this.floatView.set(boundary.min, 4);
-    this.uintView[7] = 1;
-    this.floatView.set(boundary.max, 8);
+  set boundary(boundary: Readonly<BoxBoundary> | undefined) {
+    this.uintView[7] = boundary ? 1 : 0;
+
+    if (boundary) {
+      this.floatView.set(boundary.min, 4);
+      this.floatView.set(boundary.max, 8);
+    }
+  }
+
+  set linearDragRate(value: number) {
+    this.floatView[12] = value;
+  }
+
+  set starMass(value: number) {
+    this.floatView[13] = value;
+  }
+
+  set explosionMass(value: number) {
+    this.floatView[14] = value;
   }
 }

@@ -29,6 +29,10 @@ export default class Renderer {
   private readonly cameraBuffer: GPUBuffer;
 
   public mode: "surface" | "debug" = "surface";
+  public bloomStrength = 0.30;
+  public exposure = 1.0;
+  public bloomThreshold = 0.25;
+  public starLightStrength = 6.0;
 
   private readonly surfacePipeline: GPURenderPipeline;
   private readonly debugPipeline: GPURenderPipeline;  
@@ -49,6 +53,7 @@ export default class Renderer {
   private readonly simulationParamsBuffer: GPUBuffer;
   private readonly simulationDispatchArgsBuffer: GPUBuffer;
   private readonly starLightsBuffer: GPUBuffer;
+  private readonly renderParamsBuffer: GPUBuffer;
 
   private renderTargets: RenderTargets;
 
@@ -68,6 +73,13 @@ export default class Renderer {
       size: this.camera.uniforms.buffer.byteLength,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
+
+    this.renderParamsBuffer = device.createBuffer({
+      label: "render params",
+      size: 16,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+    this.updateRenderParams();
 
     const mesh = createSphereMesh();
 
@@ -123,7 +135,8 @@ export default class Renderer {
       entries: [
         { binding: 0, resource: { buffer: bodiesBuffer } },
         { binding: 1, resource: { buffer: simulationParamsBuffer } },
-        { binding: 2, resource: { buffer: this.starLightsBuffer } }
+        { binding: 2, resource: { buffer: this.starLightsBuffer } },
+        { binding: 3, resource: { buffer: this.renderParamsBuffer } }
       ]
     });
 
@@ -153,6 +166,11 @@ export default class Renderer {
           binding: 2,
           visibility: GPUShaderStage.FRAGMENT,
           buffer: { type: "read-only-storage" }
+        },
+        {
+          binding: 3,
+          visibility: GPUShaderStage.FRAGMENT,
+          buffer: { type: "uniform" }
         }
       ]
     });
@@ -265,7 +283,8 @@ export default class Renderer {
       entries: [
         { binding: 0, resource: { buffer: bodiesBuffer } },
         { binding: 1, resource: { buffer: collisionCandidatesBuffer } },
-        { binding: 2, resource: { buffer: this.starLightsBuffer } }
+        { binding: 2, resource: { buffer: this.starLightsBuffer } },
+        { binding: 3, resource: { buffer: simulationParamsBuffer } }
       ]
     });
 
@@ -325,7 +344,8 @@ export default class Renderer {
         layout: pipeline.getBindGroupLayout(0),
         entries: [
           { binding: 0, resource: source },
-          { binding: 1, resource: this.sampler }
+          { binding: 1, resource: this.sampler },
+          { binding: 3, resource: { buffer: this.renderParamsBuffer } }
         ]
       });
       return { texture, view, bindGroup };
@@ -339,7 +359,8 @@ export default class Renderer {
       entries: [
         { binding: 0, resource: hdrView },
         { binding: 1, resource: this.sampler },
-        { binding: 2, resource: bloomVertical.view }
+        { binding: 2, resource: bloomVertical.view },
+        { binding: 3, resource: { buffer: this.renderParamsBuffer } }
       ]
     });
 
@@ -352,6 +373,19 @@ export default class Renderer {
       bloomVertical,
       compositeBindGroup
     };
+  }
+
+  public updateRenderParams(): void {
+    this.gpuContext.device.queue.writeBuffer(
+      this.renderParamsBuffer,
+      0,
+      new Float32Array([
+        this.bloomStrength,
+        this.exposure,
+        this.bloomThreshold,
+        this.starLightStrength
+      ])
+    );
   }
 
   public onFrame = (): void => {
