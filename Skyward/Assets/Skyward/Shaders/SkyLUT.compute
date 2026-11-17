@@ -1,0 +1,202 @@
+// Skyward - atmosphere LUTs (Hillaire 2020) and the per-frame weather map. Dispatched by SkyLUTRenderer.cs.
+//
+//   TransmittanceLUT   256x64   once      transmittance to the top of the atmosphere for (altitude, view zenith)
+//   MultiScatteringLUT 32x32    once      multiple-scattering contribution Psi_ms for (altitude, sun zenith)
+//   SkyViewLUT         192x108  per frame sky radiance around the camera (single + multiple scattering), sun = 1
+//   WeatherMapBake     512x512  per frame coverage / cloud type around the camera
+
+#pragma kernel TransmittanceLUT
+#pragma kernel MultiScatteringLUT
+#pragma kernel SkyViewLUT
+#pragma kernel WeatherMapBake
+
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+#include "SkyCommon.hlsl"
+
+RWTexture2D<float4> _TransmittanceLUTOut;
+RWTexture2D<float4> _MultiScatteringLUTOut;
+RWTexture2D<float4> _SkyViewLUTOut;
+RWTexture2D<float2> _WeatherMapOut;
+
+// Set per dispatch by SkyLUTRenderer.cs
+float3 _SkySunDir;
+float  _CameraHeight;
+float4 _WeatherOrigin;     // xy = world xz of the map center, z = map size in meters, w = resolution
+float  _SkyTime;
+float2 _CloudWind;
+float  _CloudCoverage;
+float  _WeatherScale;
+
+static const float kIsotropicPhase = 1.0 / (4.0 * PI);
+
+// -------------------------------------------------------------------------------------
+// Transmittance
+// -------------------------------------------------------------------------------------
+[numthreads(8, 8, 1)]
+void TransmittanceLUT(uint3 id : SV_DispatchThreadID)
+{
+    if (any(id.xy >= (uint2)kTransmittanceSize))
+        return;
+
+    float r, mu;
+    TransmittanceUnitToRMu(id.xy / (kTransmittanceSize - 1.0), r, mu);
+    float3 ro = float3(0.0, r, 0.0);
+    float3 rd = float3(sqrt(saturate(1.0 - mu * mu)), mu, 0.0);
+
+    const int steps = 40;
+    float tTop = RaySphere(ro, rd, kAtmosphereRadius).y;
+    float dt = tTop / steps;
+    float3 opticalDepth = 0.0;
+    for (int i = 0; i < steps; i++)
+    {
+        float3 pos = ro + rd * ((i + 0.5) * dt);
+        float3 rayleighScat; float mieScat; float3 extinction;
+        SampleAtmosphere(length(pos) - kPlanetRadius, rayleighScat, mieScat, extinction);
+        opticalDepth += extinction * dt;
+    }
+    _TransmittanceLUTOut[id.xy] = float4(exp(-opticalDepth), 1.0);
+}
+
+// -------------------------------------------------------------------------------------
+// Multiple scattering (Hillaire 2020, section 5.5)
+// -------------------------------------------------------------------------------------
+// Integrates along one direction with an isotropic phase and unit sun illuminance.
+// luminance: second-order scattered light L_2, transfer: f_ms, the fraction of light scattered again.
+void IntegrateMultiScatteringRay(float3 ro, float3 rd, float3 sunDir, out float3 luminance, out float3 transfer)
+{
+    luminance = 0.0;
+    transfer = 0.0;
+
+    float tMax = RaySphere(ro, rd, kAtmosphereRadius).y;
+    float tGround = RaySphere(ro, rd, kPlanetRadius).x;
+    bool hitsGround = tGround > 0.0;
+    if (hitsGround)
+        tMax = tGround;
+
+    const int steps = 20;
+    float dt = tMax / steps;
+    float3 throughput = 1.0;
+    for (int i = 0; i < steps; i++)
+    {
+        float3 pos = ro + rd * ((i + 0.5) * dt);
+        float3 rayleighScat; float mieScat; float3 extinction;
+        SampleAtmosphere(length(pos) - kPlanetRadius, rayleighScat, mieScat, extinction);
+        float3 scattering = rayleighScat + mieScat;
+        float3 safeExtinction = max(extinction, 1e-10);
+        float3 stepTransmittance = exp(-extinction * dt);
+
+        float3 source = scattering * kIsotropicPhase * TransmittanceToSun(pos, sunDir);
+        luminance += throughput * (source - source * stepTransmittance) / safeExtinction;
+        transfer += throughput * (scattering - scattering * stepTransmittance) / safeExtinction;
+        throughput *= stepTransmittance;
+    }
+
+    // Light reflected by the ground (Lambertian)
+    if (hitsGround)
+    {
+        float3 groundPos = ro + rd * tMax;
+        float3 up = normalize(groundPos);
+        luminance += throughput * TransmittanceToSun(groundPos, sunDir) * saturate(dot(up, sunDir)) * kGroundAlbedo / PI;
+    }
+}
+
+[numthreads(8, 8, 1)]
+void MultiScatteringLUT(uint3 id : SV_DispatchThreadID)
+{
+    if (any(id.xy >= (uint)kMultiScatSize))
+        return;
+
+    float2 unit = id.xy / (kMultiScatSize - 1.0);
+    float muSun = unit.x * 2.0 - 1.0;
+    float r = kPlanetRadius + clamp(unit.y, 0.001, 0.999) * (kAtmosphereRadius - kPlanetRadius);
+    float3 ro = float3(0.0, r, 0.0);
+    float3 sunDir = float3(sqrt(saturate(1.0 - muSun * muSun)), muSun, 0.0);
+
+    // Average over a uniform grid of directions on the sphere.
+    // (4 pi / N) * isotropic phase (1 / 4 pi) = 1 / N, so the integral over the sphere is a plain average.
+    const int sqrtSamples = 8;
+    float3 luminanceSum = 0.0;
+    float3 transferSum = 0.0;
+    for (int i = 0; i < sqrtSamples; i++)
+    {
+        for (int j = 0; j < sqrtSamples; j++)
+        {
+            float cosTheta = 1.0 - 2.0 * (i + 0.5) / sqrtSamples;
+            float sinTheta = sqrt(saturate(1.0 - cosTheta * cosTheta));
+            float phi = 2.0 * PI * (j + 0.5) / sqrtSamples;
+            float3 rd = float3(sinTheta * cos(phi), cosTheta, sinTheta * sin(phi));
+
+            float3 luminance, transfer;
+            IntegrateMultiScatteringRay(ro, rd, sunDir, luminance, transfer);
+            luminanceSum += luminance;
+            transferSum += transfer;
+        }
+    }
+    float invCount = 1.0 / (sqrtSamples * sqrtSamples);
+    float3 l2 = luminanceSum * invCount;
+    float3 fms = transferSum * invCount;
+
+    // Infinite orders of isotropic scattering as a geometric series: L_2 * (1 + f + f^2 + ...) = L_2 / (1 - f)
+    float3 psi = l2 / (1.0 - fms);
+    _MultiScatteringLUTOut[id.xy] = float4(psi, 1.0);
+}
+
+// -------------------------------------------------------------------------------------
+// Sky view
+// -------------------------------------------------------------------------------------
+[numthreads(8, 8, 1)]
+void SkyViewLUT(uint3 id : SV_DispatchThreadID)
+{
+    if (any(id.xy >= (uint2)kSkyViewSize))
+        return;
+
+    float3 rd = SkyViewUnitToDir(id.xy / (kSkyViewSize - 1.0));
+    float sunY = _SkySunDir.y;
+    float3 sunDir = float3(sqrt(saturate(1.0 - sunY * sunY)), sunY, 0.0);
+    float3 ro = float3(0.0, kPlanetRadius + max(_CameraHeight, 1.0), 0.0);
+
+    float tMax = RaySphere(ro, rd, kAtmosphereRadius).y;
+    float tGround = RaySphere(ro, rd, kPlanetRadius).x;
+    if (tGround > 0.0)
+        tMax = tGround;
+
+    float mu = dot(rd, sunDir);
+    float phaseR = RayleighPhase(mu);
+    float phaseM = CornetteShanksPhase(mu, kMieG);
+
+    const int steps = 32;
+    float dt = tMax / steps;
+    float3 radiance = 0.0;
+    float3 throughput = 1.0;
+    for (int i = 0; i < steps; i++)
+    {
+        float3 pos = ro + rd * ((i + 0.5) * dt);
+        float r = length(pos);
+        float3 rayleighScat; float mieScat; float3 extinction;
+        SampleAtmosphere(r - kPlanetRadius, rayleighScat, mieScat, extinction);
+
+        float3 singleScattering = (rayleighScat * phaseR + mieScat * phaseM) * TransmittanceToSun(pos, sunDir);
+        float3 multiScattering = (rayleighScat + mieScat) * SampleMultiScatteringLUT(r, dot(pos, sunDir) / r);
+        float3 source = singleScattering + multiScattering;
+
+        float3 stepTransmittance = exp(-extinction * dt);
+        radiance += throughput * (source - source * stepTransmittance) / max(extinction, 1e-10);
+        throughput *= stepTransmittance;
+    }
+    _SkyViewLUTOut[id.xy] = float4(radiance, 1.0);
+}
+
+// -------------------------------------------------------------------------------------
+// Weather map
+// -------------------------------------------------------------------------------------
+[numthreads(8, 8, 1)]
+void WeatherMapBake(uint3 id : SV_DispatchThreadID)
+{
+    uint size = (uint)_WeatherOrigin.w;
+    if (any(id.xy >= size))
+        return;
+
+    float2 uv = (id.xy + 0.5) / size;
+    float2 xz = _WeatherOrigin.xy + (uv - 0.5) * _WeatherOrigin.z;
+    _WeatherMapOut[id.xy] = WeatherMapProcedural(xz, _SkyTime, _CloudWind, _CloudCoverage, _WeatherScale);
+}

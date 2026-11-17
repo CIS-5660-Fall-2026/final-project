@@ -13,6 +13,7 @@ public static class SkywardSetup
     const string RendererPath = "Assets/Settings/PC_Renderer.asset";
     const string MaterialPath = "Assets/Skyward/Material/SkyAndClouds_Mat.mat";
     const string FeatureName = "SkyAndClouds";
+    const string LutComputePath = "Assets/Skyward/Shaders/SkyLUT.compute";
 
     [MenuItem("Skyward/Setup Scene")]
     static void Setup()
@@ -101,6 +102,20 @@ public static class SkywardSetup
                 ? RenderSettings.sun
                 : Object.FindObjectsByType<Light>(FindObjectsSortMode.None).FirstOrDefault(l => l.type == LightType.Directional);
         }
+
+        // Atmosphere LUTs + weather map, and the timing HUD
+        var lutRenderer = controller.GetComponent<SkyLUTRenderer>();
+        if (lutRenderer == null)
+            lutRenderer = Undo.AddComponent<SkyLUTRenderer>(controller.gameObject);
+        if (lutRenderer.lutCompute == null)
+        {
+            lutRenderer.lutCompute = AssetDatabase.LoadAssetAtPath<ComputeShader>(LutComputePath);
+            EditorUtility.SetDirty(lutRenderer);
+        }
+        if (controller.GetComponent<SkyProfilerHUD>() == null)
+            Undo.AddComponent<SkyProfilerHUD>(controller.gameObject);
+        if (controller.GetComponent<SkyExposure>() == null)
+            Undo.AddComponent<SkyExposure>(controller.gameObject);
 
         Camera camera = Camera.main;
         if (camera != null && camera.farClipPlane < 5000f)

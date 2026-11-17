@@ -20,11 +20,11 @@ RenderSettings:
   m_FogDensity: 0.01
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
-  m_AmbientSkyColor: {r: 0.212, g: 0.227, b: 0.259, a: 1}
+  m_AmbientSkyColor: {r: 0.3733929, g: 0.49977624, b: 0.66636825, a: 1}
   m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
   m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
   m_AmbientIntensity: 1
-  m_AmbientMode: 0
+  m_AmbientMode: 3
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
   m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
   m_HaloStrength: 0.5
@@ -395,8 +395,8 @@ Light:
   m_Enabled: 1
   serializedVersion: 11
   m_Type: 1
-  m_Color: {r: 0, g: 0, b: 0, a: 1}
-  m_Intensity: 0
+  m_Color: {r: 0.9740016, g: 0.9402336, b: 0.88837475, a: 1}
+  m_Intensity: 2
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -458,7 +458,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 410087039}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.94292015, y: -0.04033482, z: -0.30637333, w: -0.12413781}
+  m_LocalRotation: {x: 0.6724985, y: 0.21850802, z: -0.21850802, w: 0.6724985}
   m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -775,6 +775,9 @@ GameObject:
   m_Component:
   - component: {fileID: 1460428376}
   - component: {fileID: 1460428375}
+  - component: {fileID: 1460428377}
+  - component: {fileID: 1460428378}
+  - component: {fileID: 1460428379}
   m_Layer: 0
   m_Name: SkyController
   m_TagString: Untagged
@@ -795,19 +798,24 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SkyController
   sun: {fileID: 410087040}
-  timeOfDay: 19
+  timeOfDay: 12
   sunAzimuth: 36
   animateTime: 1
   hoursPerSecond: 0.5
   sunIntensity: 20
   sunLightIntensity: 2
-  coverage: 0.739
+  moonIntensity: 0.5
+  moonTint: {r: 0.75, g: 0.85, b: 1, a: 1}
+  starIntensity: 1
+  coverage: 0.5
   windDirection: {x: 1, y: 0.3}
   windSpeed: 20
   cloudBottom: 1500
   cloudTop: 4000
   cloudDensity: 0.342
-  debugWeatherMap: 0
+  weatherScale: 20000
+  debugWeatherMap: 1
+  freezeClouds: 1
 --- !u!4 &1460428376
 Transform:
   m_ObjectHideFlags: 0
@@ -823,6 +831,57 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1460428377
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1460428374}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c87aecd4502321f4aba562da04740679, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SkyProfilerHUD
+  skyFeature: {fileID: 4576927911050130184, guid: f288ae1f4751b564a96ac7587541f7a2, type: 2}
+  passMarkerName: SkyAndClouds
+  averageFrames: 60
+--- !u!114 &1460428378
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1460428374}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1ca74e5d90899a48907d2f7946161b3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SkyLUTRenderer
+  lutCompute: {fileID: 7200000, guid: cbd7fe8e5ec067d46aa1803fb8fe277f, type: 3}
+  weatherResolution: 512
+  weatherExtent: 240000
+--- !u!114 &1460428379
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1460428374}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 32112846f7916da46b35caf77a701786, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SkyExposure
+  autoExposure: 1
+  targetLuminance: 1.2
+  exposureBias: 0
+  minEV: -1
+  maxEV: 1
+  adaptationSpeed: 1.5
+  readbackInterval: 5
+  driveAmbientLight: 1
+  ambientStrength: 1
 --- !u!1 &1911867318
 GameObject:
   m_ObjectHideFlags: 0

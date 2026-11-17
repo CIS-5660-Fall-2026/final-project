@@ -1,27 +1,30 @@
 // Skyward - procedural sky + volumetric clouds, drawn by a URP Full Screen Pass Renderer Feature.
 //
-// Milestone 2 in progress: cloud noise can come from baked tileable 3D textures (_BAKED_NOISE toggle on the
-// material) or be evaluated procedurally per sample like Milestone 1. The atmosphere is still evaluated per pixel.
-//   * Atmosphere: single-scattering raymarch with Rayleigh, Mie and ozone (Hillaire 2020 coefficients).
-//   * Weather map: procedural 2D coverage / cloud-type field, scrolled by wind and evolving over time.
-//   * Clouds: raymarched spherical shell, Perlin-Worley base + Worley detail (Schneider 2015),
-//     Beer-Lambert, dual-lobe HG phase, powder and multi-scattering octaves (Wrenninge 2013).
+// Every optimization has a material toggle, so it can be compared against the Milestone 1 brute-force path:
+//   _SKY_LUT        sky from the sky-view LUT (single + multiple scattering, Hillaire 2020) and sun transmittance
+//                   from the transmittance LUT, instead of a per-pixel single-scattering raymarch
+//   _BAKED_WEATHER  weather map sampled from the per-frame baked texture instead of 5 noise octaves per sample
+//   _BAKED_NOISE    cloud shape / detail noise sampled from baked tileable 3D textures
+// LUTs and the weather map are produced by SkyLUTRenderer.cs + SkyLUT.compute, the 3D noise by NoiseBaker.cs.
 //
-// Per-scene parameters (sun, coverage, wind...) are global shader properties set by SkyController.cs.
+// Clouds: raymarched spherical shell, Perlin-Worley base + Worley detail (Schneider 2015), Beer-Lambert,
+// dual-lobe HG phase, powder and energy-conserving multi-scattering octaves (Wrenninge 2013, Hillaire 2016).
+// Per-scene parameters (sun, coverage, wind, time...) are global shader properties set by SkyController.cs.
 
 Shader "Skyward/SkyAndClouds"
 {
     Properties
     {
-        _SkySteps ("Sky Steps", Range(8, 32)) = 16
+        _SkySteps ("Sky Steps (no LUT)", Range(8, 32)) = 16
         _CloudSteps ("Cloud Steps", Range(16, 128)) = 48
         _LightSteps ("Cloud Light Steps", Range(2, 8)) = 4
         _CloudExtinction ("Cloud Extinction (1/m)", Range(0.001, 0.1)) = 0.02
         _BaseScale ("Cloud Base Noise Scale (m)", Float) = 9000
         _DetailScale ("Cloud Detail Noise Scale (m)", Float) = 1500
-        _WeatherScale ("Weather Map Scale (m)", Float) = 20000
 
-        [Header(Baked Noise)]
+        [Header(Optimizations)]
+        [Toggle(_SKY_LUT)] _SkyLut ("Use Atmosphere LUTs", Float) = 0
+        [Toggle(_BAKED_WEATHER)] _BakedWeather ("Use Baked Weather Map", Float) = 0
         [Toggle(_BAKED_NOISE)] _BakedNoise ("Use Baked Noise", Float) = 0
         [NoScaleOffset] _BaseNoise ("Base Noise (3D)", 3D) = "white" {}
         [NoScaleOffset] _DetailNoise ("Detail Noise (3D)", 3D) = "white" {}
@@ -41,10 +44,13 @@ Shader "Skyward/SkyAndClouds"
             #pragma fragment Frag
             #pragma target 4.5
             #pragma shader_feature_local _BAKED_NOISE
+            #pragma shader_feature_local _SKY_LUT
+            #pragma shader_feature_local _BAKED_WEATHER
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.core/Runtime/Utilities/Blit.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
+            #include "SkyCommon.hlsl"
 
             // Material properties
             float _SkySteps;
@@ -53,7 +59,6 @@ Shader "Skyward/SkyAndClouds"
             float _CloudExtinction;
             float _BaseScale;
             float _DetailScale;
-            float _WeatherScale;
 
             // Baked noise (NoiseBaker.cs). The periods must match the baker: one texture repeat = N noise units.
             TEXTURE3D(_BaseNoise);   SAMPLER(sampler_BaseNoise);
@@ -61,68 +66,28 @@ Shader "Skyward/SkyAndClouds"
             static const float kBaseNoisePeriod = 4.0;
             static const float kDetailNoisePeriod = 2.0;
 
+            // Baked weather map (SkyLUTRenderer.cs)
+            TEXTURE2D(_WeatherMapTex);
+            float4 _WeatherOrigin;      // xy = world xz of the map center, z = map size in meters
+
             // Global properties set by SkyController.cs
             float3 _SkySunDir;          // unit vector pointing towards the sun
             float  _SkySunIntensity;
+            float  _SkyTime;            // seconds, drives wind and weather evolution
             float  _CloudCoverage;      // 0 = clear, 1 = overcast
             float2 _CloudWind;          // m/s in world xz
             float  _CloudBottom;        // m above ground
             float  _CloudTop;           // m above ground
             float  _CloudDensity;
+            float  _WeatherScale;       // m per weather noise unit
             float  _DebugWeather;
-
-            // ---------------------------------------------------------------------------------
-            // Atmosphere constants (meters), values from Hillaire 2020
-            // ---------------------------------------------------------------------------------
-            static const float  kPlanetRadius       = 6360e3;
-            static const float  kAtmosphereRadius   = 6460e3;
-            static const float3 kRayleighScattering = float3(5.802, 13.558, 33.1) * 1e-6;
-            static const float  kRayleighHeight     = 8000.0;
-            static const float  kMieScattering      = 3.996e-6;
-            static const float  kMieExtinction      = 4.40e-6;
-            static const float  kMieHeight          = 1200.0;
-            static const float  kMieG               = 0.8;
-            static const float3 kOzoneAbsorption    = float3(0.650, 1.881, 0.085) * 1e-6;
-
-            // ---------------------------------------------------------------------------------
-            // Utilities
-            // ---------------------------------------------------------------------------------
-            float SkyRemap(float v, float l0, float h0, float l1, float h1)
-            {
-                return l1 + (v - l0) * (h1 - l1) / (h0 - l0);
-            }
-
-            // Ray / sphere centered at the planet origin. Returns (tNear, tFar), negative if missed.
-            // c is computed as (|ro| - r)(|ro| + r) to keep float precision at planet scale.
-            float2 RaySphere(float3 ro, float3 rd, float r)
-            {
-                float len = length(ro);
-                float b = dot(ro, rd);
-                float c = (len - r) * (len + r);
-                float h = b * b - c;
-                if (h < 0.0)
-                    return float2(-1.0, -1.0);
-                h = sqrt(h);
-                return float2(-b - h, -b + h);
-            }
-
-            float HenyeyGreenstein(float mu, float g)
-            {
-                float g2 = g * g;
-                return (1.0 - g2) / (4.0 * PI * pow(max(1.0 + g2 - 2.0 * g * mu, 1e-4), 1.5));
-            }
-
-            float RayleighPhase(float mu)
-            {
-                return 3.0 / (16.0 * PI) * (1.0 + mu * mu);
-            }
-
-            float CornetteShanksPhase(float mu, float g)
-            {
-                float g2 = g * g;
-                float k = 3.0 / (8.0 * PI) * (1.0 - g2) / (2.0 + g2);
-                return k * (1.0 + mu * mu) / pow(max(1.0 + g2 - 2.0 * g * mu, 1e-4), 1.5);
-            }
+            float3 _SkyMoonDir;         // unit vector pointing towards the moon
+            float3 _SkyMoonRadiance;    // moon tint * intensity
+            float  _SkyStarIntensity;   // already faded out during the day
+            float4x4 _SkyStarMatrix;    // world -> rotating star frame
+            float3 _SkyCloudLightDir;   // sun or moon, whichever lights the scene more
+            float3 _SkyCloudLightColor; // its color * intensity, before atmospheric transmittance
+            float3 _SkyCloudAmbient;
 
             float InterleavedGradient(float2 pixel)
             {
@@ -130,108 +95,21 @@ Shader "Skyward/SkyAndClouds"
             }
 
             // ---------------------------------------------------------------------------------
-            // Noise
-            // ---------------------------------------------------------------------------------
-            float3 SkyHash33(float3 p)
-            {
-                p = frac(p * float3(0.1031, 0.1030, 0.0973));
-                p += dot(p, p.yxz + 33.33);
-                return frac((p.xxy + p.yxx) * p.zyx);
-            }
-
-            float GradientCorner(float3 i, float3 f, float3 o)
-            {
-                return dot(SkyHash33(i + o) * 2.0 - 1.0, f - o);
-            }
-
-            // Perlin-style gradient noise, roughly in [-1, 1]
-            float GradientNoise(float3 p)
-            {
-                float3 i = floor(p);
-                float3 f = frac(p);
-                float3 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
-
-                float n000 = GradientCorner(i, f, float3(0, 0, 0));
-                float n100 = GradientCorner(i, f, float3(1, 0, 0));
-                float n010 = GradientCorner(i, f, float3(0, 1, 0));
-                float n110 = GradientCorner(i, f, float3(1, 1, 0));
-                float n001 = GradientCorner(i, f, float3(0, 0, 1));
-                float n101 = GradientCorner(i, f, float3(1, 0, 1));
-                float n011 = GradientCorner(i, f, float3(0, 1, 1));
-                float n111 = GradientCorner(i, f, float3(1, 1, 1));
-
-                float nx00 = lerp(n000, n100, u.x);
-                float nx10 = lerp(n010, n110, u.x);
-                float nx01 = lerp(n001, n101, u.x);
-                float nx11 = lerp(n011, n111, u.x);
-                return lerp(lerp(nx00, nx10, u.y), lerp(nx01, nx11, u.y), u.z);
-            }
-
-            // fBm of gradient noise remapped to roughly [0, 1]
-            float PerlinFbm(float3 p, int octaves)
-            {
-                float sum = 0.0;
-                float amp = 0.5;
-                float norm = 0.0;
-                for (int o = 0; o < octaves; o++)
-                {
-                    sum += GradientNoise(p) * amp;
-                    norm += amp;
-                    p *= 2.02;
-                    amp *= 0.5;
-                }
-                return saturate(sum / norm * 0.5 + 0.5);
-            }
-
-            // Inverted Worley (F1) noise in [0, 1]: 1 at feature points
-            float Worley(float3 p)
-            {
-                float3 id = floor(p);
-                float3 f = frac(p);
-                float minDist = 1.0;
-                [unroll] for (int z = -1; z <= 1; z++)
-                [unroll] for (int y = -1; y <= 1; y++)
-                [unroll] for (int x = -1; x <= 1; x++)
-                {
-                    float3 o = float3(x, y, z);
-                    float3 r = o + SkyHash33(id + o) - f;
-                    minDist = min(minDist, dot(r, r));
-                }
-                return 1.0 - saturate(sqrt(minDist));
-            }
-
-            float WorleyFbm(float3 p)
-            {
-                return Worley(p) * 0.625 + Worley(p * 2.0) * 0.25 + Worley(p * 4.0) * 0.125;
-            }
-
-            // ---------------------------------------------------------------------------------
             // Atmosphere
             // ---------------------------------------------------------------------------------
-            void SampleAtmosphere(float height, out float3 rayleighScat, out float mieScat, out float3 extinction)
+            // Brute-force transmittance from point p (planet space) towards a light direction
+            float3 LightTransmittanceRaymarch(float3 p, float3 lightDir)
             {
-                float rayleighDensity = exp(-height / kRayleighHeight);
-                float mieDensity = exp(-height / kMieHeight);
-                float ozoneDensity = max(0.0, 1.0 - abs(height - 25000.0) / 15000.0);
-
-                rayleighScat = kRayleighScattering * rayleighDensity;
-                mieScat = kMieScattering * mieDensity;
-                extinction = rayleighScat + kMieExtinction * mieDensity + kOzoneAbsorption * ozoneDensity;
-            }
-
-            // Transmittance from point p (planet space) to the sun
-            float3 SunTransmittance(float3 p)
-            {
-                if (RaySphere(p, _SkySunDir, kPlanetRadius).x > 0.0)
+                if (RaySphere(p, lightDir, kPlanetRadius).x > 0.0)
                     return 0.0;
 
                 const int steps = 8;
-                float tTop = RaySphere(p, _SkySunDir, kAtmosphereRadius).y;
+                float tTop = RaySphere(p, lightDir, kAtmosphereRadius).y;
                 float dt = tTop / steps;
                 float3 opticalDepth = 0.0;
                 for (int i = 0; i < steps; i++)
                 {
-                    float3 pos = p + _SkySunDir * ((i + 0.5) * dt);
+                    float3 pos = p + lightDir * ((i + 0.5) * dt);
                     float3 rs; float ms; float3 ext;
                     SampleAtmosphere(length(pos) - kPlanetRadius, rs, ms, ext);
                     opticalDepth += ext * dt;
@@ -239,8 +117,22 @@ Shader "Skyward/SkyAndClouds"
                 return exp(-opticalDepth);
             }
 
-            // Single-scattering sky radiance along a view ray. Multi-scattering LUT is planned for Milestone 2.
-            float3 SkyRadiance(float3 ro, float3 rd, out float3 transmittance)
+            float3 LightTransmittance(float3 p, float3 lightDir)
+            {
+            #if defined(_SKY_LUT)
+                return TransmittanceToSun(p, lightDir);
+            #else
+                return LightTransmittanceRaymarch(p, lightDir);
+            #endif
+            }
+
+            float3 SunTransmittanceRaymarch(float3 p)
+            {
+                return LightTransmittanceRaymarch(p, _SkySunDir);
+            }
+
+            // Brute-force single-scattering sky radiance along a view ray (Milestone 1 path)
+            float3 SkyRadianceRaymarch(float3 ro, float3 rd, out float3 transmittance)
             {
                 float tMax = RaySphere(ro, rd, kAtmosphereRadius).y;
                 float tGround = RaySphere(ro, rd, kPlanetRadius).x;
@@ -262,7 +154,7 @@ Shader "Skyward/SkyAndClouds"
                     float3 rayleighScat; float mieScat; float3 extinction;
                     SampleAtmosphere(length(pos) - kPlanetRadius, rayleighScat, mieScat, extinction);
 
-                    float3 scattering = (rayleighScat * phaseR + mieScat * phaseM) * SunTransmittance(pos);
+                    float3 scattering = (rayleighScat * phaseR + mieScat * phaseM) * SunTransmittanceRaymarch(pos);
                     float3 stepTransmittance = exp(-extinction * dt);
                     // Energy-conserving integration over the step (Hillaire 2016)
                     radiance += throughput * (scattering - scattering * stepTransmittance) / max(extinction, 1e-10);
@@ -273,23 +165,77 @@ Shader "Skyward/SkyAndClouds"
                 return radiance * _SkySunIntensity;
             }
 
+            // ro: camera in planet space (at the north pole), rd: view direction above the horizon
+            float3 SkyRadiance(float3 ro, float3 rd, out float3 transmittance)
+            {
+            #if defined(_SKY_LUT)
+                transmittance = SampleTransmittanceLUT(ro.y, rd.y);
+                float3 sunSky = SAMPLE_TEXTURE2D_LOD(_SkyViewLUT, sampler_LinearClamp, SkyViewDirToUv(rd, _SkySunDir), 0).rgb;
+                float3 moonSky = SAMPLE_TEXTURE2D_LOD(_SkyViewMoonLUT, sampler_LinearClamp, SkyViewDirToUv(rd, _SkyMoonDir), 0).rgb;
+                return sunSky * _SkySunIntensity + moonSky * _SkyMoonRadiance;
+            #else
+                return SkyRadianceRaymarch(ro, rd, transmittance);
+            #endif
+            }
+
+            // Procedural stars: one candidate star per cell of a 3D grid around the unit sphere. The grid lives in a
+            // star frame that SkyController rotates with the time of day, so the stars turn with the sky.
+            float3 StarField(float3 dir)
+            {
+                if (_SkyStarIntensity <= 0.0)
+                    return 0.0;
+
+                float3 p = mul((float3x3)_SkyStarMatrix, dir) * 250.0;
+                float3 cell = floor(p);
+                float3 h = SkyHash33(cell + 71.0);
+                if (h.x < 0.97)
+                    return 0.0;
+
+                // Star position inside the cell, a small soft dot around it
+                float3 offset = frac(p) - (0.25 + 0.5 * SkyHash33(cell + 13.0));
+                float dot2 = dot(offset, offset);
+                float brightness = pow(h.y, 6.0) * 0.6 + 0.02;
+                float3 color = lerp(float3(1.0, 0.8, 0.6), float3(0.7, 0.8, 1.0), h.z);
+                // ~1-2 pixels wide at 1080p, so stars do not flicker as sub-pixel points
+                return color * brightness * exp(-dot2 * 25.0) * _SkyStarIntensity;
+            }
+
+            // Full moon: a disk with procedural maria (dark patches) and limb darkening. Unlike the sun disk it is not
+            // pushed far into HDR, so it reads as a lit surface instead of a glowing light source.
+            float3 MoonDisk(float3 rd)
+            {
+                const float radius = 0.0085;     // ~0.5 degree, larger than the real moon for readability
+                float cosAngle = dot(rd, _SkyMoonDir);
+                if (cosAngle < cos(radius * 1.2))
+                    return 0.0;
+
+                // 2D coordinates on the disk, in units of the disk radius
+                float3 right = normalize(cross(abs(_SkyMoonDir.y) < 0.999 ? float3(0, 1, 0) : float3(1, 0, 0), _SkyMoonDir));
+                float3 up = cross(_SkyMoonDir, right);
+                float2 uv = float2(dot(rd, right), dot(rd, up)) / radius;
+                float r2 = dot(uv, uv);
+
+                float edge = 1.0 - smoothstep(0.9, 1.0, r2);   // antialiased rim
+                float limb = 0.6 + 0.4 * sqrt(saturate(1.0 - r2));
+                float maria = PerlinFbm(float3(uv * 2.5, 3.7), 4);
+                float albedo = lerp(0.55, 1.0, smoothstep(0.4, 0.62, maria));
+                return _SkyMoonRadiance * 3.0 * albedo * limb * edge;
+            }
+
             // ---------------------------------------------------------------------------------
             // Weather map & cloud density
             // ---------------------------------------------------------------------------------
-            // x = coverage, y = cloud type (0 stratus -> 1 cumulonimbus)
+            // x = coverage, y = cloud type
             float2 WeatherMap(float2 xz)
             {
-                float time = _Time.y;
-                float2 uv = (xz - _CloudWind * time) / _WeatherScale;
-                float evolve = time * 0.01;
-
-                // Stretch the fBm to [0, 1]. The global coverage picks how much of the sky is cloudy, and the steep
-                // ramp makes cloudy regions reach full coverage quickly, so low coverage gives fewer but full-sized
-                // cloud clusters instead of tiny round puffs.
-                float w = saturate((PerlinFbm(float3(uv, evolve), 4) - 0.3) / 0.4);
-                float coverage = saturate((w - (1.0 - _CloudCoverage)) * 4.0);
-                float type = saturate(GradientNoise(float3(uv * 0.35 + 7.3, evolve * 0.5)) + 0.5);
-                return float2(coverage, type);
+            #if defined(_BAKED_WEATHER)
+                float2 uv = (xz - _WeatherOrigin.xy) / _WeatherOrigin.z + 0.5;
+                if (any(uv < 0.0) || any(uv > 1.0))
+                    return 0.0;
+                return SAMPLE_TEXTURE2D_LOD(_WeatherMapTex, sampler_LinearClamp, uv, 0).rg;
+            #else
+                return WeatherMapProcedural(xz, _SkyTime, _CloudWind, _CloudCoverage, _WeatherScale);
+            #endif
             }
 
             float HeightGradient(float h, float type)
@@ -308,7 +254,7 @@ Shader "Skyward/SkyAndClouds"
                     return 0.0;
 
                 float3 p = wp;
-                p.xz -= _CloudWind * _Time.y;
+                p.xz -= _CloudWind * _SkyTime;
                 p.y = height;
 
                 float3 pb = p / _BaseScale;
@@ -329,7 +275,7 @@ Shader "Skyward/SkyAndClouds"
 
                 if (detail)
                 {
-                    float3 pd = p / _DetailScale + _Time.y * 0.02;
+                    float3 pd = p / _DetailScale + _SkyTime * 0.02;
                 #if defined(_BAKED_NOISE)
                     // R/G/B = Worley at 1x/2x/4x, combined with the same weights as WorleyFbm
                     float3 detailNoise = SAMPLE_TEXTURE3D_LOD(_DetailNoise, sampler_DetailNoise, pd / kDetailNoisePeriod, 0).rgb;
@@ -355,7 +301,7 @@ Shader "Skyward/SkyAndClouds"
                 {
                     float dt = stepSize * (i + 1);
                     t += dt;
-                    float3 pos = p + _SkySunDir * (t - 0.5 * dt);
+                    float3 pos = p + _SkyCloudLightDir * (t - 0.5 * dt);
                     od += CloudDensity(planetCenter + pos, length(pos) - kPlanetRadius, false) * dt;
                 }
                 return od * _CloudExtinction;
@@ -379,9 +325,9 @@ Shader "Skyward/SkyAndClouds"
                 float dt = (tEnd - tStart) / steps;
                 float jitter = InterleavedGradient(pixel);
 
-                float3 sunRadiance = SunTransmittance(ro + rd * tStart) * _SkySunIntensity;
-                float daylight = saturate(_SkySunDir.y * 3.0 + 0.15);
-                float mu = dot(rd, _SkySunDir);
+                // Lit by the sun during the day and by the moon at night (chosen by SkyController)
+                float3 sunRadiance = LightTransmittance(ro + rd * tStart, _SkyCloudLightDir) * _SkyCloudLightColor;
+                float mu = dot(rd, _SkyCloudLightDir);
 
                 float3 scattered = 0.0;
                 float transmittance = 1.0;
@@ -410,7 +356,7 @@ Shader "Skyward/SkyAndClouds"
                     }
                     float powder = 1.0 - exp(-density * 2.0);
                     float hNorm = saturate((height - _CloudBottom) / (_CloudTop - _CloudBottom));
-                    float3 ambient = float3(0.4, 0.55, 0.85) * _SkySunIntensity * 0.05 * daylight * lerp(0.5, 1.0, hNorm);
+                    float3 ambient = _SkyCloudAmbient * lerp(0.5, 1.0, hNorm);
 
                     float3 source = (sunRadiance * sunScatter * lerp(0.5, 1.0, powder) + ambient) * sigma;
                     float stepTransmittance = exp(-sigma * dt);
@@ -453,15 +399,20 @@ Shader "Skyward/SkyAndClouds"
                     float3 skyTransmittance;
                     float3 sky = SkyRadiance(ro, skyDir, skyTransmittance);
 
-                    // Sun disk (~0.5 degree radius)
+                    // Objects beyond the atmosphere: sun and moon disks (~0.5 degree radius) and stars,
+                    // dimmed near the horizon by the atmosphere
                     float sunDisk = smoothstep(0.99994, 0.99997, dot(rd, _SkySunDir));
-                    sky += sunDisk * skyTransmittance * _SkySunIntensity * 20.0;
+                    float3 space = sunDisk * _SkySunIntensity * 20.0 + MoonDisk(rd) + StarField(skyDir);
+                    space *= skyTransmittance;
 
                     float entryDistance;
                     float4 clouds = MarchClouds(ro, rd, planetCenter, input.positionCS.xy, entryDistance);
-                    // Fade distant clouds into the sky as a cheap stand-in for aerial perspective
+                    // Fade distant clouds into the sky as a cheap stand-in for aerial perspective.
+                    // The fade only applies to the atmosphere in front of the clouds: anything beyond the atmosphere
+                    // is always behind the clouds, so it is blocked by their full transmittance (no stars through
+                    // distant clouds).
                     float fade = exp(-entryDistance * 3e-5);
-                    color = sky * lerp(1.0, clouds.a, fade) + clouds.rgb * fade;
+                    color = sky * lerp(1.0, clouds.a, fade) + clouds.rgb * fade + space * clouds.a;
                 }
 
                 // Debug: weather map around the camera (+-30 km) in a screen corner

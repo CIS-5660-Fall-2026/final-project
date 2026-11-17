@@ -61,10 +61,13 @@ public class SkyProfilerHUD : MonoBehaviour
 
     void OnGUI()
     {
-        GUILayout.BeginArea(new Rect(10, 10, 300, 150), GUI.skin.box);
+        GUILayout.BeginArea(new Rect(10, 10, 320, 215), GUI.skin.box);
         GUILayout.Label($"GPU frame: {gpuFrameMs:F2} ms   (avg of {averageFrames})");
         GUILayout.Label($"CPU frame: {cpuFrameMs:F2} ms");
         GUILayout.Label(passGpuMs > 0f ? $"Sky pass marker: {passGpuMs:F2} ms" : "Sky pass marker: n/a");
+        var exposure = GetComponent<SkyExposure>();
+        if (exposure != null && exposure.enabled)
+            GUILayout.Label($"Exposure: {exposure.CurrentEV:+0.00;-0.00} EV   sky lum {exposure.SkyLuminance:F3}");
 
         if (skyFeature != null)
         {
@@ -75,16 +78,9 @@ public class SkyProfilerHUD : MonoBehaviour
             Material material = skyFeature.passMaterial;
             if (material != null)
             {
-                bool baked = material.IsKeywordEnabled("_BAKED_NOISE");
-                bool newBaked = GUILayout.Toggle(baked, " Baked noise");
-                if (newBaked != baked)
-                {
-                    if (newBaked)
-                        material.EnableKeyword("_BAKED_NOISE");
-                    else
-                        material.DisableKeyword("_BAKED_NOISE");
-                    material.SetFloat("_BakedNoise", newBaked ? 1f : 0f);
-                }
+                KeywordToggle(material, "_SKY_LUT", "_SkyLut", " Atmosphere LUTs");
+                KeywordToggle(material, "_BAKED_WEATHER", "_BakedWeather", " Baked weather map");
+                KeywordToggle(material, "_BAKED_NOISE", "_BakedNoise", " Baked noise");
             }
         }
         else
@@ -92,6 +88,21 @@ public class SkyProfilerHUD : MonoBehaviour
             GUILayout.Label("Sky feature not assigned");
         }
         GUILayout.EndArea();
+    }
+
+    // Shows a material keyword as a checkbox. The float property keeps the material inspector's [Toggle] in sync.
+    static void KeywordToggle(Material material, string keyword, string floatProperty, string label)
+    {
+        bool enabled = material.IsKeywordEnabled(keyword);
+        bool newEnabled = GUILayout.Toggle(enabled, label);
+        if (newEnabled == enabled)
+            return;
+
+        if (newEnabled)
+            material.EnableKeyword(keyword);
+        else
+            material.DisableKeyword(keyword);
+        material.SetFloat(floatProperty, newEnabled ? 1f : 0f);
     }
 
 #if UNITY_EDITOR
