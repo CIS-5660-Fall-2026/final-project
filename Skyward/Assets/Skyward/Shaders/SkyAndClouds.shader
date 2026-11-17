@@ -1,6 +1,7 @@
 // Skyward - procedural sky + volumetric clouds, drawn by a URP Full Screen Pass Renderer Feature.
 //
-// Milestone 1 version: everything is evaluated directly per pixel (no LUTs, no baked noise).
+// Milestone 2 in progress: cloud noise can come from baked tileable 3D textures (_BAKED_NOISE toggle on the
+// material) or be evaluated procedurally per sample like Milestone 1. The atmosphere is still evaluated per pixel.
 //   * Atmosphere: single-scattering raymarch with Rayleigh, Mie and ozone (Hillaire 2020 coefficients).
 //   * Weather map: procedural 2D coverage / cloud-type field, scrolled by wind and evolving over time.
 //   * Clouds: raymarched spherical shell, Perlin-Worley base + Worley detail (Schneider 2015),
@@ -19,6 +20,11 @@ Shader "Skyward/SkyAndClouds"
         _BaseScale ("Cloud Base Noise Scale (m)", Float) = 9000
         _DetailScale ("Cloud Detail Noise Scale (m)", Float) = 1500
         _WeatherScale ("Weather Map Scale (m)", Float) = 20000
+
+        [Header(Baked Noise)]
+        [Toggle(_BAKED_NOISE)] _BakedNoise ("Use Baked Noise", Float) = 0
+        [NoScaleOffset] _BaseNoise ("Base Noise (3D)", 3D) = "white" {}
+        [NoScaleOffset] _DetailNoise ("Detail Noise (3D)", 3D) = "white" {}
     }
 
     SubShader
@@ -34,6 +40,7 @@ Shader "Skyward/SkyAndClouds"
             #pragma vertex Vert
             #pragma fragment Frag
             #pragma target 4.5
+            #pragma shader_feature_local _BAKED_NOISE
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.core/Runtime/Utilities/Blit.hlsl"
@@ -47,6 +54,12 @@ Shader "Skyward/SkyAndClouds"
             float _BaseScale;
             float _DetailScale;
             float _WeatherScale;
+
+            // Baked noise (NoiseBaker.cs). The periods must match the baker: one texture repeat = N noise units.
+            TEXTURE3D(_BaseNoise);   SAMPLER(sampler_BaseNoise);
+            TEXTURE3D(_DetailNoise); SAMPLER(sampler_DetailNoise);
+            static const float kBaseNoisePeriod = 4.0;
+            static const float kDetailNoisePeriod = 2.0;
 
             // Global properties set by SkyController.cs
             float3 _SkySunDir;          // unit vector pointing towards the sun
@@ -299,7 +312,13 @@ Shader "Skyward/SkyAndClouds"
                 p.y = height;
 
                 float3 pb = p / _BaseScale;
+            #if defined(_BAKED_NOISE)
+                // R = Perlin fBm, G = Worley at 4x frequency (see NoiseBake.compute)
+                float2 baseNoise = SAMPLE_TEXTURE3D_LOD(_BaseNoise, sampler_BaseNoise, pb / kBaseNoisePeriod, 0).rg;
+                float perlinWorley = SkyRemap(baseNoise.r, 0.0, 1.0, baseNoise.g, 1.0);
+            #else
                 float perlinWorley = SkyRemap(PerlinFbm(pb, 3), 0.0, 1.0, Worley(pb * 4.0), 1.0);
+            #endif
                 float base = saturate(SkyRemap(perlinWorley, 0.45, 1.0, 0.0, 1.0));
 
                 // The threshold never drops below 0.1, so even full coverage keeps some gaps and billows
@@ -310,7 +329,14 @@ Shader "Skyward/SkyAndClouds"
 
                 if (detail)
                 {
-                    float d = WorleyFbm(p / _DetailScale + _Time.y * 0.02);
+                    float3 pd = p / _DetailScale + _Time.y * 0.02;
+                #if defined(_BAKED_NOISE)
+                    // R/G/B = Worley at 1x/2x/4x, combined with the same weights as WorleyFbm
+                    float3 detailNoise = SAMPLE_TEXTURE3D_LOD(_DetailNoise, sampler_DetailNoise, pd / kDetailNoisePeriod, 0).rgb;
+                    float d = dot(detailNoise, float3(0.625, 0.25, 0.125));
+                #else
+                    float d = WorleyFbm(pd);
+                #endif
                     // wispy at the bottom, billowy at the top
                     float erosion = lerp(d, 1.0 - d, saturate(h * 4.0)) * 0.5;
                     density = saturate(SkyRemap(density, erosion, 1.0, 0.0, 1.0));
@@ -379,7 +405,8 @@ Shader "Skyward/SkyAndClouds"
                     {
                         float phase = lerp(HenyeyGreenstein(mu, 0.75 * c), HenyeyGreenstein(mu, -0.2 * c), 0.35);
                         sunScatter += a * exp(-lightOD * b) * phase;
-                        a *= 0.5; b *= 0.25; c *= 0.5;
+                        // a <= b keeps the octave sum energy conserving (Hillaire 2016)
+                        a *= 0.5; b *= 0.5; c *= 0.5;
                     }
                     float powder = 1.0 - exp(-density * 2.0);
                     float hNorm = saturate((height - _CloudBottom) / (_CloudTop - _CloudBottom));

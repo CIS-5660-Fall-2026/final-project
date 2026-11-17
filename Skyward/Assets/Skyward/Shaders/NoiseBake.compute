@@ -1,0 +1,121 @@
+// Bakes tileable 3D cloud noise for SkyAndClouds.shader. Dispatched once from the editor (Skyward > Bake Noise Textures).
+//
+// Every noise is periodic: lattice / cell ids are wrapped by the period before hashing, so the texture tiles seamlessly
+// with Repeat wrap mode. Octave n uses frequency 2^n and period 2^n * _Period, so all octaves tile together.
+//
+// BakeBase   (128^3): R = Perlin fBm (3 octaves), G/B/A = Worley at 4x / 8x / 16x the base frequency
+// BakeDetail (64^3) : R/G/B = Worley at 1x / 2x / 4x the detail frequency
+
+#pragma kernel BakeBase
+#pragma kernel BakeDetail
+
+RWStructuredBuffer<float4> _Result;
+int _Size;
+float _Period;      // texture covers [0, _Period) noise units
+
+float3 Hash33(float3 p)
+{
+    p = frac(p * float3(0.1031, 0.1030, 0.0973));
+    p += dot(p, p.yxz + 33.33);
+    return frac((p.xxy + p.yxx) * p.zyx);
+}
+
+float3 Wrap(float3 cell, float period)
+{
+    return cell - period * floor(cell / period);
+}
+
+float GradientCorner(float3 i, float3 f, float3 o, float period)
+{
+    return dot(Hash33(Wrap(i + o, period)) * 2.0 - 1.0, f - o);
+}
+
+// Periodic Perlin-style gradient noise, roughly in [-1, 1]
+float GradientNoise(float3 p, float period)
+{
+    float3 i = floor(p);
+    float3 f = frac(p);
+    float3 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+
+    float n000 = GradientCorner(i, f, float3(0, 0, 0), period);
+    float n100 = GradientCorner(i, f, float3(1, 0, 0), period);
+    float n010 = GradientCorner(i, f, float3(0, 1, 0), period);
+    float n110 = GradientCorner(i, f, float3(1, 1, 0), period);
+    float n001 = GradientCorner(i, f, float3(0, 0, 1), period);
+    float n101 = GradientCorner(i, f, float3(1, 0, 1), period);
+    float n011 = GradientCorner(i, f, float3(0, 1, 1), period);
+    float n111 = GradientCorner(i, f, float3(1, 1, 1), period);
+
+    float nx00 = lerp(n000, n100, u.x);
+    float nx10 = lerp(n010, n110, u.x);
+    float nx01 = lerp(n001, n101, u.x);
+    float nx11 = lerp(n011, n111, u.x);
+    return lerp(lerp(nx00, nx10, u.y), lerp(nx01, nx11, u.y), u.z);
+}
+
+// Same normalization as PerlinFbm in SkyAndClouds.shader: roughly [0, 1]
+float PerlinFbm(float3 p, float period, int octaves)
+{
+    float sum = 0.0;
+    float amp = 0.5;
+    float norm = 0.0;
+    for (int o = 0; o < octaves; o++)
+    {
+        sum += GradientNoise(p, period) * amp;
+        norm += amp;
+        p *= 2.0;
+        period *= 2.0;
+        amp *= 0.5;
+    }
+    return saturate(sum / norm * 0.5 + 0.5);
+}
+
+// Periodic inverted Worley (F1) noise in [0, 1]
+float Worley(float3 p, float period)
+{
+    float3 id = floor(p);
+    float3 f = frac(p);
+    float minDist = 1.0;
+    [unroll] for (int z = -1; z <= 1; z++)
+    [unroll] for (int y = -1; y <= 1; y++)
+    [unroll] for (int x = -1; x <= 1; x++)
+    {
+        float3 o = float3(x, y, z);
+        float3 r = o + Hash33(Wrap(id + o, period)) - f;
+        minDist = min(minDist, dot(r, r));
+    }
+    return 1.0 - saturate(sqrt(minDist));
+}
+
+uint Index(uint3 id)
+{
+    return id.x + id.y * _Size + id.z * _Size * _Size;
+}
+
+[numthreads(8, 8, 8)]
+void BakeBase(uint3 id : SV_DispatchThreadID)
+{
+    if (any(id >= (uint)_Size))
+        return;
+
+    float3 p = (id + 0.5) / _Size * _Period;
+    _Result[Index(id)] = float4(
+        PerlinFbm(p, _Period, 3),
+        Worley(p * 4.0, _Period * 4.0),
+        Worley(p * 8.0, _Period * 8.0),
+        Worley(p * 16.0, _Period * 16.0));
+}
+
+[numthreads(8, 8, 8)]
+void BakeDetail(uint3 id : SV_DispatchThreadID)
+{
+    if (any(id >= (uint)_Size))
+        return;
+
+    float3 p = (id + 0.5) / _Size * _Period;
+    _Result[Index(id)] = float4(
+        Worley(p, _Period),
+        Worley(p * 2.0, _Period * 2.0),
+        Worley(p * 4.0, _Period * 4.0),
+        1.0);
+}
