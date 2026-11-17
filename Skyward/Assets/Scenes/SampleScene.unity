@@ -861,6 +861,8 @@ MonoBehaviour:
   lutCompute: {fileID: 7200000, guid: cbd7fe8e5ec067d46aa1803fb8fe277f, type: 3}
   weatherResolution: 512
   weatherExtent: 240000
+  skyMaterial: {fileID: 2100000, guid: 25c6eaa7eecd5ef4494608a7a8631984, type: 2}
+  cloudResolution: 2
 --- !u!114 &1460428379
 MonoBehaviour:
   m_ObjectHideFlags: 0

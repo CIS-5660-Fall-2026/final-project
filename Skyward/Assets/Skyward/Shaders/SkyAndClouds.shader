@@ -1,14 +1,14 @@
 // Skyward - procedural sky + volumetric clouds, drawn by a URP Full Screen Pass Renderer Feature.
 //
 // Every optimization has a material toggle, so it can be compared against the Milestone 1 brute-force path:
-//   _SKY_LUT        sky from the sky-view LUT (single + multiple scattering, Hillaire 2020) and sun transmittance
-//                   from the transmittance LUT, instead of a per-pixel single-scattering raymarch
-//   _BAKED_WEATHER  weather map sampled from the per-frame baked texture instead of 5 noise octaves per sample
-//   _BAKED_NOISE    cloud shape / detail noise sampled from baked tileable 3D textures
-// LUTs and the weather map are produced by SkyLUTRenderer.cs + SkyLUT.compute, the 3D noise by NoiseBaker.cs.
-//
-// Clouds: raymarched spherical shell, Perlin-Worley base + Worley detail (Schneider 2015), Beer-Lambert,
-// dual-lobe HG phase, powder and energy-conserving multi-scattering octaves (Wrenninge 2013, Hillaire 2016).
+//   _SKY_LUT         sky from the sky-view LUT (single + multiple scattering, Hillaire 2020) and sun transmittance
+//                    from the transmittance LUT, instead of a per-pixel single-scattering raymarch
+//   _BAKED_WEATHER   weather map sampled from the per-frame baked texture instead of 5 noise octaves per sample
+//   _BAKED_NOISE     cloud shape / detail noise sampled from baked tileable 3D textures
+//   _CLOUDS_LOWRES   clouds marched at reduced resolution by SkyLUT.compute and upsampled here; requires the three
+//                    toggles above, since the compute path always uses them
+// LUTs, the weather map and the low-resolution clouds are produced by SkyLUTRenderer.cs + SkyLUT.compute,
+// the 3D noise and the blue noise by NoiseBaker.cs. The cloud raymarcher itself lives in SkyClouds.hlsl.
 // Per-scene parameters (sun, coverage, wind, time...) are global shader properties set by SkyController.cs.
 
 Shader "Skyward/SkyAndClouds"
@@ -26,8 +26,10 @@ Shader "Skyward/SkyAndClouds"
         [Toggle(_SKY_LUT)] _SkyLut ("Use Atmosphere LUTs", Float) = 0
         [Toggle(_BAKED_WEATHER)] _BakedWeather ("Use Baked Weather Map", Float) = 0
         [Toggle(_BAKED_NOISE)] _BakedNoise ("Use Baked Noise", Float) = 0
+        [Toggle(_CLOUDS_LOWRES)] _LowResClouds ("Low-Resolution Clouds", Float) = 0
         [NoScaleOffset] _BaseNoise ("Base Noise (3D)", 3D) = "white" {}
         [NoScaleOffset] _DetailNoise ("Detail Noise (3D)", 3D) = "white" {}
+        [NoScaleOffset] _BlueNoise ("Blue Noise", 2D) = "gray" {}
     }
 
     SubShader
@@ -46,91 +48,33 @@ Shader "Skyward/SkyAndClouds"
             #pragma shader_feature_local _BAKED_NOISE
             #pragma shader_feature_local _SKY_LUT
             #pragma shader_feature_local _BAKED_WEATHER
+            #pragma shader_feature_local _CLOUDS_LOWRES
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.core/Runtime/Utilities/Blit.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
             #include "SkyCommon.hlsl"
+            #include "SkyClouds.hlsl"
 
             // Material properties
             float _SkySteps;
-            float _CloudSteps;
-            float _LightSteps;
-            float _CloudExtinction;
-            float _BaseScale;
-            float _DetailScale;
 
-            // Baked noise (NoiseBaker.cs). The periods must match the baker: one texture repeat = N noise units.
-            TEXTURE3D(_BaseNoise);   SAMPLER(sampler_BaseNoise);
-            TEXTURE3D(_DetailNoise); SAMPLER(sampler_DetailNoise);
-            static const float kBaseNoisePeriod = 4.0;
-            static const float kDetailNoisePeriod = 2.0;
-
-            // Baked weather map (SkyLUTRenderer.cs)
-            TEXTURE2D(_WeatherMapTex);
-            float4 _WeatherOrigin;      // xy = world xz of the map center, z = map size in meters
+            // Low-resolution clouds (SkyLUTRenderer.cs): rgb = scattered light, a = transmittance
+            TEXTURE2D(_CloudLowResTex);
 
             // Global properties set by SkyController.cs
             float3 _SkySunDir;          // unit vector pointing towards the sun
             float  _SkySunIntensity;
-            float  _SkyTime;            // seconds, drives wind and weather evolution
-            float  _CloudCoverage;      // 0 = clear, 1 = overcast
-            float2 _CloudWind;          // m/s in world xz
-            float  _CloudBottom;        // m above ground
-            float  _CloudTop;           // m above ground
-            float  _CloudDensity;
-            float  _WeatherScale;       // m per weather noise unit
             float  _DebugWeather;
-            float3 _SkyMoonDir;         // unit vector pointing towards the moon
+            float  _DebugLUTs;
+            float3 _SkyMoonDir;        // unit vector pointing towards the moon
             float3 _SkyMoonRadiance;    // moon tint * intensity
             float  _SkyStarIntensity;   // already faded out during the day
             float4x4 _SkyStarMatrix;    // world -> rotating star frame
-            float3 _SkyCloudLightDir;   // sun or moon, whichever lights the scene more
-            float3 _SkyCloudLightColor; // its color * intensity, before atmospheric transmittance
-            float3 _SkyCloudAmbient;
-
-            float InterleavedGradient(float2 pixel)
-            {
-                return frac(52.9829189 * frac(dot(pixel, float2(0.06711056, 0.00583715))));
-            }
 
             // ---------------------------------------------------------------------------------
             // Atmosphere
             // ---------------------------------------------------------------------------------
-            // Brute-force transmittance from point p (planet space) towards a light direction
-            float3 LightTransmittanceRaymarch(float3 p, float3 lightDir)
-            {
-                if (RaySphere(p, lightDir, kPlanetRadius).x > 0.0)
-                    return 0.0;
-
-                const int steps = 8;
-                float tTop = RaySphere(p, lightDir, kAtmosphereRadius).y;
-                float dt = tTop / steps;
-                float3 opticalDepth = 0.0;
-                for (int i = 0; i < steps; i++)
-                {
-                    float3 pos = p + lightDir * ((i + 0.5) * dt);
-                    float3 rs; float ms; float3 ext;
-                    SampleAtmosphere(length(pos) - kPlanetRadius, rs, ms, ext);
-                    opticalDepth += ext * dt;
-                }
-                return exp(-opticalDepth);
-            }
-
-            float3 LightTransmittance(float3 p, float3 lightDir)
-            {
-            #if defined(_SKY_LUT)
-                return TransmittanceToSun(p, lightDir);
-            #else
-                return LightTransmittanceRaymarch(p, lightDir);
-            #endif
-            }
-
-            float3 SunTransmittanceRaymarch(float3 p)
-            {
-                return LightTransmittanceRaymarch(p, _SkySunDir);
-            }
-
             // Brute-force single-scattering sky radiance along a view ray (Milestone 1 path)
             float3 SkyRadianceRaymarch(float3 ro, float3 rd, out float3 transmittance)
             {
@@ -154,7 +98,7 @@ Shader "Skyward/SkyAndClouds"
                     float3 rayleighScat; float mieScat; float3 extinction;
                     SampleAtmosphere(length(pos) - kPlanetRadius, rayleighScat, mieScat, extinction);
 
-                    float3 scattering = (rayleighScat * phaseR + mieScat * phaseM) * SunTransmittanceRaymarch(pos);
+                    float3 scattering = (rayleighScat * phaseR + mieScat * phaseM) * LightTransmittanceRaymarch(pos, _SkySunDir);
                     float3 stepTransmittance = exp(-extinction * dt);
                     // Energy-conserving integration over the step (Hillaire 2016)
                     radiance += throughput * (scattering - scattering * stepTransmittance) / max(extinction, 1e-10);
@@ -222,151 +166,10 @@ Shader "Skyward/SkyAndClouds"
                 return _SkyMoonRadiance * 3.0 * albedo * limb * edge;
             }
 
-            // ---------------------------------------------------------------------------------
-            // Weather map & cloud density
-            // ---------------------------------------------------------------------------------
-            // x = coverage, y = cloud type
-            float2 WeatherMap(float2 xz)
+            // Maps a screen uv inside rect (xy = min, zw = max) to [0, 1]
+            float2 PanelUv(float2 uv, float4 rect)
             {
-            #if defined(_BAKED_WEATHER)
-                float2 uv = (xz - _WeatherOrigin.xy) / _WeatherOrigin.z + 0.5;
-                if (any(uv < 0.0) || any(uv > 1.0))
-                    return 0.0;
-                return SAMPLE_TEXTURE2D_LOD(_WeatherMapTex, sampler_LinearClamp, uv, 0).rg;
-            #else
-                return WeatherMapProcedural(xz, _SkyTime, _CloudWind, _CloudCoverage, _WeatherScale);
-            #endif
-            }
-
-            float HeightGradient(float h, float type)
-            {
-                float top = lerp(0.35, 1.0, type);
-                return smoothstep(0.0, 0.08, h) * (1.0 - smoothstep(top * 0.55, top, h));
-            }
-
-            // wp: world position, height: meters above ground
-            float CloudDensity(float3 wp, float height, bool detail)
-            {
-                float h = saturate((height - _CloudBottom) / (_CloudTop - _CloudBottom));
-                float2 weather = WeatherMap(wp.xz);
-                float coverage = weather.x;
-                if (coverage <= 0.001)
-                    return 0.0;
-
-                float3 p = wp;
-                p.xz -= _CloudWind * _SkyTime;
-                p.y = height;
-
-                float3 pb = p / _BaseScale;
-            #if defined(_BAKED_NOISE)
-                // R = Perlin fBm, G = Worley at 4x frequency (see NoiseBake.compute)
-                float2 baseNoise = SAMPLE_TEXTURE3D_LOD(_BaseNoise, sampler_BaseNoise, pb / kBaseNoisePeriod, 0).rg;
-                float perlinWorley = SkyRemap(baseNoise.r, 0.0, 1.0, baseNoise.g, 1.0);
-            #else
-                float perlinWorley = SkyRemap(PerlinFbm(pb, 3), 0.0, 1.0, Worley(pb * 4.0), 1.0);
-            #endif
-                float base = saturate(SkyRemap(perlinWorley, 0.45, 1.0, 0.0, 1.0));
-
-                // The threshold never drops below 0.1, so even full coverage keeps some gaps and billows
-                float threshold = 1.0 - coverage * 0.9;
-                float density = saturate(SkyRemap(base * HeightGradient(h, weather.y), threshold, 1.0, 0.0, 1.0));
-                if (density <= 0.0)
-                    return 0.0;
-
-                if (detail)
-                {
-                    float3 pd = p / _DetailScale + _SkyTime * 0.02;
-                #if defined(_BAKED_NOISE)
-                    // R/G/B = Worley at 1x/2x/4x, combined with the same weights as WorleyFbm
-                    float3 detailNoise = SAMPLE_TEXTURE3D_LOD(_DetailNoise, sampler_DetailNoise, pd / kDetailNoisePeriod, 0).rgb;
-                    float d = dot(detailNoise, float3(0.625, 0.25, 0.125));
-                #else
-                    float d = WorleyFbm(pd);
-                #endif
-                    // wispy at the bottom, billowy at the top
-                    float erosion = lerp(d, 1.0 - d, saturate(h * 4.0)) * 0.5;
-                    density = saturate(SkyRemap(density, erosion, 1.0, 0.0, 1.0));
-                }
-                return density * _CloudDensity;
-            }
-
-            // Optical depth towards the sun from planet-space point p
-            float LightOpticalDepth(float3 p, float3 planetCenter)
-            {
-                int steps = (int)_LightSteps;
-                float od = 0.0;
-                float t = 0.0;
-                float stepSize = (_CloudTop - _CloudBottom) / (steps * 2.0);
-                for (int i = 0; i < steps; i++)
-                {
-                    float dt = stepSize * (i + 1);
-                    t += dt;
-                    float3 pos = p + _SkyCloudLightDir * (t - 0.5 * dt);
-                    od += CloudDensity(planetCenter + pos, length(pos) - kPlanetRadius, false) * dt;
-                }
-                return od * _CloudExtinction;
-            }
-
-            // Returns scattered radiance (rgb) and transmittance (a). Assumes the camera is below the cloud layer.
-            float4 MarchClouds(float3 ro, float3 rd, float3 planetCenter, float2 pixel, out float entryDistance)
-            {
-                entryDistance = 0.0;
-                if (RaySphere(ro, rd, kPlanetRadius).x > 0.0)
-                    return float4(0, 0, 0, 1);
-
-                float tStart = max(RaySphere(ro, rd, kPlanetRadius + _CloudBottom).y, 0.0);
-                float tEnd = RaySphere(ro, rd, kPlanetRadius + _CloudTop).y;
-                if (tEnd <= tStart)
-                    return float4(0, 0, 0, 1);
-                tEnd = min(tEnd, tStart + 40000.0);
-                entryDistance = tStart;
-
-                int steps = (int)_CloudSteps;
-                float dt = (tEnd - tStart) / steps;
-                float jitter = InterleavedGradient(pixel);
-
-                // Lit by the sun during the day and by the moon at night (chosen by SkyController)
-                float3 sunRadiance = LightTransmittance(ro + rd * tStart, _SkyCloudLightDir) * _SkyCloudLightColor;
-                float mu = dot(rd, _SkyCloudLightDir);
-
-                float3 scattered = 0.0;
-                float transmittance = 1.0;
-
-                [loop] for (int i = 0; i < steps; i++)
-                {
-                    float t = tStart + (i + jitter) * dt;
-                    float3 pos = ro + rd * t;
-                    float height = length(pos) - kPlanetRadius;
-                    float density = CloudDensity(planetCenter + pos, height, true);
-                    if (density <= 0.001)
-                        continue;
-
-                    float sigma = density * _CloudExtinction;
-                    float lightOD = LightOpticalDepth(pos, planetCenter);
-
-                    // Multi-scattering octaves (Wrenninge 2013): attenuation, extinction and eccentricity decay
-                    float sunScatter = 0.0;
-                    float a = 1.0, b = 1.0, c = 1.0;
-                    [unroll] for (int o = 0; o < 3; o++)
-                    {
-                        float phase = lerp(HenyeyGreenstein(mu, 0.75 * c), HenyeyGreenstein(mu, -0.2 * c), 0.35);
-                        sunScatter += a * exp(-lightOD * b) * phase;
-                        // a <= b keeps the octave sum energy conserving (Hillaire 2016)
-                        a *= 0.5; b *= 0.5; c *= 0.5;
-                    }
-                    float powder = 1.0 - exp(-density * 2.0);
-                    float hNorm = saturate((height - _CloudBottom) / (_CloudTop - _CloudBottom));
-                    float3 ambient = _SkyCloudAmbient * lerp(0.5, 1.0, hNorm);
-
-                    float3 source = (sunRadiance * sunScatter * lerp(0.5, 1.0, powder) + ambient) * sigma;
-                    float stepTransmittance = exp(-sigma * dt);
-                    scattered += transmittance * (source - source * stepTransmittance) / sigma;
-                    transmittance *= stepTransmittance;
-
-                    if (transmittance < 0.01)
-                        break;
-                }
-                return float4(scattered, transmittance);
+                return (uv - rect.xy) / (rect.zw - rect.xy);
             }
 
             // ---------------------------------------------------------------------------------
@@ -405,13 +208,17 @@ Shader "Skyward/SkyAndClouds"
                     float3 space = sunDisk * _SkySunIntensity * 20.0 + MoonDisk(rd) + StarField(skyDir);
                     space *= skyTransmittance;
 
-                    float entryDistance;
-                    float4 clouds = MarchClouds(ro, rd, planetCenter, input.positionCS.xy, entryDistance);
+                #if defined(_CLOUDS_LOWRES)
+                    // Marched at reduced resolution without depth, so bilinear upsampling is safe (see SkyLUT.compute)
+                    float4 clouds = SAMPLE_TEXTURE2D_LOD(_CloudLowResTex, sampler_LinearClamp, uv, 0);
+                #else
+                    float4 clouds = MarchClouds(ro, rd, planetCenter, BlueNoise((uint2)input.positionCS.xy));
+                #endif
                     // Fade distant clouds into the sky as a cheap stand-in for aerial perspective.
                     // The fade only applies to the atmosphere in front of the clouds: anything beyond the atmosphere
                     // is always behind the clouds, so it is blocked by their full transmittance (no stars through
                     // distant clouds).
-                    float fade = exp(-entryDistance * 3e-5);
+                    float fade = exp(-CloudEntryDistance(ro, rd) * 3e-5);
                     color = sky * lerp(1.0, clouds.a, fade) + clouds.rgb * fade + space * clouds.a;
                 }
 
@@ -421,6 +228,21 @@ Shader "Skyward/SkyAndClouds"
                     float2 xz = _WorldSpaceCameraPos.xz + (uv / 0.3 - 0.5) * 60000.0;
                     float2 weather = WeatherMap(xz);
                     color = float3(weather.x, weather.y * 0.6, 0.0);
+                }
+
+                // Debug: atmosphere LUTs in the top-right corner (sky-view and multi-scattering are scaled by the
+                // sun intensity so they show at the same brightness as the sky; transmittance is shown as is)
+                if (_DebugLUTs > 0.5)
+                {
+                    const float4 skyViewRect = float4(0.68, 0.70, 0.98, 0.96);
+                    const float4 transmittanceRect = float4(0.68, 0.53, 0.98, 0.66);
+                    const float4 multiScatRect = float4(0.68, 0.28, 0.78, 0.49);
+                    if (all(uv >= skyViewRect.xy) && all(uv <= skyViewRect.zw))
+                        color = SAMPLE_TEXTURE2D_LOD(_SkyViewLUT, sampler_LinearClamp, PanelUv(uv, skyViewRect), 0).rgb * _SkySunIntensity;
+                    else if (all(uv >= transmittanceRect.xy) && all(uv <= transmittanceRect.zw))
+                        color = SAMPLE_TEXTURE2D_LOD(_TransmittanceLUT, sampler_LinearClamp, PanelUv(uv, transmittanceRect), 0).rgb;
+                    else if (all(uv >= multiScatRect.xy) && all(uv <= multiScatRect.zw))
+                        color = SAMPLE_TEXTURE2D_LOD(_MultiScatteringLUT, sampler_LinearClamp, PanelUv(uv, multiScatRect), 0).rgb * _SkySunIntensity;
                 }
 
                 return half4(color, 1.0);

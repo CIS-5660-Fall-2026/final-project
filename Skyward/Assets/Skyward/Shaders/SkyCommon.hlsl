@@ -158,10 +158,25 @@ float WorleyFbm(float3 p)
 // -------------------------------------------------------------------------------------
 // Weather map: x = coverage, y = cloud type (0 stratus -> 1 cumulonimbus)
 // -------------------------------------------------------------------------------------
-float2 WeatherMapProcedural(float2 xz, float time, float2 wind, float coverageSlider, float scale)
+// 2D curl noise (Bridson et al. 2007): the rotated gradient of a scalar noise potential, (dP/dy, -dP/dx).
+// It is divergence-free, so using it as a displacement field swirls the pattern like an incompressible fluid
+// instead of stretching or squashing it. The potential's third coordinate is time, so the swirls evolve.
+float2 CurlNoise2D(float2 p, float t)
+{
+    const float e = 0.01;
+    float dPdy = GradientNoise(float3(p + float2(0.0, e), t)) - GradientNoise(float3(p - float2(0.0, e), t));
+    float dPdx = GradientNoise(float3(p + float2(e, 0.0), t)) - GradientNoise(float3(p - float2(e, 0.0), t));
+    return float2(dPdy, -dPdx) / (2.0 * e);
+}
+
+float2 WeatherMapProcedural(float2 xz, float time, float2 wind, float coverageSlider, float scale, float curlStrength)
 {
     float2 uv = (xz - wind * time) / scale;
     float evolve = time * 0.01;
+
+    // Two octaves of low-frequency curl noise warp the coverage field, so cloud regions curl and roll over time
+    float2 curl = CurlNoise2D(uv * 0.5 + 11.7, evolve * 2.0) + 0.5 * CurlNoise2D(uv * 1.1 - 4.3, evolve * 3.0);
+    uv += curl * (0.25 * curlStrength);
 
     // Stretch the fBm to [0, 1]. The global coverage picks how much of the sky is cloudy, and the steep
     // ramp makes cloudy regions reach full coverage quickly, so low coverage gives fewer but full-sized

@@ -35,7 +35,11 @@ public class SkyController : MonoBehaviour
     [Range(0f, 2f)] public float cloudDensity = 1f;
     [Tooltip("Meters per weather noise unit: larger values give larger cloud regions")]
     public float weatherScale = 20000f;
+    [Tooltip("How strongly curl noise swirls the weather map: 0 = clouds only drift with the wind")]
+    [Range(0f, 1f)] public float curlStrength = 0.4f;
     public bool debugWeatherMap = false;
+    [Tooltip("Show the sky-view, transmittance and multi-scattering LUTs in the top-right corner")]
+    public bool debugLuts = false;
     [Tooltip("Stop wind and weather evolution, so screenshots and GPU timings compare the same clouds")]
     public bool freezeClouds = false;
 
@@ -60,6 +64,8 @@ public class SkyController : MonoBehaviour
     static readonly int DebugWeatherId = Shader.PropertyToID("_DebugWeather");
     static readonly int WeatherScaleId = Shader.PropertyToID("_WeatherScale");
     static readonly int SkyTimeId = Shader.PropertyToID("_SkyTime");
+    static readonly int CurlId = Shader.PropertyToID("_CloudCurl");
+    static readonly int DebugLutsId = Shader.PropertyToID("_DebugLUTs");
     static readonly int MoonDirId = Shader.PropertyToID("_SkyMoonDir");
     static readonly int MoonRadianceId = Shader.PropertyToID("_SkyMoonRadiance");
     static readonly int StarIntensityId = Shader.PropertyToID("_SkyStarIntensity");
@@ -139,6 +145,8 @@ public class SkyController : MonoBehaviour
         Shader.SetGlobalFloat(DensityId, cloudDensity);
         Shader.SetGlobalFloat(DebugWeatherId, debugWeatherMap ? 1f : 0f);
         Shader.SetGlobalFloat(WeatherScaleId, weatherScale);
+        Shader.SetGlobalFloat(CurlId, curlStrength);
+        Shader.SetGlobalFloat(DebugLutsId, debugLuts ? 1f : 0f);
         // One clock for the fragment shader and the weather-map compute, so the baked map and the cloud noise
         // scroll together. Outside Play mode Time.time does not advance, so use the real-time clock instead.
         if (!freezeClouds)

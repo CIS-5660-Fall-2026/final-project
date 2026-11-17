@@ -61,7 +61,7 @@ public class SkyProfilerHUD : MonoBehaviour
 
     void OnGUI()
     {
-        GUILayout.BeginArea(new Rect(10, 10, 320, 215), GUI.skin.box);
+        GUILayout.BeginArea(new Rect(10, 10, 320, 240), GUI.skin.box);
         GUILayout.Label($"GPU frame: {gpuFrameMs:F2} ms   (avg of {averageFrames})");
         GUILayout.Label($"CPU frame: {cpuFrameMs:F2} ms");
         GUILayout.Label(passGpuMs > 0f ? $"Sky pass marker: {passGpuMs:F2} ms" : "Sky pass marker: n/a");
@@ -81,6 +81,9 @@ public class SkyProfilerHUD : MonoBehaviour
                 KeywordToggle(material, "_SKY_LUT", "_SkyLut", " Atmosphere LUTs");
                 KeywordToggle(material, "_BAKED_WEATHER", "_BakedWeather", " Baked weather map");
                 KeywordToggle(material, "_BAKED_NOISE", "_BakedNoise", " Baked noise");
+                var lutRenderer = GetComponent<SkyLUTRenderer>();
+                string resolution = lutRenderer != null ? $" ({lutRenderer.cloudResolution})" : "";
+                KeywordToggle(material, "_CLOUDS_LOWRES", "_LowResClouds", $" Low-res clouds{resolution}");
             }
         }
         else

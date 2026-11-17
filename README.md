@@ -233,6 +233,79 @@ To get everything working by this milestone, I chose the quickest version of eac
 
 ---
 
+## Milestone #2
+
+### Progress
+
+Everything planned for this milestone is done, and the system is feature complete. The sky and clouds now run a full day-night cycle, and the whole sky pass costs **about 0.1 ms** on the GPU at 1080p, down from almost 28 ms in Milestone 1.
+
+**A full day, sped up 4x** (the panel in the corner shows the live GPU timings and the optimization toggles):
+
+![Day-night time-lapse](img/m2_timelapse.webp)
+
+| Noon | Sunset | Night |
+|---|---|---|
+| ![Noon](img/m2_day.png) | ![Sunset](img/m2_sunset.png) | ![Night](img/m2_night.png) |
+
+### What I built
+
+**1. Pre-generated cloud noise.** In Milestone 1 the 3D noise that shapes the clouds was computed from scratch at every step of every ray. Now a compute shader generates it once, ahead of time, and an editor tool (**Skyward → Bake Noise Textures**) saves it as two 3D textures (128³ for the overall shape, 64³ for the fine detail). The textures tile seamlessly, so the cloud field never shows a seam. The shader now does a single texture lookup instead of dozens of math operations.
+
+**2. A weather map that is computed once per frame, and that swirls.** The weather map decides where clouds are. It used to be recomputed at every step of every ray, hundreds of times per pixel. Now a compute shader draws it once per frame into a 512×512 texture covering 240 km around the camera, and the clouds just read from it. This turned out to be the **biggest speed-up of the whole project** (see the table below). I also added **curl noise** (Bridson 2007), which bends the weather map like a slowly moving fluid, so cloud regions curl and roll instead of only drifting with the wind:
+
+![Weather map with curl noise, sped up 4x](img/m2_curl.webp)
+
+*The weather map seen from above (red = cloud coverage, green = cloud type), with curl noise at full strength.*
+
+**3. Precomputed atmosphere (Hillaire 2020).** The sky is now read from small lookup textures instead of being integrated for every pixel. Two of them depend only on the atmosphere itself and are computed once. The third (the sky-view texture) holds the whole sky around the camera and is updated every frame. The lookup textures also include **light that bounces many times in the air**, which Milestone 1 was missing. This fixes the "sky is too dark" problem from the last milestone. **Debug Luts** shows the three textures on screen:
+
+![Atmosphere lookup textures](img/m2_luts.png)
+
+*Top: the sky around the camera (left-right = direction relative to the sun, the horizon is the sharp line). Middle: how much light survives the trip through the atmosphere (it turns red near the horizon, which is what makes sunsets red). Bottom: the contribution of multiple light bounces.*
+
+**4. Lower-resolution clouds with blue noise.** The clouds are now rendered at half the width and height (a quarter of the pixels) and scaled up. I had planned a depth-aware upscale so clouds would not leak onto the edges of buildings, but it turned out to be **unnecessary**: the cloud layer starts 1.5 km up, so scenery is always in front of it. The low-resolution clouds are therefore computed without looking at the scene at all, and only the final full-resolution pass decides which pixels are sky, so there is nothing to leak. Each ray also starts at a slightly different offset taken from a **blue-noise** texture, which I generate in the editor with the void-and-cluster algorithm (**Skyward → Bake Blue Noise**). This turns the stripes from Milestone 1 into fine, even grain.
+
+**5. Night sky and automatic exposure (new, not in the original plan).** After sunset the screen used to go completely black. Now:
+- a **moon** rises opposite the sun and lights the sky, the clouds and the scene with cool light;
+- **procedural stars** turn slowly with the sky and are hidden behind clouds;
+- **automatic exposure** brightens the image at night and darkens it during the day, like your eyes adjusting. It measures the average brightness of the sky from the sky-view texture and eases the exposure towards a target over a second or two. It also sets the scene's ambient light from the same measurement, so the ground darkens with the sky.
+
+**6. Tools for measuring and debugging.** Unity's built-in GPU profiler cannot see URP passes, so I wrote an on-screen panel that shows the GPU frame time and has a switch for every optimization. Turning one off and reading the difference gives its exact cost. A **Freeze Clouds** option stops the wind, so every measurement looks at exactly the same clouds.
+
+### Performance
+
+GPU time of the sky pass at 1920×1080. Each row adds one optimization on top of the previous ones; the clouds were frozen, so every row renders the same sky.
+
+| | Coverage 0.3 | Coverage 0.8 |
+|---|---|---|
+| Milestone 1 (everything computed per pixel) | 6.96 ms | 27.72 ms |
+| + pre-generated 3D noise | 4.74 ms | 8.89 ms |
+| + weather map computed once per frame | 0.57 ms | 0.89 ms |
+| + precomputed atmosphere | 0.23 ms | 0.59 ms |
+| + half-resolution clouds | — | **0.12 ms** |
+
+Overall the sky pass is about **230× faster** at high cloud coverage. The design doc's target was 3 ms. I also tried quarter resolution: it only saves another 0.05 ms, because what remains is mostly fixed cost (updating the lookup textures and the final full-screen pass), and the clouds start to look soft. So half resolution is the default.
+
+### What I changed or cut, and why
+- **Temporal reprojection is not done yet.** It was optional for this milestone. Its job is to make the clouds cheaper, and they are already far below the budget, so I spent the time on the night sky instead. It may still come back in the final week as a way to remove the remaining grain, rather than for speed.
+- **No depth-aware upscaling.** As explained above, the scene can never be behind the clouds, so a plain upscale is already correct.
+- **No aerial-perspective volume yet.** Distant clouds still fade into the sky with the simple distance fade from Milestone 1.
+- **Added a night sky and auto exposure**, which were not in the plan, because a time-of-day system that goes black for half the cycle did not feel complete.
+
+### What gave me trouble
+- **Measuring at all.** Unity's GPU profiler does not show URP passes, so I had to build my own timing panel. My first numbers also contradicted each other (turning an optimization *on* made things slower), until I realized the clouds were moving between measurements. Freezing the clouds fixed it.
+- **The real bottleneck was not where I expected.** I assumed the 3D noise was the most expensive part. It was actually the small 2D weather map, because it was being recomputed hundreds of times per pixel.
+- **Lining up the low-resolution clouds with the screen.** The compute shader has to rebuild each pixel's view ray exactly the way the main shader does, including Unity's upside-down projection when rendering into a texture. Otherwise the clouds come out flipped.
+- **Stars showing through distant clouds.** The distance fade made far clouds partly transparent, and the stars were being faded along with the sky. I fixed it by treating the sun, the moon and the stars as objects beyond the atmosphere, which only the clouds' real opacity can hide.
+- **The moon looked like a second sun.** It first reused the sun's disk, which is extremely bright. It now has its own darker disk with surface patches and a darker edge.
+
+### Plan for the final week
+1. Reduce the remaining grain on the clouds (temporal accumulation) and use the spare performance on more raymarching steps, so distant clouds are sharper.
+2. Light the clouds' shadowed sides with the actual sky color from the sky-view texture, instead of a fixed blue.
+3. Polish the demo: a better scene, camera animation, tuned colors, and a final video.
+
+---
+
 <details>
 <summary>Original assignment instructions</summary>
 

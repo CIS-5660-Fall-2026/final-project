@@ -112,6 +112,11 @@ public static class SkywardSetup
             lutRenderer.lutCompute = AssetDatabase.LoadAssetAtPath<ComputeShader>(LutComputePath);
             EditorUtility.SetDirty(lutRenderer);
         }
+        if (lutRenderer.skyMaterial == null)
+        {
+            lutRenderer.skyMaterial = AssetDatabase.LoadAssetAtPath<Material>(MaterialPath);
+            EditorUtility.SetDirty(lutRenderer);
+        }
         if (controller.GetComponent<SkyProfilerHUD>() == null)
             Undo.AddComponent<SkyProfilerHUD>(controller.gameObject);
         if (controller.GetComponent<SkyExposure>() == null)

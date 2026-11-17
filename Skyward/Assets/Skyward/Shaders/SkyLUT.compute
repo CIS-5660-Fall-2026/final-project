@@ -9,23 +9,30 @@
 #pragma kernel MultiScatteringLUT
 #pragma kernel SkyViewLUT
 #pragma kernel WeatherMapBake
+#pragma kernel CloudsLowRes
+
+// The low-resolution cloud path always uses every optimization
+#define _SKY_LUT
+#define _BAKED_WEATHER
+#define _BAKED_NOISE
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
 #include "SkyCommon.hlsl"
+#include "SkyClouds.hlsl"
 
 RWTexture2D<float4> _TransmittanceLUTOut;
 RWTexture2D<float4> _MultiScatteringLUTOut;
 RWTexture2D<float4> _SkyViewLUTOut;
 RWTexture2D<float2> _WeatherMapOut;
+RWTexture2D<float4> _CloudLowResOut;
 
-// Set per dispatch by SkyLUTRenderer.cs
+// Set per dispatch by SkyLUTRenderer.cs (the cloud and weather parameters are declared in SkyClouds.hlsl;
+// _WeatherOrigin.w holds the weather map resolution)
 float3 _SkySunDir;
 float  _CameraHeight;
-float4 _WeatherOrigin;     // xy = world xz of the map center, z = map size in meters, w = resolution
-float  _SkyTime;
-float2 _CloudWind;
-float  _CloudCoverage;
-float  _WeatherScale;
+float3 _CloudCameraPos;
+float4x4 _CloudInvViewProj;   // same matrix the fragment shader sees as UNITY_MATRIX_I_VP
+float4 _CloudTexSize;         // xy = low-resolution cloud target size
 
 static const float kIsotropicPhase = 1.0 / (4.0 * PI);
 
@@ -198,5 +205,26 @@ void WeatherMapBake(uint3 id : SV_DispatchThreadID)
 
     float2 uv = (id.xy + 0.5) / size;
     float2 xz = _WeatherOrigin.xy + (uv - 0.5) * _WeatherOrigin.z;
-    _WeatherMapOut[id.xy] = WeatherMapProcedural(xz, _SkyTime, _CloudWind, _CloudCoverage, _WeatherScale);
+    _WeatherMapOut[id.xy] = WeatherMapProcedural(xz, _SkyTime, _CloudWind, _CloudCoverage, _WeatherScale, _CloudCurl);
+}
+
+// -------------------------------------------------------------------------------------
+// Low-resolution clouds
+// -------------------------------------------------------------------------------------
+// Clouds are marched for every pixel without looking at the scene depth: the cloud layer starts 1.5 km up, so scene
+// geometry is always in front of it. The full-resolution composite decides which pixels are sky, and since this
+// texture never contains geometry, a plain bilinear upsample cannot bleed clouds onto object edges.
+[numthreads(8, 8, 1)]
+void CloudsLowRes(uint3 id : SV_DispatchThreadID)
+{
+    if (any(id.xy >= (uint2)_CloudTexSize.xy))
+        return;
+
+    float2 uv = (id.xy + 0.5) / _CloudTexSize.xy;
+    float3 worldPos = ComputeWorldSpacePosition(uv, 0.5, _CloudInvViewProj);
+    float3 rd = normalize(worldPos - _CloudCameraPos);
+
+    float3 planetCenter = float3(_CloudCameraPos.x, -kPlanetRadius, _CloudCameraPos.z);
+    float3 ro = float3(0.0, kPlanetRadius + max(_CloudCameraPos.y, 1.0), 0.0);
+    _CloudLowResOut[id.xy] = MarchClouds(ro, rd, planetCenter, BlueNoise(id.xy));
 }
