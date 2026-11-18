@@ -1,6 +1,8 @@
 import common from "./shaders/common.wgsl?raw";
 import noise from "./shaders/noise.wgsl?raw";
-import gravity from "./shaders/gravity.wgsl?raw";
+import integration from "./shaders/integration.wgsl?raw";
+import gravityNaive from "./shaders/gravity_naive.wgsl?raw";
+import gravityTiled from "./shaders/gravity_tiled.wgsl?raw";
 import bodies from "./shaders/bodies.wgsl?raw";
 import bodiesDebug from "./shaders/bodies_debug.wgsl?raw";
 import collision from "./shaders/collision.wgsl?raw";
@@ -13,7 +15,8 @@ import stars from "./shaders/stars.wgsl?raw";
 import collectStarLights from "./shaders/collect_star_lights.wgsl?raw";
 import bloom from "./shaders/bloom.wgsl?raw";
 
-export const gravityWgsl = `${common}\n${gravity}`;
+export const gravityNaiveWgsl = `${common}\n${integration}\n${gravityNaive}`;
+export const gravityTiledWgsl = `${common}\n${integration}\n${gravityTiled}`;
 export const bodiesWgsl = `${common}\n${noise}\n${stars}\n${bodies}`;
 export const bodiesDebugWgsl = `${common}\n${bodiesDebug}`;
 export const collisionWgsl = `${common}\n${collision}`;

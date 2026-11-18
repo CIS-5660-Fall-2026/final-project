@@ -124,7 +124,7 @@ export function createControlPanel(
   const algorithms: SimulationAlgorithms = { ...BASELINE_ALGORITHMS };
   const simulationFolder = gui.addFolder("Performance").addFolder("Simulation");
   const algorithmControllers = [
-    simulationFolder.add(algorithms, "gravity", { Naive: "naive" }).name("Gravity"),
+    simulationFolder.add(algorithms, "gravity", { Naive: "naive", Tiled: "tiled" }).name("Gravity"),
     simulationFolder.add(algorithms, "collision", { "All pairs": "all-pairs" }).name("Collision"),
     simulationFolder.add(algorithms, "absorption", { "Full scan": "full-scan" }).name("Absorption"),
     simulationFolder.add(algorithms, "compaction", { Serial: "serial" }).name("Compaction"),
