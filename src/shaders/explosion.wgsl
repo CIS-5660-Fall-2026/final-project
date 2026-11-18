@@ -7,9 +7,6 @@ var<storage, read_write> collisionCandidates: array<u32>;
 @group(0) @binding(2)
 var<storage, read_write> params: SimulationUniforms;
 
-@group(0) @binding(3)
-var<storage, read_write> dispatchArgs: array<u32, 3>;
-
 const EXPLOSION_RATE: f32 = 0.5;
 
 const COLLAPSE_DURATION: f32 = 0.6; // Seconds
@@ -96,7 +93,7 @@ fn explodeBodies() {
         }
 
         let desiredCount = max(MIN_FRAGMENTS, u32(ceil(parent.mass / TARGET_FRAGMENT_MASS)));
-        let fragmentCount = min(desiredCount, capacity - nextSlot + 10u);
+        let fragmentCount = min(desiredCount, capacity - nextSlot + 1u);
         if (fragmentCount < MIN_FRAGMENTS) {
             continue;
         }
@@ -186,6 +183,4 @@ fn explodeBodies() {
     }
 
     params.bodyCount = nextSlot;
-    dispatchArgs[0] = (nextSlot + 63u) / 64u;
-    params.simulationStep += 1u;
 }

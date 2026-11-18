@@ -4,6 +4,8 @@ import type CameraController from "./CameraController";
 import type Renderer from "./Renderer";
 import type { SceneOptions } from "./Scene";
 import type Simulation from "./Simulation";
+import { BASELINE_ALGORITHMS } from "./simulation/types";
+import type { SimulationAlgorithms } from "./simulation/types";
 
 export function createControlPanel(
   options: SceneOptions,
@@ -118,6 +120,25 @@ export function createControlPanel(
     .name("Explosion Mass (Regenerate)");
   starMass.onChange(() => explosionMass.min(physics.starMass + 1));
   explosionMass.onChange(() => starMass.max(physics.explosionMass - 1));
+
+  const algorithms: SimulationAlgorithms = { ...BASELINE_ALGORITHMS };
+  const simulationFolder = gui.addFolder("Performance").addFolder("Simulation");
+  const algorithmControllers = [
+    simulationFolder.add(algorithms, "gravity", { Naive: "naive" }).name("Gravity"),
+    simulationFolder.add(algorithms, "collision", { "All pairs": "all-pairs" }).name("Collision"),
+    simulationFolder.add(algorithms, "absorption", { "Full scan": "full-scan" }).name("Absorption"),
+    simulationFolder.add(algorithms, "compaction", { Serial: "serial" }).name("Compaction"),
+    simulationFolder.add(algorithms, "explosion", { Serial: "serial" }).name("Explosion"),
+  ];
+  const updateAlgorithms = () => simulation.setAlgorithms(algorithms);
+  algorithmControllers.forEach((controller) => controller.onChange(updateAlgorithms));
+  simulationFolder.add({
+    baseline: () => {
+      Object.assign(algorithms, BASELINE_ALGORITHMS);
+      updateAlgorithms();
+      algorithmControllers.forEach((controller) => controller.updateDisplay());
+    },
+  }, "baseline").name("Baseline");
 
   const renderingFolder = gui.addFolder("Rendering");
   const updateRendering = () => renderer.updateRenderParams();
