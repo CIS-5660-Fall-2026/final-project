@@ -1,0 +1,19 @@
+# Houdini
+houdini/scene/backup/
+houdini/**/backup/
+*.hip.bak
+*.hipnc.bak
+*.hiplc.bak
+houdini/export/*.bgeo.sc.lock
+
+# Unreal Engine (ue/ project, if added later)
+ue/**/Binaries/
+ue/**/Intermediate/
+ue/**/DerivedDataCache/
+ue/**/Saved/
+ue/**/.vs/
+ue/**/*.sln
+
+# OS / editor
+Thumbs.db
+.DS_Store
