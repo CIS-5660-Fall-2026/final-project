@@ -28,6 +28,10 @@ public class ChunkTerrainGenerator : MonoBehaviour
     private const int AtlasColumns = 3;
     private const int AtlasRows = 2;
     private const float AtlasTileInset = 0.001f;
+    private const int DungeonRoomWidth = 9;
+    private const int DungeonRoomHeight = 5;
+    private const int DungeonCorridorWidth = 3;
+    private const int DungeonRoomSeparation = 2;
 
     [Header("Terrain Noise")]
     [SerializeField] private int seed;
@@ -58,6 +62,11 @@ public class ChunkTerrainGenerator : MonoBehaviour
     [SerializeField, Min(0.001f)] private float caveWarpNoiseScale = 0.018f;
     [SerializeField, Min(0.0f)] private float caveWarpStrength = 8.0f;
     [SerializeField, Range(-0.5f, 0.5f)] private float caveThreshold = 0.05f;
+
+    [Header("Dungeon")]
+    [SerializeField] private bool generateDungeon = true;
+    [SerializeField, Min(1)] private int dungeonRoomCount = 8;
+    [SerializeField, Min(0)] private int dungeonFloorY = 40;
 
     [Header("Water")]
     [SerializeField] private GameObject waterPrefab;
@@ -158,6 +167,7 @@ public class ChunkTerrainGenerator : MonoBehaviour
         int riverWarpSeedZ = unchecked(riverSeed + 2903);
         int riverBedHeight = Mathf.Clamp(waterHeight - riverDepth, 0, ChunkHeight - 1);
 
+        // Base chunk
         for (int x = 0; x < ChunkWidth; x++)
         {
             for (int z = 0; z < ChunkWidth; z++)
@@ -237,6 +247,7 @@ public class ChunkTerrainGenerator : MonoBehaviour
             }
         }
 
+        // Cave
         if (generateLargeCave)
         {
             int caveSeed = unchecked(seed * 73428767 + 912367421);
@@ -320,7 +331,258 @@ public class ChunkTerrainGenerator : MonoBehaviour
             }
         }
 
+        // Dungeon
+        if (generateDungeon)
+        {
+            int clampedDungeonFloorY = Mathf.Clamp(
+                dungeonFloorY,
+                0,
+                ChunkHeight - DungeonRoomHeight - 1
+            );
+            int dungeonSeed = unchecked(seed * 1664525 + 1013904223);
+            System.Random dungeonRandom = new System.Random(dungeonSeed);
+            List<BoundsInt> dungeonRooms = new List<BoundsInt>();
+            int placementAttempts = 0;
+            int maximumPlacementAttempts = dungeonRoomCount * 50;
+
+            while (
+                dungeonRooms.Count < dungeonRoomCount &&
+                placementAttempts < maximumPlacementAttempts
+            )
+            {
+                placementAttempts++;
+                int roomCenterX = dungeonRandom.Next(0, ChunkWidth);
+                int roomCenterZ = dungeonRandom.Next(0, ChunkWidth);
+                BoundsInt candidateRoom = new BoundsInt(
+                    roomCenterX - DungeonRoomWidth / 2,
+                    clampedDungeonFloorY + 1,
+                    roomCenterZ - DungeonRoomWidth / 2,
+                    DungeonRoomWidth,
+                    DungeonRoomHeight,
+                    DungeonRoomWidth
+                );
+                bool overlapsExistingRoom = false;
+
+                for (int roomIndex = 0; roomIndex < dungeonRooms.Count; roomIndex++)
+                {
+                    BoundsInt existingRoom = dungeonRooms[roomIndex];
+
+                    if (
+                        candidateRoom.xMin < existingRoom.xMax + DungeonRoomSeparation &&
+                        candidateRoom.xMax + DungeonRoomSeparation > existingRoom.xMin &&
+                        candidateRoom.zMin < existingRoom.zMax + DungeonRoomSeparation &&
+                        candidateRoom.zMax + DungeonRoomSeparation > existingRoom.zMin
+                    )
+                    {
+                        overlapsExistingRoom = true;
+                        break;
+                    }
+                }
+
+                if (!overlapsExistingRoom)
+                {
+                    bool carvesAtLeastOneBlock = false;
+                    int candidateStartX = Mathf.Max(0, candidateRoom.xMin);
+                    int candidateEndX = Mathf.Min(ChunkWidth, candidateRoom.xMax);
+                    int candidateStartY = Mathf.Max(0, candidateRoom.yMin);
+                    int candidateEndY = Mathf.Min(ChunkHeight, candidateRoom.yMax);
+                    int candidateStartZ = Mathf.Max(0, candidateRoom.zMin);
+                    int candidateEndZ = Mathf.Min(ChunkWidth, candidateRoom.zMax);
+
+                    for (
+                        int x = candidateStartX;
+                        x < candidateEndX && !carvesAtLeastOneBlock;
+                        x++
+                    )
+                    {
+                        for (
+                            int y = candidateStartY;
+                            y < candidateEndY && !carvesAtLeastOneBlock;
+                            y++
+                        )
+                        {
+                            for (int z = candidateStartZ; z < candidateEndZ; z++)
+                            {
+                                if (blocks[x, y, z] != BlockType.Air)
+                                {
+                                    carvesAtLeastOneBlock = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (carvesAtLeastOneBlock)
+                    {
+                        dungeonRooms.Add(candidateRoom);
+                    }
+                }
+            }
+
+            for (int roomIndex = 0; roomIndex < dungeonRooms.Count; roomIndex++)
+            {
+                BoundsInt room = dungeonRooms[roomIndex];
+                int roomStartX = Mathf.Max(0, room.xMin);
+                int roomEndX = Mathf.Min(ChunkWidth, room.xMax);
+                int roomStartY = Mathf.Max(0, room.yMin);
+                int roomEndY = Mathf.Min(ChunkHeight, room.yMax);
+                int roomStartZ = Mathf.Max(0, room.zMin);
+                int roomEndZ = Mathf.Min(ChunkWidth, room.zMax);
+
+                for (int x = roomStartX; x < roomEndX; x++)
+                {
+                    for (int y = roomStartY; y < roomEndY; y++)
+                    {
+                        for (int z = roomStartZ; z < roomEndZ; z++)
+                        {
+                            blocks[x, y, z] = BlockType.Air;
+                        }
+                    }
+                }
+            }
+
+            if (dungeonRooms.Count > 1)
+            {
+                bool[] connectedRooms = new bool[dungeonRooms.Count];
+                List<Vector2Int> dungeonConnections = new List<Vector2Int>();
+                connectedRooms[0] = true;
+
+                for (int connectedCount = 1; connectedCount < dungeonRooms.Count; connectedCount++)
+                {
+                    int bestConnectedRoom = -1;
+                    int bestUnconnectedRoom = -1;
+                    int bestDistanceSquared = int.MaxValue;
+
+                    for (int connectedRoom = 0; connectedRoom < dungeonRooms.Count; connectedRoom++)
+                    {
+                        if (!connectedRooms[connectedRoom])
+                        {
+                            continue;
+                        }
+
+                        int connectedCenterX = dungeonRooms[connectedRoom].xMin + DungeonRoomWidth / 2;
+                        int connectedCenterZ = dungeonRooms[connectedRoom].zMin + DungeonRoomWidth / 2;
+
+                        for (int unconnectedRoom = 0; unconnectedRoom < dungeonRooms.Count; unconnectedRoom++)
+                        {
+                            if (connectedRooms[unconnectedRoom])
+                            {
+                                continue;
+                            }
+
+                            int unconnectedCenterX =
+                                dungeonRooms[unconnectedRoom].xMin + DungeonRoomWidth / 2;
+                            int unconnectedCenterZ =
+                                dungeonRooms[unconnectedRoom].zMin + DungeonRoomWidth / 2;
+                            int deltaX = connectedCenterX - unconnectedCenterX;
+                            int deltaZ = connectedCenterZ - unconnectedCenterZ;
+                            int distanceSquared = deltaX * deltaX + deltaZ * deltaZ;
+
+                            if (distanceSquared < bestDistanceSquared)
+                            {
+                                bestDistanceSquared = distanceSquared;
+                                bestConnectedRoom = connectedRoom;
+                                bestUnconnectedRoom = unconnectedRoom;
+                            }
+                        }
+                    }
+
+                    if (bestUnconnectedRoom < 0)
+                    {
+                        break;
+                    }
+
+                    connectedRooms[bestUnconnectedRoom] = true;
+                    dungeonConnections.Add(new Vector2Int(bestConnectedRoom, bestUnconnectedRoom));
+                }
+
+                for (
+                    int connectionIndex = 0;
+                    connectionIndex < dungeonConnections.Count;
+                    connectionIndex++
+                )
+                {
+                    BoundsInt startRoom = dungeonRooms[dungeonConnections[connectionIndex].x];
+                    BoundsInt endRoom = dungeonRooms[dungeonConnections[connectionIndex].y];
+                    Vector3Int start = new Vector3Int(
+                        startRoom.xMin + DungeonRoomWidth / 2,
+                        clampedDungeonFloorY,
+                        startRoom.zMin + DungeonRoomWidth / 2
+                    );
+                    Vector3Int end = new Vector3Int(
+                        endRoom.xMin + DungeonRoomWidth / 2,
+                        clampedDungeonFloorY,
+                        endRoom.zMin + DungeonRoomWidth / 2
+                    );
+                    Vector3Int corner;
+
+                    if (dungeonRandom.Next(0, 2) == 0)
+                    {
+                        corner = new Vector3Int(end.x, clampedDungeonFloorY, start.z);
+                    }
+                    else
+                    {
+                        corner = new Vector3Int(start.x, clampedDungeonFloorY, end.z);
+                    }
+
+                    CarveDungeonCorridor(blocks, start, corner);
+                    CarveDungeonCorridor(blocks, corner, end);
+                }
+            }
+        }
+
         return blocks;
+    }
+
+    private static void CarveDungeonCorridor(
+        BlockType[,,] blocks,
+        Vector3Int start,
+        Vector3Int end
+    )
+    {
+        int halfWidth = DungeonCorridorWidth / 2;
+        int minimumX;
+        int maximumX;
+        int minimumZ;
+        int maximumZ;
+
+        if (start.x != end.x)
+        {
+            minimumX = Mathf.Min(start.x, end.x) - halfWidth;
+            maximumX = Mathf.Max(start.x, end.x) + halfWidth + 1;
+            minimumZ = start.z - halfWidth;
+            maximumZ = start.z + halfWidth + 1;
+        }
+        else
+        {
+            minimumX = start.x - halfWidth;
+            maximumX = start.x + halfWidth + 1;
+            minimumZ = Mathf.Min(start.z, end.z) - halfWidth;
+            maximumZ = Mathf.Max(start.z, end.z) + halfWidth + 1;
+        }
+
+        minimumX = Mathf.Max(0, minimumX);
+        maximumX = Mathf.Min(blocks.GetLength(0), maximumX);
+        minimumZ = Mathf.Max(0, minimumZ);
+        maximumZ = Mathf.Min(blocks.GetLength(2), maximumZ);
+        int floorY = Mathf.Clamp(start.y, 0, blocks.GetLength(1) - 1);
+        int ceilingY = Mathf.Min(floorY + DungeonRoomHeight, blocks.GetLength(1) - 1);
+
+        for (int x = minimumX; x < maximumX; x++)
+        {
+            for (int z = minimumZ; z < maximumZ; z++)
+            {
+                if (blocks[x, floorY, z] == BlockType.Air)
+                {
+                    blocks[x, floorY, z] = BlockType.WoodPlank;
+                }
+
+                for (int y = floorY + 1; y <= ceilingY; y++)
+                {
+                    blocks[x, y, z] = BlockType.Air;
+                }
+            }
+        }
     }
 
     private static float SampleValueNoise3D(float x, float y, float z, int noiseSeed)

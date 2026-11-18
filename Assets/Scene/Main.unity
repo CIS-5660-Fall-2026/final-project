@@ -339,6 +339,9 @@ MonoBehaviour:
   caveWarpNoiseScale: 0.018
   caveWarpStrength: 8
   caveThreshold: 0.05
+  generateDungeon: 1
+  dungeonRoomCount: 8
+  dungeonFloorY: 40
   waterPrefab: {fileID: 1879239314502673702, guid: 02605892aa925a44da238efe54c4ab52, type: 3}
   waterHeight: 90
 --- !u!1 &1822919560
