@@ -85,6 +85,7 @@ fn convertScreenToView(pScreen: vec4f, screenResolution: vec2f, invProjMat: mat4
         invProjMat);
 }
 
+// Compute a view-space depth value from a given froxel z-slice (a continuous slice value, not an index)
 fn getViewZFromFroxelZSlice(froxelZSlice: f32, numSlices: f32, volumeNearZ: f32, volumeFarZ: f32, distributionExponent: f32) -> f32 {
     let t = froxelZSlice / numSlices;
 
@@ -104,4 +105,46 @@ fn getContinuousFroxelZSlice(numSlices: f32, viewZ: f32, volumeNearZ: f32, volum
     let unwarpedT = pow(t, 1.0 / distributionExponent);
 
     return unwarpedT * numSlices;
+}
+
+// Compute a world space position from a given froxel z-slice (a continuous slice value where integers 
+// correspond to froxel boundaries) and a uv value. This is effectively answering: "If I shot a ray 
+// from the camera through a given UV position and then travelled along the froxel z-column to the 
+// provided slice, what world position would I land at?"
+fn getFroxelWorldPosition(
+    uv: vec2f,
+    slice: f32,
+    numSlices: f32,
+    volumeNearZ: f32,
+    volumeFarZ: f32,
+    distributionExponent: f32,
+    invProjMat: mat4x4f,
+    invViewMat: mat4x4f) -> vec3f {
+
+    let ndc: vec2f = vec2f(
+        (uv.x * 2.0) - 1.0,
+        1.0 - (uv.y * 2.0));
+
+    // By setting z = 1 we are placing this clip-space position
+    // at the far plane. Note that z could be any valid clip-space
+    // coordinate (anything in [0, 1])--we just care about obtaining
+    // a view-space ray direction that points straight through the 
+    // screen at the provided uv
+    let clipFarPos: vec4f = vec4f(ndc, 1.0, 1.0);
+    let viewFarPos: vec4f = invProjMat * clipFarPos;
+    let viewDir: vec3f = normalize(viewFarPos.xyz / viewFarPos.w);
+
+    let viewZ: f32 = getViewZFromFroxelZSlice(
+        slice,
+        numSlices,
+        volumeNearZ,
+        volumeFarZ,
+        distributionExponent);
+
+    // Find the view-space intersection point between the ray with
+    // viewDir and the XY plane at -viewZ
+    let viewPos: vec3f = viewDir * (-viewZ / viewDir.z);
+
+    let worldPos: vec4f = invViewMat * vec4f(viewPos, 1.0);
+    return worldPos.xyz;
 }

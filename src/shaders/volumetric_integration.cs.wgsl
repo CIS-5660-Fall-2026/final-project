@@ -46,7 +46,9 @@ fn integrateVolume(@builtin(global_invocation_id) id: vec3u) {
         let extinction: f32 = select(epsilon, sourceExtinction.a, sourceExtinction.a > epsilon);
         let stepSize: f32 = getFroxelStepSize(zSliceIdx);
 
-        // Calculate the fraction of light that crosses this slice without being absorbed or scattered away
+        // Calculate the fraction of light that crosses this slice without being absorbed or scattered away.
+        // This is just Beer-Lambert law for a constant extinction value (which we assume to hold true within
+        // any given froxel).
         let curSliceTransmittance: f32 = exp(-extinction * stepSize);
 
         // Calculate this slice's total light contribution as seen from its near boundary
