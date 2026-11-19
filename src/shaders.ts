@@ -1,0 +1,28 @@
+import common from "./shaders/common.wgsl?raw";
+import noise from "./shaders/noise.wgsl?raw";
+import integration from "./shaders/integration.wgsl?raw";
+import gravityNaive from "./shaders/gravity_naive.wgsl?raw";
+import gravityTiled from "./shaders/gravity_tiled.wgsl?raw";
+import bodies from "./shaders/bodies.wgsl?raw";
+import bodiesDebug from "./shaders/bodies_debug.wgsl?raw";
+import collision from "./shaders/collision.wgsl?raw";
+import absorption from "./shaders/absorption.wgsl?raw";
+import compact from "./shaders/compact.wgsl?raw";
+import explosion from "./shaders/explosion.wgsl?raw";
+import finishStep from "./shaders/finish_step.wgsl?raw";
+import composite from "./shaders/composite.wgsl?raw";
+import stars from "./shaders/stars.wgsl?raw";
+import collectStarLights from "./shaders/collect_star_lights.wgsl?raw";
+import bloom from "./shaders/bloom.wgsl?raw";
+
+export const gravityNaiveWgsl = `${common}\n${integration}\n${gravityNaive}`;
+export const gravityTiledWgsl = `${common}\n${integration}\n${gravityTiled}`;
+export const bodiesWgsl = `${common}\n${noise}\n${stars}\n${bodies}`;
+export const bodiesDebugWgsl = `${common}\n${bodiesDebug}`;
+export const collisionWgsl = `${common}\n${collision}`;
+export const absorptionWgsl = `${common}\n${absorption}`;
+export const compactWgsl = `${common}\n${compact}`;
+export const explosionWgsl = `${common}\n${noise}\n${explosion}`;
+export const finishStepWgsl = `${common}\n${finishStep}`;
+export const postProcessWgsl = `${common}\n${composite}\n${bloom}`;
+export const collectStarLightsWgsl = `${common}\n${noise}\n${stars}\n${collectStarLights}`;
