@@ -1,0 +1,6 @@
+# PyTorch: on NVIDIA RTX 50-series GPUs install the CUDA 12.8+ build, e.g.
+#   pip install torch --index-url https://download.pytorch.org/whl/cu128
+# Apple Silicon (MPS) and CPU builds work from the default index.
+torch>=2.7
+numpy>=1.26
+pytest>=8.0

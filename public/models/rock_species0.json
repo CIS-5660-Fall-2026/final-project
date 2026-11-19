@@ -1,0 +1,54 @@
+{
+  "format_version": 1,
+  "name": "rock_species0",
+  "encoding": {
+    "type": "positional",
+    "num_frequencies": 6,
+    "layout": "x, then sin/cos pairs per frequency (each xyz)"
+  },
+  "activation": "relu",
+  "weights": {
+    "file": "rock_species0.bin",
+    "dtype": "float32",
+    "byte_order": "little",
+    "count": 6785
+  },
+  "layers": [
+    {
+      "in_features": 39,
+      "out_features": 64,
+      "weight_offset": 0,
+      "bias_offset": 2496
+    },
+    {
+      "in_features": 64,
+      "out_features": 64,
+      "weight_offset": 2560,
+      "bias_offset": 6656
+    },
+    {
+      "in_features": 64,
+      "out_features": 1,
+      "weight_offset": 6720,
+      "bias_offset": 6784
+    }
+  ],
+  "species": 0,
+  "training_box_half_extent": 1.8,
+  "bound_margin": 0.8,
+  "metrics": {
+    "mae": 0.013137557543814182,
+    "mae_near_surface": 0.01077809277921915,
+    "max_error": 0.46717825531959534,
+    "sign_accuracy": 0.988922119140625
+  },
+  "hyperparameters": {
+    "steps": 8000,
+    "batch_size": 65536,
+    "dataset_size": 2097152,
+    "hidden_width": 64,
+    "hidden_layers": 2,
+    "learning_rate": 0.001,
+    "seed": 0
+  }
+}
