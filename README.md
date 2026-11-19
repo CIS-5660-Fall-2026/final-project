@@ -94,18 +94,18 @@ The L-system generates the branching veins, and their tips define the lobed outl
 
 ### Anna (structure)
 
-#### Progress (updated 11/12)
+#### Progress (updated 11/19)
 
 - Test asset: doorway and window with lintels (a lintel falls when either jamb goes); `wall_type` switches between a straight wall and an L-corner.
 - Optional input: block center points replace the built-in layout.
 - Stone color ages: `Cd` darkens with `age` where wet or occluded, `roughness` drops where wet.
 - Demo scene `houdini/scene/ruin_demo.hipnc`: Karma render with a MaterialX stone material reading `Cd` / `roughness`.
-- Parameters grouped into Decay / Weathering / Layout / Color.
-- Next: rubble without interpenetration, stricter support rule (more than half the block width supported), integration with P2.
+- Physics: each block gets `fall_age`, the `age` at which it leaves the wall (own stability or loss of the blocks under it, whichever comes first). At a given `age`, every block with `fall_age` below it is released into a Bullet RBD sim and settles on the ground, so rubble piles up without interpenetration. This replaces the rule-based rubble placement. The sim re-runs whenever `age`, `seed`, `rubble_spread` or the layout changes (about 1 s on the test asset).
+- Next: irregular block layout, voxelizing any input mesh into blocks, Voronoi-fracturing some fallen blocks into 2-3 pieces, integration with P2.
 
 #### Using the HDA (for P2)
 
-Install `houdini/hda/ruin_structure.hdanc` and wire the vine subnet after `ruin_structure` (the HDA is locked). Baked outputs at `age` 0 / 0.5 / 1: `houdini/export/m2/test_ruin_field00/05/10.bgeo.sc`.
+Install `houdini/hda/ruin_structure.hdanc` and wire the vine subnet after `ruin_structure` (the HDA is locked). Baked outputs at `age` 0 / 0.5 / 1: `houdini/export/m2/test_ruin_field00/05/10.bgeo.sc`. Parameters are grouped into Decay / Weathering / Layout / Color:
 
 | Parameter | Default | Effect |
 | --- | --- | --- |
@@ -124,8 +124,10 @@ Output is one mesh (standing wall + rubble, no ground) with these point attribut
 | `moisture` | 0..1 | wetness; main scatter density for vines |
 | `crevice` | 0..1 | closeness to a gap or the ground; vine start points |
 | `ao` | 0..1 | ray-cast occlusion, 1 = occluded |
-| `piece` | int | block id |
+| `piece` | int | block id; stable across `age`, so use it (not point numbers) to seed anything random |
+| `center` | vector | the block's original center in the wall; unchanged on rubble |
 | `rubble` | 0/1 | 1 on fallen blocks |
+| `fall_age` | float | `age` at which the block falls; on rubble, `age - fall_age` is how long it has been on the ground |
 | `stability`, `height`, `kind` | | why a block falls, course index, wall block (0) or drum (1) |
 | `Cd`, `roughness`, `N` | | aged stone color, roughness, normals |
 
