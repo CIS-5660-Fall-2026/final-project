@@ -11,7 +11,7 @@ export interface SimulationAlgorithms {
   collision: "all-pairs";
   absorption: "full-scan";
   compaction: "serial" | "scan";
-  explosion: "serial";
+  explosion: "serial" | "parallel";
 }
 
 export const BASELINE_ALGORITHMS: Readonly<SimulationAlgorithms> = {

@@ -128,8 +128,13 @@ export function createControlPanel(
     simulationFolder.add(algorithms, "collision", { "All pairs": "all-pairs" }).name("Collision"),
     simulationFolder.add(algorithms, "absorption", { "Full scan": "full-scan" }).name("Absorption"),
     simulationFolder.add(algorithms, "compaction", { Serial: "serial", Scan: "scan" }).name("Compaction"),
-    simulationFolder.add(algorithms, "explosion", { Serial: "serial" }).name("Explosion"),
   ];
+  const explosionAlgorithm = simulationFolder.add(algorithms, "explosion", {
+    Serial: "serial", "Parallel events": "parallel",
+  }).name("Explosion");
+  explosionAlgorithm.domElement.title =
+    "Parallel events use a shared snapshot. Fragments interact next step. Explosions wait until all fragments fit.";
+  algorithmControllers.push(explosionAlgorithm);
   const updateAlgorithms = () => simulation.setAlgorithms(algorithms);
   algorithmControllers.forEach((controller) => controller.onChange(updateAlgorithms));
   simulationFolder.add({

@@ -200,5 +200,6 @@ export default class Simulation {
     this.buffers.collisionCandidates.destroy();
     this.buffers.dispatchArgs.destroy();
     this.compaction.destroy();
+    this.explosion.destroy();
   }
 }
