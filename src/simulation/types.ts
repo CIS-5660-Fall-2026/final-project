@@ -10,7 +10,7 @@ export interface SimulationAlgorithms {
   gravity: "naive" | "tiled";
   collision: "all-pairs";
   absorption: "full-scan";
-  compaction: "serial";
+  compaction: "serial" | "scan";
   explosion: "serial";
 }
 

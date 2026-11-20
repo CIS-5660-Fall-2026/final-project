@@ -127,7 +127,7 @@ export function createControlPanel(
     simulationFolder.add(algorithms, "gravity", { Naive: "naive", Tiled: "tiled" }).name("Gravity"),
     simulationFolder.add(algorithms, "collision", { "All pairs": "all-pairs" }).name("Collision"),
     simulationFolder.add(algorithms, "absorption", { "Full scan": "full-scan" }).name("Absorption"),
-    simulationFolder.add(algorithms, "compaction", { Serial: "serial" }).name("Compaction"),
+    simulationFolder.add(algorithms, "compaction", { Serial: "serial", Scan: "scan" }).name("Compaction"),
     simulationFolder.add(algorithms, "explosion", { Serial: "serial" }).name("Explosion"),
   ];
   const updateAlgorithms = () => simulation.setAlgorithms(algorithms);
