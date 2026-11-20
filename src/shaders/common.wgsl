@@ -48,9 +48,11 @@ struct VolumeUniforms {
     noiseFreq: f32,
     octaveCount: u32,
     densityScale: f32,
-    fogBaseHeight: f32,
-    fogHeightFalloff: f32
+    phaseG: f32
 }
+
+const clusterZScale: f32 = f32(${gridDimZ}) / log2(f32(${farPlane}) / f32(${nearPlane}));
+const clusterZBias: f32 = -f32(${gridDimZ}) * log2(f32(${nearPlane})) / log2(f32(${farPlane}) / f32(${nearPlane}));
 
 // CHECKITOUT: this special attenuation function ensures lights don't affect geometry outside the maximum light radius
 fn rangeAttenuation(distance: f32) -> f32 {
@@ -147,4 +149,17 @@ fn getFroxelWorldPosition(
 
     let worldPos: vec4f = invViewMat * vec4f(viewPos, 1.0);
     return worldPos.xyz;
+}
+
+fn getClusterIndex(zViewDistance: f32, uv: vec2f) -> u32 {
+    let screenGridDims: vec3u = vec3u(u32(${gridDimX}), u32(${gridDimY}), u32(${gridDimZ}));
+
+    let tileIdx: vec2u = vec2u(uv * vec2f(screenGridDims.xy));
+    let zSliceIdx: u32 = u32(max(log2(zViewDistance) * clusterZScale + clusterZBias, 0.0));
+
+    let clusterIdx: vec3u = min(vec3u(tileIdx, zSliceIdx), screenGridDims - vec3u(1u));
+
+    return clusterIdx.x
+        + clusterIdx.y * screenGridDims.x
+        + clusterIdx.z * screenGridDims.x * screenGridDims.y;
 }

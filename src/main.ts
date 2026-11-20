@@ -20,7 +20,7 @@ await scene.loadGltf('./scenes/sponza/Sponza.gltf');
 
 const camera = new Camera();
 const lights = new Lights(camera);
-const volumetrics = new Volumetrics(camera);
+const volumetrics = new Volumetrics(camera, lights);
 
 const stats = new Stats();
 stats.showPanel(0);

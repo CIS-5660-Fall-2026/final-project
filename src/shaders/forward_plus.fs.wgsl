@@ -18,9 +18,6 @@ struct FragmentInput
     @location(2) uv: vec2f
 }
 
-const clusterZScale: f32 = f32(${gridDimZ}) / log2(f32(${farPlane}) / f32(${nearPlane}));
-const clusterZBias: f32 = -f32(${gridDimZ}) * log2(f32(${nearPlane})) / log2(f32(${farPlane}) / f32(${nearPlane}));
-
 const numFroxelZSlices: f32 = f32(${froxelGridDimZ});
 const invFroxelZSlices: f32 = 1.0 / numFroxelZSlices;
 
@@ -45,13 +42,9 @@ fn main(in: FragmentInput) -> @location(0) vec4f
     }
 
     // Calculate the light cluster index
+    let screenUV: vec2f = in.screenPos.xy / camera.screenResolution;
     let zViewDistance: f32 = -vec4f(camera.viewMat * vec4f(in.worldPos, 1.0)).z;
-    let zSliceIdx: u32 = min(u32(max(log2(zViewDistance) * clusterZScale + clusterZBias, 0.0)), u32(${gridDimZ}) - 1u);
-    let tilePixelDims: vec2f = camera.screenResolution / vec2f(clusterSet.gridDims.xy);
-    let tileIdx: vec2u = vec2u(in.screenPos.xy / tilePixelDims);
-    let flatClusterIdx = tileIdx.x
-        + tileIdx.y * clusterSet.gridDims.x
-        + zSliceIdx * clusterSet.gridDims.x * clusterSet.gridDims.y;
+    let flatClusterIdx: u32 = getClusterIndex(zViewDistance, screenUV);
 
     var totalLightContrib = vec3f(0, 0, 0);
     for (var lightIdx = 0u; lightIdx < clusterSet.clusters[flatClusterIdx].numLights; lightIdx++) {
@@ -61,8 +54,7 @@ fn main(in: FragmentInput) -> @location(0) vec4f
 
     let litSurfaceColor: vec3f = diffuseColor.rgb * totalLightContrib;
 
-    // Calculate the UVW coordinates for our froxel grid
-    let froxelUV: vec2f = in.screenPos.xy / camera.screenResolution;
+    // Calculate our froxel texture coordinates
     let froxelZSlice: f32 = getContinuousFroxelZSlice(
         numFroxelZSlices,
         zViewDistance,
@@ -73,7 +65,7 @@ fn main(in: FragmentInput) -> @location(0) vec4f
 
     // .rgb holds the total in-scattered light that the volume sends toward the camera,
     // .a holds transmittance (the fraction of light that reaches the camera after traversing the volume)
-    let scatteringTransmittance: vec4f = textureSampleLevel(integrationBuffer, volumeSampler, vec3f(froxelUV, froxelW), 0.0);
+    let scatteringTransmittance: vec4f = textureSampleLevel(integrationBuffer, volumeSampler, vec3f(screenUV, froxelW), 0.0);
     let finalColor = (litSurfaceColor * scatteringTransmittance.a) + scatteringTransmittance.rgb;
     return vec4f(finalColor, 1.0);
 }

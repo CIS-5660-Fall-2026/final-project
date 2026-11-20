@@ -82,8 +82,26 @@ fn populateParticipatingMediaProperties(@builtin(global_invocation_id) id: vec3u
         return;
     }
 
+    let froxelGridDims: vec2f = vec2f(f32(${froxelGridDimX}), f32(${froxelGridDimY}));
+    // We add 0.5 to both our uv and froxel slice computations because we want
+    // to obtain the world position of the center of the froxel
+    let froxelWorldPos: vec3f = getFroxelWorldPosition(
+        (vec2f(id.xy) + 0.5) / froxelGridDims,
+        f32(id.z) + 0.5,
+        f32(${froxelGridDimZ}),
+        volume.volumeNearZ,
+        volume.volumeFarZ,
+        volume.distributionExponent,
+        camera.invProjMat,
+        camera.invViewMat);
+
     // NCHORTEK TODO: Use noise to generate participating media properties for this froxel
+    let scatteringExtinction: vec4f = select(
+        10.0 * vec4f(vec3f(volume.scattering), volume.scattering + volume.absorption),
+        vec4f(0.0),
+        froxelWorldPos.y > 1.0);
+
     textureStore(scatteringExtinctionBuffer,
         id,
-        vec4f(vec3f(volume.scattering), volume.scattering + volume.absorption));
+        scatteringExtinction);
 }

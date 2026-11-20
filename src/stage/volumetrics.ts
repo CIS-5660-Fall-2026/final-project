@@ -2,9 +2,10 @@ import { device } from "../renderer";
 
 import * as shaders from '../shaders/shaders';
 import { Camera } from "./camera";
+import { Lights } from "./lights";
 
 class VolumeUniforms {
-    static readonly bufferBytes = 16 * Float32Array.BYTES_PER_ELEMENT;
+    static readonly bufferBytes = 12 * Float32Array.BYTES_PER_ELEMENT;
     readonly buffer = new ArrayBuffer(VolumeUniforms.bufferBytes);
     private readonly floatView = new Float32Array(this.buffer);
     private readonly uintView = new Uint32Array(this.buffer);
@@ -45,17 +46,14 @@ class VolumeUniforms {
         this.floatView.set(new Float32Array([densityScale]), 10);
     }
 
-    set fogBaseHeight(baseHeight: number) {
-        this.floatView.set(new Float32Array([baseHeight]), 11);
-    }
-
-    set fogHeightFalloff(heightFalloff: number) {
-        this.floatView.set(new Float32Array([heightFalloff]), 12);
+    set phaseG(g: number) {
+        this.floatView.set(new Float32Array([g]), 11);
     }
 }
 
 export class Volumetrics {
     private camera: Camera;
+    private lights: Lights;
 
     uniforms: VolumeUniforms = new VolumeUniforms();
     uniformsBuffer: GPUBuffer;
@@ -87,8 +85,9 @@ export class Volumetrics {
     integrationComputeBindGroup: GPUBindGroup;
     integrationComputePipeline: GPUComputePipeline;
 
-    constructor(camera: Camera) {
+    constructor(camera: Camera, lights: Lights) {
         this.camera = camera;
+        this.lights = lights;
 
         // Create all the buffers/textures we need
         this.uniformsBuffer = device.createBuffer({
@@ -217,6 +216,21 @@ export class Volumetrics {
                     binding: 2,
                     visibility: GPUShaderStage.COMPUTE,
                     storageTexture: { access: "write-only", format: "rgba16float", viewDimension: "3d" }
+                },
+                { // camera
+                    binding: 3,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "uniform" }
+                },
+                { // lightSet
+                    binding: 4,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "read-only-storage" }
+                },
+                { // clusterSet
+                    binding: 5,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "read-only-storage" }
                 }
             ]
         });
@@ -236,6 +250,18 @@ export class Volumetrics {
                 {
                     binding: 2,
                     resource: this.lightingBufferView
+                },
+                {
+                    binding: 3,
+                    resource: { buffer: this.camera.uniformsBuffer }
+                },
+                {
+                    binding: 4,
+                    resource: { buffer: this.lights.lightSetStorageBuffer }
+                },
+                {
+                    binding: 5,
+                    resource: { buffer: this.lights.clusterSetStorageBuffer }
                 }
             ]
         });
@@ -318,13 +344,12 @@ export class Volumetrics {
         this.uniforms.volumeFarZ = 40.0;
         this.uniforms.distributionExponent = 1.0;
         this.uniforms.scattering = 0.04;
-        this.uniforms.ambientLightColor = new Float32Array([0.15, 0.15, 0.15]);
+        this.uniforms.ambientLightColor = new Float32Array([0.05, 0.05, 0.05]);
         this.uniforms.absorption = 0.01;
         this.uniforms.noiseFreq = 0.3;
         this.uniforms.octaveCount = 4;
         this.uniforms.densityScale = 1.0;
-        this.uniforms.fogBaseHeight = -1.0;
-        this.uniforms.fogHeightFalloff = 0.3;
+        this.uniforms.phaseG = 0.3;
 
         device.queue.writeBuffer(this.uniformsBuffer, 0, this.uniforms.buffer);
     }

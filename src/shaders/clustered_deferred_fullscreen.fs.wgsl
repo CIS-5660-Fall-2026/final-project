@@ -14,9 +14,6 @@ struct FragmentInput
     @builtin(position) screenPos: vec4f,
 }
 
-const clusterZScale: f32 = f32(${gridDimZ}) / log2(f32(${farPlane}) / f32(${nearPlane}));
-const clusterZBias: f32 = -f32(${gridDimZ}) * log2(f32(${nearPlane})) / log2(f32(${farPlane}) / f32(${nearPlane}));
-
 @fragment
 fn main(in: FragmentInput) -> @location(0) vec4f
 {
@@ -30,12 +27,8 @@ fn main(in: FragmentInput) -> @location(0) vec4f
     let nor: vec4f = textureLoad(normalTex, texel, 0);
 
     let zViewDistance: f32 = -vec4f(camera.viewMat * pos).z;
-    let zSliceIdx: u32 = min(u32(max(log2(zViewDistance) * clusterZScale + clusterZBias, 0.0)), u32(${gridDimZ}) - 1u);
-    let tilePixelDims: vec2f = camera.screenResolution / vec2f(clusterSet.gridDims.xy);
-    let tileIdx: vec2u = vec2u(in.screenPos.xy / tilePixelDims);
-    let flatClusterIdx = tileIdx.x
-        + tileIdx.y * clusterSet.gridDims.x
-        + zSliceIdx * clusterSet.gridDims.x * clusterSet.gridDims.y;
+    let screenUV: vec2f = in.screenPos.xy / camera.screenResolution;
+    let flatClusterIdx: u32 = getClusterIndex(zViewDistance, screenUV);
 
     var totalLightContrib = vec3f(0, 0, 0);
     for (var lightIdx = 0u; lightIdx < clusterSet.clusters[flatClusterIdx].numLights; lightIdx++) {
