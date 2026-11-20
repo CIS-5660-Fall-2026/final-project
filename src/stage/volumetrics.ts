@@ -344,7 +344,7 @@ export class Volumetrics {
         this.uniforms.volumeFarZ = 40.0;
         this.uniforms.distributionExponent = 1.0;
         this.uniforms.scattering = 0.04;
-        this.uniforms.ambientLightColor = new Float32Array([0.05, 0.05, 0.05]);
+        this.uniforms.ambientLightColor = new Float32Array([0.15, 0.15, 0.15]);
         this.uniforms.absorption = 0.01;
         this.uniforms.noiseFreq = 0.3;
         this.uniforms.octaveCount = 4;

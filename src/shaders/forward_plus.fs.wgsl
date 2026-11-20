@@ -46,7 +46,7 @@ fn main(in: FragmentInput) -> @location(0) vec4f
     let zViewDistance: f32 = -vec4f(camera.viewMat * vec4f(in.worldPos, 1.0)).z;
     let flatClusterIdx: u32 = getClusterIndex(zViewDistance, screenUV);
 
-    var totalLightContrib = vec3f(0, 0, 0);
+    var totalLightContrib = vec3f(0.0);
     for (var lightIdx = 0u; lightIdx < clusterSet.clusters[flatClusterIdx].numLights; lightIdx++) {
         let light = lightSet.lights[clusterSet.clusters[flatClusterIdx].lightIndices[lightIdx]];
         totalLightContrib += calculateLightContrib(light, in.worldPos, normalize(in.modelNor));

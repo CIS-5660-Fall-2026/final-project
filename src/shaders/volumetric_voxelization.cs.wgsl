@@ -82,13 +82,14 @@ fn populateParticipatingMediaProperties(@builtin(global_invocation_id) id: vec3u
         return;
     }
 
-    let froxelGridDims: vec2f = vec2f(f32(${froxelGridDimX}), f32(${froxelGridDimY}));
+    let froxelGridDims: vec3f = vec3f(f32(${froxelGridDimX}), f32(${froxelGridDimY}), f32(${froxelGridDimZ}));
+
     // We add 0.5 to both our uv and froxel slice computations because we want
     // to obtain the world position of the center of the froxel
     let froxelWorldPos: vec3f = getFroxelWorldPosition(
-        (vec2f(id.xy) + 0.5) / froxelGridDims,
+        (vec2f(id.xy) + 0.5) / froxelGridDims.xy,
         f32(id.z) + 0.5,
-        f32(${froxelGridDimZ}),
+        froxelGridDims.z,
         volume.volumeNearZ,
         volume.volumeFarZ,
         volume.distributionExponent,
